@@ -148,3 +148,25 @@ func TestEventJS(t *testing.T) {
 		t.Fatalf("got %s", js)
 	}
 }
+
+func TestRegistryAPIGuards(t *testing.T) {
+	a := newAPI(t.TempDir(), false, func(string, any) {})
+	cats := a.RegCategories()
+	if len(cats) == 0 {
+		t.Fatal("no registry categories")
+	}
+	for _, c := range cats {
+		if c.NeedsAdmin && c.Selectable {
+			t.Errorf("%s needs admin but is selectable unelevated", c.ID)
+		}
+	}
+	if err := a.RegScan(nil); err == nil {
+		t.Error("empty category list accepted")
+	}
+	if err := a.RegFix([]int{1}); err == nil {
+		t.Error("fix without a scan accepted")
+	}
+	if err := a.RegRestore("../../etc"); err == nil {
+		t.Error("path traversal accepted")
+	}
+}

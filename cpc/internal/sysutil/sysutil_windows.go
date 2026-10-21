@@ -224,3 +224,46 @@ func ScheduleDelete(name string) error {
 	}
 	return nil
 }
+
+var (
+	procOpenClipboard  = user32.NewProc("OpenClipboard")
+	procEmptyClipboard = user32.NewProc("EmptyClipboard")
+	procCloseClipboard = user32.NewProc("CloseClipboard")
+)
+
+// ClearClipboard empties the Windows clipboard.
+func ClearClipboard() error {
+	if r, _, err := procOpenClipboard.Call(0); r == 0 {
+		return err
+	}
+	defer procCloseClipboard.Call()
+	if r, _, err := procEmptyClipboard.Call(); r == 0 {
+		return err
+	}
+	return nil
+}
+
+// RunHidden runs a console program without showing a window and returns
+// its combined output.
+func RunHidden(name string, args ...string) (string, error) {
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// RemoveProtectedTree deletes a folder Windows protects, such as
+// Windows.old, by taking ownership first. Same steps Disk Cleanup takes.
+func RemoveProtectedTree(path string) error {
+	if _, err := RunHidden("takeown.exe", "/F", path, "/R", "/A", "/D", "Y"); err != nil {
+		return err
+	}
+	if _, err := RunHidden("icacls.exe", path, "/grant", "*S-1-5-32-544:F", "/T", "/C", "/Q"); err != nil {
+		return err
+	}
+	out, err := RunHidden("cmd.exe", "/c", "rd", "/s", "/q", path)
+	if err != nil {
+		return errors.New(strings.TrimSpace(out))
+	}
+	return nil
+}

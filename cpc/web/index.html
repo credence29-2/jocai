@@ -246,6 +246,7 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
     <div class="tabs" id="tabs">
       <button data-tab="junk" class="active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="m10 12 4 4m0-4-4 4"/></svg>Junk</button>
       <button data-tab="browsers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 9h18"/><path d="m13 13 7 3-3 1-1 3z"/></svg>Browser</button>
+      <button data-tab="registry"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="m17.5 2.5 4 4-4 4-4-4z"/></svg>Registry</button>
     </div>
     <div class="clean-wrap">
       <div class="picker">
@@ -353,13 +354,21 @@ function confirmBox(title, html, okText = "OK", danger = false) {
 const palette = ["#2f7cf6", "#16a37f", "#c2410c", "#7c3aed", "#0e7490", "#be185d", "#4d7c0f", "#b45309"];
 function avatarColor(name) { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0; return palette[h % palette.length]; }
 const groupColors = { "Google Chrome": "#1a73e8", "Microsoft Edge": "#0f8a7e", "Firefox": "#e8590c", "Brave": "#d9480f", "Vivaldi": "#c92a2a" };
+const ic = d => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const groupGlyph = {
-  "System": '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
-  "Windows Update and logs": '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>',
-  "Applications": '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
-  "Advanced": '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>',
+  "Windows": ic('<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>'),
+  "System": ic('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
+  "Windows Update and logs": ic('<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'),
+  "Applications": ic('<rect x="4" y="4" width="12" height="12" rx="2"/><path d="M8 20h10a2 2 0 0 0 2-2V8"/>'),
+  "Windows Store": ic('<path d="M3 7h18l-1.5 12a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2z"/><path d="M8 7a4 4 0 0 1 8 0"/>'),
+  "Multimedia": ic('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>'),
+  "Windows Downloads": ic('<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>'),
+  "AI Tools": ic('<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>'),
+  "Utilities": ic('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'),
+  "Advanced": ic('<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>'),
 };
-const groupBg = { "System": "#2f7cf6", "Windows Update and logs": "#0e7490", "Applications": "#7c3aed", "Advanced": "#64748b" };
+const groupBg = { "Windows": "#2563eb", "System": "#2f7cf6", "Windows Update and logs": "#0e7490", "Applications": "#7c3aed", "Windows Store": "#0f766e",
+  "Multimedia": "#db2777", "Windows Downloads": "#0891b2", "AI Tools": "#9333ea", "Utilities": "#b45309", "Advanced": "#64748b" };
 const chevron = '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg>';
 
 // ---------------------------------------------------------------- state
@@ -369,9 +378,10 @@ const S = {
   lastClean: null,    // last finished run shown on Custom Clean
   health: null,       // { state: "idle"|"running"|"done", junk, startup, summary }
   startup: null, programs: null, schedule: null,
+  reg: { cats: [], checked: new Set(), issues: null, picked: new Set(), busy: false, lastFix: null },
 };
 const tabOf = t => t.section === "Browsers" ? "browsers" : "junk";
-const groupOrder = ["System", "Windows Update and logs", "Applications", "Advanced", "Google Chrome", "Microsoft Edge", "Firefox", "Brave", "Vivaldi"];
+let groupOrder = ["Windows", "System", "Windows Update and logs", "Applications", "Windows Store", "Multimedia", "Windows Downloads", "AI Tools", "Utilities", "Advanced", "Google Chrome", "Microsoft Edge", "Firefox", "Brave", "Vivaldi"];
 
 // ---------------------------------------------------------------- navigation
 function show(page) {
@@ -386,6 +396,8 @@ document.querySelectorAll(".nav button").forEach(b => b.onclick = () => show(b.d
 
 // ---------------------------------------------------------------- custom clean: picker
 function renderPicker() {
+  updateActionBar();
+  if (S.tab === "registry") return renderRegPicker();
   const list = S.targets.filter(t => tabOf(t) === S.tab);
   const groups = [];
   for (const t of list) {
@@ -419,7 +431,35 @@ function renderPicker() {
   const all = $("#selAll");
   all.checked = on > 0 && on === sel.length; all.indeterminate = on > 0 && on < sel.length; all.disabled = busy;
   $("#btnRecommended").disabled = busy;
-  $("#selCount").textContent = S.checked.size + " selected";
+  $("#btnRecommended").style.display = "";
+}
+
+function updateActionBar() {
+  const reg = S.tab === "registry";
+  $("#btnScan").textContent = reg ? "Scan for issues" : "Scan now";
+  $("#btnClean").textContent = reg ? "Fix selected issues" : "Clean and fix";
+  $("#selCount").textContent = reg
+    ? (S.reg.issues ? S.reg.picked.size + " issues selected" : S.reg.checked.size + " selected")
+    : S.checked.size + " selected";
+  const busy = !!S.run || S.reg.busy;
+  $("#btnScan").style.display = busy ? "none" : "";
+  $("#btnClean").style.display = busy ? "none" : "";
+  $("#btnStop").style.display = S.run ? "" : "none";
+  $("#btnClean").disabled = reg && !(S.reg.issues && S.reg.picked.size);
+}
+
+function renderRegPicker() {
+  const busy = S.reg.busy;
+  $("#groups").innerHTML = S.reg.cats.map(c => `
+    <label class="item ${c.selectable ? "" : "locked"}" style="padding:12px 16px;border-bottom:1px solid var(--line)" title="${esc(c.description)}">
+      <input type="checkbox" class="cb rcb" data-id="${c.id}" aria-label="${esc(c.name)}" ${S.reg.checked.has(c.id) ? "checked" : ""} ${!c.selectable || busy ? "disabled" : ""}>
+      <span class="label">${esc(c.name)}<small>${esc(c.description)}</small></span>
+      ${c.selectable ? "" : '<span class="pill" title="Restart CPC as administrator to use this">Admin</span>'}
+    </label>`).join("");
+  const sel = S.reg.cats.filter(c => c.selectable), on = sel.filter(c => S.reg.checked.has(c.id)).length;
+  const all = $("#selAll");
+  all.checked = on > 0 && on === sel.length; all.indeterminate = on > 0 && on < sel.length; all.disabled = busy;
+  $("#btnRecommended").style.display = "none";
 }
 
 $("#groups").addEventListener("click", e => {
@@ -431,6 +471,10 @@ $("#groups").addEventListener("click", e => {
 });
 $("#groups").addEventListener("change", e => {
   const cb = e.target;
+  if (cb.classList.contains("rcb")) {
+    cb.checked ? S.reg.checked.add(cb.dataset.id) : S.reg.checked.delete(cb.dataset.id);
+    renderPicker(); return;
+  }
   if (cb.classList.contains("icb")) {
     cb.checked ? S.checked.add(cb.dataset.id) : S.checked.delete(cb.dataset.id);
   } else if (cb.classList.contains("gcb")) {
@@ -441,6 +485,10 @@ $("#groups").addEventListener("change", e => {
   selectionChanged();
 });
 $("#selAll").onchange = e => {
+  if (S.tab === "registry") {
+    S.reg.cats.filter(c => c.selectable).forEach(c => e.target.checked ? S.reg.checked.add(c.id) : S.reg.checked.delete(c.id));
+    renderPicker(); return;
+  }
   S.targets.filter(t => tabOf(t) === S.tab && t.selectable).forEach(t => e.target.checked ? S.checked.add(t.id) : S.checked.delete(t.id));
   selectionChanged();
 };
@@ -471,9 +519,13 @@ const emptyStates = {
   browsers: { title: "Clear your browsing data", lead: "Protect your privacy and speed up your browser.",
     text: "Websites leave behind caches, cookies and history. Caches are ticked by default. Cookies sign you out of sites and history is your list of visited pages, so those start unticked.",
     icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 9h18"/><path d="m13 13 7 3-3 1-1 3z" stroke="#f2c94c"/></svg>' },
+  registry: { title: "Fix issues in the Windows Registry", lead: "Remove leftovers from programs you uninstalled.",
+    text: "CPC only flags entries that point to files which are definitely gone. Every fix is backed up first and can be restored with one click. Registry cleaning rarely makes a PC faster, so think of it as tidying up.",
+    icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="m17.5 2.5 4 4-4 4-4-4z" stroke="#f2c94c"/></svg>' }
 };
 function renderResults() {
   const el = $("#results");
+  if (S.tab === "registry") return renderRegResults(el);
   const r = S.run && S.run.owner === "clean" ? S.run : null;
   const last = S.lastClean;
   if (r) {
@@ -514,12 +566,79 @@ function renderResults() {
   const ol = $("#openLog"); if (ol) ol.onclick = () => api.OpenPath(s.logPath).catch(e => toast(errText(e), true));
 }
 
-function setBusy(b) {
-  $("#btnScan").style.display = b ? "none" : "";
-  $("#btnClean").style.display = b ? "none" : "";
-  $("#btnStop").style.display = b ? "" : "none";
-  renderPicker();
+function renderRegResults(el) {
+  const R = S.reg;
+  if (R.busy) {
+    el.innerHTML = `<div class="empty"><div class="spinner"></div><h2>${R.issues ? "Backing up and fixing" : "Scanning the registry"}...</h2><p>This takes a few seconds.</p></div>`;
+    return;
+  }
+  if (R.lastFix && !R.issues) {
+    const f = R.lastFix;
+    el.innerHTML = `<div class="empty"><div class="icon-ring" style="color:var(--good)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></div>
+      <h2>${f.error ? "Nothing was changed" : "Fixed " + f.fixed + " issue" + (f.fixed === 1 ? "" : "s")}</h2>
+      <p class="lead">${f.error ? esc(f.error) : (f.failed ? f.failed + " couldn't be fixed. " : "") + "A backup was saved first."}</p>
+      ${f.error ? "" : `<div class="row"><button class="btn" id="regRestore">Undo these changes</button><button class="link" id="regFolder">Open backups folder</button></div>`}</div>`;
+    const u = $("#regRestore"); if (u) u.onclick = () => restoreBackup(f.name);
+    const o = $("#regFolder"); if (o) o.onclick = () => api.OpenBackups().catch(e => toast(errText(e), true));
+    return;
+  }
+  if (!R.issues) {
+    const e = emptyStates.registry;
+    el.innerHTML = `<div class="empty"><div class="icon-ring">${e.icon}</div><h2>${e.title}</h2><p class="lead">${e.lead}</p><p>${e.text}</p>
+      <p style="margin-top:14px"><button class="link" id="regBackups">Restore an earlier backup</button></p></div>`;
+    $("#regBackups").onclick = showBackups;
+    return;
+  }
+  if (!R.issues.length) {
+    el.innerHTML = `<div class="empty"><div class="icon-ring" style="color:var(--good)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></div><h2>No issues found</h2><p>Nothing in the selected categories points to missing files.</p></div>`;
+    return;
+  }
+  const byCat = {};
+  R.issues.forEach(i => (byCat[i.category] = byCat[i.category] || []).push(i));
+  let html = `<div class="res-head"><div class="big">${R.issues.length} issue${R.issues.length === 1 ? "" : "s"} found</div>
+    <div class="msg">Untick anything you want to keep. <label style="margin-left:8px;cursor:pointer"><input type="checkbox" class="cb" id="regAll" ${R.picked.size === R.issues.length ? "checked" : ""}> Select all</label></div></div><div class="res-list">`;
+  for (const c of S.reg.cats) {
+    const list = byCat[c.id]; if (!list) continue;
+    html += `<div class="res-group">${esc(c.name)} (${list.length})</div>`;
+    html += list.map(i => `<label class="item" style="padding:7px 22px;align-items:flex-start">
+      <input type="checkbox" class="cb ricb" data-id="${i.id}" ${R.picked.has(i.id) ? "checked" : ""} style="margin-top:2px">
+      <span class="label">${esc(i.problem)}<small title="${esc(i.key + (i.value ? "\\" + i.value : ""))}">${esc(i.key)}${i.value ? " : " + esc(i.value) : ""}</small></span></label>`).join("");
+  }
+  el.innerHTML = html + "</div>";
+  $("#regAll").onchange = e => { R.picked = e.target.checked ? new Set(R.issues.map(i => i.id)) : new Set(); renderResults(); updateActionBar(); };
+  el.querySelectorAll(".ricb").forEach(cb => cb.onchange = () => { cb.checked ? R.picked.add(+cb.dataset.id) : R.picked.delete(+cb.dataset.id); updateActionBar(); });
 }
+
+async function regScan() {
+  if (!S.reg.checked.size) { toast("Tick at least one category first.", true); return; }
+  S.reg.busy = true; S.reg.lastFix = null; S.reg.issues = null;
+  renderPicker(); renderResults();
+  try { await api.RegScan([...S.reg.checked]); } catch (e) { S.reg.busy = false; renderPicker(); renderResults(); toast(errText(e), true); }
+}
+async function regFix() {
+  const n = S.reg.picked.size;
+  if (!n) return;
+  if (!await confirmBox("Fix " + n + " registry issue" + (n === 1 ? "" : "s") + "?", "CPC saves a backup of every key it changes first. You can undo this from the Registry tab at any time.", "Fix issues")) return;
+  S.reg.busy = true; renderPicker(); renderResults();
+  try { await api.RegFix([...S.reg.picked]); } catch (e) { S.reg.busy = false; renderPicker(); renderResults(); toast(errText(e), true); }
+}
+async function restoreBackup(name) {
+  if (!await confirmBox("Restore this backup?", "Puts back every registry entry from that fix.", "Restore")) return;
+  try { await api.RegRestore(name); toast("Backup restored."); } catch (e) { toast(errText(e), true); }
+}
+async function showBackups() {
+  let list = [];
+  try { list = await api.RegBackups(); } catch (e) {}
+  if (!list.length) { toast("No registry backups yet."); return; }
+  const html = list.slice(0, 8).map(b => `<div class="row" style="margin:6px 0"><span class="grow">${esc(b.when)} <span class="dim">(${b.count} key${b.count === 1 ? "" : "s"})</span></span><button class="btn small" data-restore="${esc(b.name)}">Restore</button></div>`).join("");
+  confirmBox("Registry backups", html + '<p class="dim" style="margin-top:10px;font-size:12px">Newest first. CPC keeps every backup in its backups folder.</p>', "Close");
+  document.querySelectorAll("[data-restore]").forEach(b => b.onclick = async () => {
+    $("#modalBack").classList.remove("show");
+    try { await api.RegRestore(b.dataset.restore); toast("Backup restored."); } catch (e) { toast(errText(e), true); }
+  });
+}
+
+function setBusy(b) { renderPicker(); }
 
 async function startRun(owner, mode, ids) {
   if (S.run) return;
@@ -537,12 +656,20 @@ async function startRun(owner, mode, ids) {
   try { await (mode === "clean" ? api.Clean(ids) : api.Scan(ids)); }
   catch (e) { S.run = null; setBusy(false); renderResults(); renderHealth(); toast(errText(e), true); }
 }
-$("#btnScan").onclick = () => startRun("clean", "scan", [...S.checked]);
-$("#btnClean").onclick = () => startRun("clean", "clean", [...S.checked]);
+$("#btnScan").onclick = () => S.tab === "registry" ? regScan() : startRun("clean", "scan", [...S.checked]);
+$("#btnClean").onclick = () => S.tab === "registry" ? regFix() : startRun("clean", "clean", [...S.checked]);
 $("#btnStop").onclick = () => api.Cancel();
 
 // Events pushed from Go.
 window.cpcEvent = (name, p) => {
+  if (name === "regScanned") {
+    S.reg.busy = false; S.reg.issues = p; S.reg.picked = new Set(p.map(i => i.id));
+    renderPicker(); renderResults(); return;
+  }
+  if (name === "regFixed") {
+    S.reg.busy = false; S.reg.issues = null; S.reg.lastFix = p;
+    renderPicker(); renderResults(); return;
+  }
   const r = S.run;
   if (!r) return;
   if (name === "progress") { r.index = p.index; r.total = p.total; r.name = p.name; r.path = ""; if (r.owner === "clean") renderResults(); else renderHealth(); }
@@ -740,6 +867,7 @@ $("#sideAdminBtn").onclick = restartAdmin;
 
 async function refreshInfo() {
   try { S.info = await api.Info(); } catch (e) { return; }
+  if (S.info.groups && S.info.groups.length) groupOrder = S.info.groups;
   $("#adminDot").className = "dot" + (S.info.elevated ? "" : " warn");
   $("#adminText").textContent = S.info.elevated ? "Running as administrator" : "Limited mode, not administrator";
   $("#sideAdminBtn").style.display = S.info.elevated ? "none" : "";
@@ -752,6 +880,7 @@ async function init() {
     await refreshInfo();
     S.targets = await api.Targets();
     S.checked = new Set(S.targets.filter(t => t.checked).map(t => t.id));
+    S.reg.cats = await api.RegCategories();
   } catch (e) { toast("Couldn't load: " + errText(e), true); }
   renderPicker(); renderResults();
   show("health");

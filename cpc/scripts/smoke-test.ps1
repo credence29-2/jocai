@@ -59,8 +59,14 @@ function Wait-For([scriptblock]$cond, [int]$seconds = 30) {
     return $null
 }
 function Find-Name($root, $name) {
-    $c = New-Object System.Windows.Automation.PropertyCondition($AE::NameProperty, $name)
-    return $root.FindFirst($TS::Descendants, $c)
+    # Prefer real controls (buttons, tabs, checkboxes) over plain text with the same words.
+    $n = New-Object System.Windows.Automation.PropertyCondition($AE::NameProperty, $name)
+    foreach ($type in "Button", "CheckBox", "TabItem", "Hyperlink") {
+        $t = New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, [System.Windows.Automation.ControlType]::$type)
+        $el = $root.FindFirst($TS::Descendants, (New-Object System.Windows.Automation.AndCondition($n, $t)))
+        if ($el) { return $el }
+    }
+    return $root.FindFirst($TS::Descendants, $n)
 }
 function Texts($root) {
     $c = New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, [System.Windows.Automation.ControlType]::Text)
@@ -108,6 +114,30 @@ Check-Cleaned $p "GUI clean"
 
 Click $win "Browser" | Out-Null
 Expect $win "Clear your browsing data|Google Chrome" "Browser tab rendered" | Out-Null
+
+Click $win "Registry" | Out-Null
+if (Expect $win "Fix issues in the Windows Registry" "Registry tab rendered") {
+    Click $win "Select all" | Out-Null
+    Click $win "Scan for issues" | Out-Null
+    if (Expect $win "(issues? found|No issues found)" "registry scan finished" 120) {
+        Shot "5b-registry"
+        Write-Host "Registry scan text: $(Texts $win)"
+        if ((Texts $win) -match "issues? found") {
+            Click $win "Fix selected issues" | Out-Null
+            Click $win "Fix issues" | Out-Null
+            if (Expect $win "Fixed \d+ issue" "registry fix finished with a backup" 120) {
+                $bk = Get-ChildItem "$env:LOCALAPPDATA\CredencePCCleaner\backups" -Directory | Sort-Object Name | Select-Object -Last 1
+                $regs = @(Get-ChildItem "$($bk.FullName)\*.reg")
+                if ($regs.Count -gt 0) { Pass "registry backup written ($($regs.Count) files)" } else { Fail "no registry backup files" }
+                Get-Content "$($bk.FullName)\changes.log" | Select-Object -First 20
+                Click $win "Undo these changes" | Out-Null
+                Click $win "Restore" | Out-Null
+                Expect $win "Backup restored" "registry backup restored" 60 | Out-Null
+            }
+        }
+    }
+}
+Click $win "Junk" | Out-Null
 
 Click $win "Startup Manager" | Out-Null
 if (Expect $win "(start with Windows|No startup apps found)" "Startup Manager rendered") { Shot "6-startup" }

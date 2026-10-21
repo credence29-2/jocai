@@ -56,6 +56,16 @@
     cpcUninstall: async () => null, cpcProgramFolder: async () => null,
     cpcSchedule: async () => ({ enabled: false, nextRun: "" }),
     cpcSetSchedule: async on => ({ enabled: on, nextRun: on ? "10/26/2026 12:00:00 PM" : "" }),
+    cpcRegCategories: async () => [["apppaths","Application paths",0],["obsolete","Obsolete software",1],["startup","Run at startup",0],["muicache","MUI cache",0],["shareddlls","Missing shared DLLs",1],["installers","Installer folders",1],["help","Help files",0],["fonts","Fonts",0],["firewall","Firewall rules",1],["sounds","Sound events",0]]
+      .map(([id, name, admin]) => ({ id, name, description: "About " + name.toLowerCase() + ".", needsAdmin: !!admin, selectable: !admin || !!window.__mockAdmin })),
+    cpcRegScan: async cats => setTimeout(() => emit("regScanned", [
+      { id: 0, category: "muicache", key: "HKEY_CURRENT_USER\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\MuiCache", value: "C:\\Old\\tool.exe.FriendlyAppName", problem: "C:\\Old\\tool.exe is gone" },
+      { id: 1, category: "startup", key: "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", value: "OldUpdater", problem: "OldUpdater: C:\\Program Files\\Old\\upd.exe is gone" },
+      { id: 2, category: "apppaths", key: "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\old.exe", value: "", wholeKey: true, problem: "Points to missing C:\\Old\\old.exe" },
+    ].filter(i => cats.includes(i.category))), 100),
+    cpcRegFix: async ids => setTimeout(() => emit("regFixed", { fixed: ids.length, failed: 0, backup: "C:\\backups\\registry-x", name: "registry-x" }), 100),
+    cpcRegBackups: async () => [{ name: "registry-x", when: "Oct 21, 2026 6:02 PM", count: 2 }],
+    cpcRegRestore: async () => null, cpcOpenBackups: async () => null,
     cpcOpenLogs: async () => null, cpcOpenPath: async () => null, cpcRestartAdmin: async () => null,
   });
 })();

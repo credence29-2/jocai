@@ -31,6 +31,9 @@ type Rule struct {
 	MinAge time.Duration
 	// Admin rules are skipped when the program is not elevated.
 	Admin bool
+	// Shallow allows a root one level below the drive (e.g. C:\FOUND.000)
+	// for non-recursive rules that only match specific file patterns.
+	Shallow bool
 }
 
 // Result is what a scan or clean produced for a single target.
@@ -134,6 +137,15 @@ func namedFilesOnly(r Rule) bool {
 	return true
 }
 
+func matchesEverything(pats []string) bool {
+	for _, p := range pats {
+		if p == "*" || p == "*.*" {
+			return true
+		}
+	}
+	return false
+}
+
 func safeRootDepth(p string, minDepth int) bool {
 	if p == "" || strings.Contains(p, "%") {
 		return false
@@ -154,7 +166,7 @@ func safeRootDepth(p string, minDepth int) bool {
 
 func (e *Engine) roots(r Rule) ([]string, error) {
 	minDepth := 2
-	if namedFilesOnly(r) {
+	if namedFilesOnly(r) || (r.Shallow && !r.Recursive && len(r.Files) > 0 && !matchesEverything(r.Files)) {
 		minDepth = 1
 	}
 	p := e.Expand(r.Root)

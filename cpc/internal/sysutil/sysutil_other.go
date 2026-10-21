@@ -22,3 +22,7 @@ func MessageBox(string, string, bool)           {}
 func ScheduleStatus(string) (bool, string)      { return false, "" }
 func ScheduleWeekly(_, _, _, _, _ string) error { return errNotWindows }
 func ScheduleDelete(string) error               { return errNotWindows }
+
+func ClearClipboard() error                       { return errNotWindows }
+func RunHidden(string, ...string) (string, error) { return "", errNotWindows }
+func RemoveProtectedTree(string) error            { return errNotWindows }

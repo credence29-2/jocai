@@ -290,3 +290,12 @@ func TestFilesPlural(t *testing.T) {
 		t.Fatal("plural wrong")
 	}
 }
+
+func TestShallowRules(t *testing.T) {
+	if namedFilesOnly(Rule{Files: []string{"*.chk"}}) {
+		t.Fatal("wildcards are not named files")
+	}
+	if !matchesEverything([]string{"*.chk", "*"}) || matchesEverything([]string{"*.chk"}) {
+		t.Fatal("matchesEverything wrong")
+	}
+}

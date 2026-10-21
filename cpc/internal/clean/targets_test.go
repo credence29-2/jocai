@@ -51,11 +51,37 @@ func TestNoBroadRulesOnUserFolders(t *testing.T) {
 
 func TestLabels(t *testing.T) {
 	for _, tg := range AllTargets() {
+		if tg.ID == "chrome.cache" && tg.Label() != "Internet cache" {
+			t.Errorf("chrome cache label = %q", tg.Label())
+		}
 		if tg.ID == "chrome.cookies" && tg.Label() != "Cookies" {
 			t.Errorf("chrome cookies label = %q", tg.Label())
 		}
 		if tg.ID == "win.recycle" && tg.Label() != "Recycle Bin" {
 			t.Errorf("recycle label = %q", tg.Label())
+		}
+	}
+}
+
+func TestGroupsKnown(t *testing.T) {
+	known := map[string]bool{}
+	for _, g := range GroupOrder {
+		known[g] = true
+	}
+	for _, tg := range AllTargets() {
+		if !known[tg.Group] {
+			t.Errorf("%s has group %q missing from GroupOrder", tg.ID, tg.Group)
+		}
+	}
+}
+
+// Risky items must never be ticked by default.
+func TestRiskyItemsOffByDefault(t *testing.T) {
+	for _, tg := range AllTargets() {
+		for _, risky := range []string{"passwords", "cookies", "history", "session", "dl.", "win.old", "componentstore", "dumps"} {
+			if strings.Contains(tg.ID, risky) && tg.Default {
+				t.Errorf("%s is on by default", tg.ID)
+			}
 		}
 	}
 }

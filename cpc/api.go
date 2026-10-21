@@ -13,6 +13,7 @@ import (
 
 	"github.com/credence29-2/jocai/cpc/internal/clean"
 	"github.com/credence29-2/jocai/cpc/internal/programs"
+	"github.com/credence29-2/jocai/cpc/internal/regclean"
 	"github.com/credence29-2/jocai/cpc/internal/settings"
 	"github.com/credence29-2/jocai/cpc/internal/startup"
 	"github.com/credence29-2/jocai/cpc/internal/sysutil"
@@ -50,6 +51,10 @@ type api struct {
 
 	startupRows []startup.Entry
 	programRows []programs.Program
+
+	regMu     sync.Mutex
+	regIssues []regclean.Issue
+	regBusy   bool
 }
 
 func newAPI(dataDir string, elevated bool, emit func(string, any)) *api {
@@ -74,7 +79,8 @@ type infoDTO struct {
 	LogsDir   string `json:"logsDir"`
 	DiskTotal uint64 `json:"diskTotal"`
 	DiskFree  uint64 `json:"diskFree"`
-	Drive     string `json:"drive"`
+	Drive     string   `json:"drive"`
+	Groups    []string `json:"groups"`
 }
 
 func (a *api) Info() infoDTO {
@@ -84,7 +90,7 @@ func (a *api) Info() infoDTO {
 	}
 	total, free, _ := sysutil.DiskSpace(drive + `\`)
 	return infoDTO{App: appName, Version: version, Elevated: a.elevated,
-		LogsDir: filepath.Join(a.dataDir, "logs"), DiskTotal: total, DiskFree: free, Drive: drive}
+		LogsDir: filepath.Join(a.dataDir, "logs"), DiskTotal: total, DiskFree: free, Drive: drive, Groups: clean.GroupOrder}
 }
 
 func (a *api) RestartAdmin() error {
@@ -458,6 +464,124 @@ func (a *api) SetSchedule(enabled bool, day, at string) (scheduleDTO, error) {
 	}
 	err := sysutil.ScheduleWeekly(scheduleName, a.exe, "/auto", day, at)
 	return a.Schedule(), err
+}
+
+// ---- registry ------------------------------------------------------------
+
+type regCatDTO struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	NeedsAdmin  bool   `json:"needsAdmin"`
+	Selectable  bool   `json:"selectable"`
+}
+
+func (a *api) backupRoot() string { return filepath.Join(a.dataDir, "backups") }
+
+func (a *api) RegCategories() []regCatDTO {
+	out := make([]regCatDTO, 0, len(regclean.Categories))
+	for _, c := range regclean.Categories {
+		out = append(out, regCatDTO{ID: c.ID, Name: c.Name, Description: c.Description, NeedsAdmin: c.NeedsAdmin, Selectable: a.elevated || !c.NeedsAdmin})
+	}
+	return out
+}
+
+func (a *api) startReg() error {
+	a.regMu.Lock()
+	defer a.regMu.Unlock()
+	if a.regBusy {
+		return errors.New("Already working on the registry.")
+	}
+	a.regBusy = true
+	return nil
+}
+
+func (a *api) endReg() {
+	a.regMu.Lock()
+	a.regBusy = false
+	a.regMu.Unlock()
+}
+
+// RegScan looks for issues in the chosen categories. The result arrives as
+// a "regScanned" event.
+func (a *api) RegScan(cats []string) error {
+	if len(cats) == 0 {
+		return errors.New("Tick at least one category first.")
+	}
+	if err := a.startReg(); err != nil {
+		return err
+	}
+	go func() {
+		defer a.endReg()
+		issues := regclean.Scan(cats, a.elevated)
+		a.regMu.Lock()
+		a.regIssues = issues
+		a.regMu.Unlock()
+		if issues == nil {
+			issues = []regclean.Issue{}
+		}
+		a.emit("regScanned", issues)
+	}()
+	return nil
+}
+
+type regFixDTO struct {
+	Fixed  int    `json:"fixed"`
+	Failed int    `json:"failed"`
+	Backup string `json:"backup"`
+	Name   string `json:"name"`
+	Error  string `json:"error,omitempty"`
+}
+
+// RegFix backs up and fixes the issues with the given IDs from the last
+// scan. The result arrives as a "regFixed" event.
+func (a *api) RegFix(ids []int) error {
+	a.regMu.Lock()
+	var chosen []regclean.Issue
+	want := map[int]bool{}
+	for _, id := range ids {
+		want[id] = true
+	}
+	for _, is := range a.regIssues {
+		if want[is.ID] {
+			chosen = append(chosen, is)
+		}
+	}
+	a.regMu.Unlock()
+	if len(chosen) == 0 {
+		return errors.New("Tick at least one issue first.")
+	}
+	if err := a.startReg(); err != nil {
+		return err
+	}
+	go func() {
+		defer a.endReg()
+		fixed, failed, backup, err := regclean.Fix(chosen, a.backupRoot())
+		d := regFixDTO{Fixed: fixed, Failed: failed, Backup: backup, Name: filepath.Base(backup)}
+		if err != nil {
+			d.Error = err.Error()
+		}
+		a.regMu.Lock()
+		a.regIssues = nil
+		a.regMu.Unlock()
+		a.emit("regFixed", d)
+	}()
+	return nil
+}
+
+func (a *api) RegBackups() []regclean.Backup {
+	b := regclean.Backups(a.backupRoot())
+	if b == nil {
+		b = []regclean.Backup{}
+	}
+	return b
+}
+
+func (a *api) RegRestore(name string) error { return regclean.Restore(a.backupRoot(), name) }
+
+func (a *api) OpenBackups() error {
+	_ = os.MkdirAll(a.backupRoot(), 0o755)
+	return sysutil.ShellOpen(a.backupRoot())
 }
 
 // ---- events --------------------------------------------------------------
