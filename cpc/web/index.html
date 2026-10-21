@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credence PC Cleaner</title>
+<style>
+:root {
+  --bg: #20232b; --side: #1b1e25; --panel: #2a2e37; --card: #323742; --card2: #3a404c; --hover: #444b58;
+  --line: #3f4551; --text: #f1f3f6; --sub: #b4bbc6; --dim: #858d99;
+  --accent: #2f7cf6; --accent-hi: #4b8ff8; --teal: #5eead4; --good: #34c77b; --warn: #f2a93b; --bad: #ef5d5a;
+  --radius: 10px;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px; color: var(--text); background: var(--bg);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; user-select: none; }
+body { display: flex; background: var(--side); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+input, select { font: inherit; color: inherit; }
+svg { flex: none; }
+.muted { color: var(--sub); }
+.dim { color: var(--dim); }
+
+/* ---------- sidebar ---------- */
+.sidebar { width: 216px; flex: none; background: var(--side); display: flex; flex-direction: column; padding: 16px 8px 14px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 22px; }
+.brand b { display: block; font-size: 15px; letter-spacing: .2px; }
+.brand span { display: block; font-size: 12px; color: var(--sub); }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 8px; background: none; color: var(--sub); text-align: left; position: relative; }
+.nav button { color: #d9dde3; font-weight: 600; }
+.nav button:hover { background: #262a33; color: #fff; }
+.nav button.active { background: #2d3442; color: #fff; }
+.nav button.active svg { color: var(--accent-hi); }
+.side-spacer { flex: 1; }
+.side-foot { border-top: 1px solid #2a2e37; padding: 12px 8px 0; font-size: 12px; color: var(--dim); }
+.side-foot .admin { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--sub); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
+.dot.warn { background: var(--warn); }
+.side-foot .btn { width: 100%; margin-bottom: 10px; background: transparent; border: 1.5px solid #8a929e; color: #e3e6ea; }
+
+/* ---------- main ---------- */
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--panel); margin: 10px 10px 10px 0; border-radius: 10px; overflow: hidden; }
+.page { display: none; flex: 1; min-height: 0; flex-direction: column; }
+.page.active { display: flex; }
+.page-head { padding: 20px 24px 14px; display: flex; align-items: flex-end; gap: 16px; }
+.page-head h1 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+.page-head p { margin: 0; color: var(--sub); }
+.page-head .grow { flex: 1; }
+.page-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 24px 24px; }
+
+/* ---------- buttons ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--card2); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--accent-hi); }
+.btn.ghost { background: transparent; }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.small { height: 30px; padding: 0 12px; font-size: 13px; }
+.btn.big { height: 46px; padding: 0 28px; font-size: 15px; border-radius: 10px; }
+.link { background: none; border: 0; padding: 0; color: var(--accent-hi); font-weight: 600; }
+.link:hover { text-decoration: underline; }
+
+/* ---------- checkbox and switch ---------- */
+.cb { appearance: none; width: 18px; height: 18px; margin: 0; border: 1.5px solid #8a929e; border-radius: 4px; display: inline-grid; place-content: center; background: transparent; cursor: pointer; flex: none; }
+.cb:checked, .cb:indeterminate { background: #5b8def; border-color: #5b8def; }
+.cb:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+.cb:indeterminate::after { content: ""; width: 8px; height: 2px; background: #fff; border-radius: 1px; }
+.cb:disabled { opacity: .35; cursor: default; }
+.switch { position: relative; width: 40px; height: 22px; flex: none; }
+.switch input { opacity: 0; position: absolute; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
+.switch span { position: absolute; inset: 0; border-radius: 11px; background: #3a424c; transition: background .15s; }
+.switch span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::after { transform: translateX(18px); }
+.switch input:disabled { cursor: default; }
+.switch input:disabled + span { opacity: .4; }
+
+/* ---------- custom clean ---------- */
+.tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #555c69; }
+.tabs button { display: flex; align-items: center; gap: 8px; border: 1px solid #555c69; border-bottom: 0; border-radius: 6px 6px 0 0; background: #2a2e37; padding: 9px 18px; color: #e3e6ea; font-weight: 600; font-size: 15px; margin-bottom: -1px; }
+.tabs button.active { background: var(--bg); color: #fff; border-color: #6b7380; }
+.tabs button.active svg { color: var(--accent-hi); }
+.tabs button:hover { color: #fff; }
+.clean-wrap { flex: 1; min-height: 0; display: flex; background: var(--bg); }
+.picker { width: 380px; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--bg); }
+.select-row { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.select-row label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.select-row .grow { flex: 1; }
+.groups { flex: 1; overflow: auto; }
+.group { border-bottom: 1px solid var(--line); }
+.group-head { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 48px; cursor: pointer; }
+.group.some > .group-head { background: #343945; }
+.group-head:hover { background: #3a404c; }
+.group-head .name { flex: 1; font-weight: 600; font-size: 15px; }
+.group-head .count { font-size: 12px; color: var(--dim); }
+.chev { color: #c9ced6; transition: transform .15s; }
+.group.open .chev { transform: rotate(180deg); }
+.group-items { display: none; padding: 4px 0 8px; background: #252932; }
+.group.open .group-items { display: block; }
+.item { display: flex; align-items: center; gap: 10px; padding: 7px 16px 7px 48px; cursor: pointer; }
+.item:hover { background: #2e333d; }
+.item .label { flex: 1; min-width: 0; }
+.item .label small { display: block; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item.locked { cursor: default; }
+.item.locked .label { color: var(--dim); }
+.pill { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #2e2a1f; color: var(--warn); }
+.gicon { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; flex: none; }
+
+.results { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; }
+.empty h2 { font-size: 18px; margin: 16px 0 6px; }
+.empty p { margin: 0; color: var(--sub); max-width: 420px; line-height: 1.5; }
+.empty .icon-ring { width: 72px; height: 72px; display: grid; place-items: center; color: #7fa7f5; }
+.empty .lead { color: #fff; margin-bottom: 14px; }
+.res-head { padding: 20px 22px 14px; border-bottom: 1px solid var(--line); }
+.res-head .big { font-size: 26px; font-weight: 700; }
+.res-head .big.good { color: var(--good); }
+.res-head .msg { color: var(--sub); margin-top: 4px; }
+.res-list { flex: 1; overflow: auto; padding: 8px 0; }
+.res-group { padding: 10px 22px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--dim); }
+.res-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 4px 12px; align-items: center; padding: 7px 22px; }
+.res-row .size { text-align: right; font-variant-numeric: tabular-nums; }
+.res-row .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: #252b32; overflow: hidden; }
+.res-row .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--teal)); }
+.res-row .note { grid-column: 1 / -1; font-size: 12px; color: var(--dim); }
+.res-row .note.err { color: var(--bad); }
+.res-zero { padding: 10px 22px; color: var(--dim); font-size: 13px; }
+.progress { width: 100%; max-width: 420px; height: 6px; border-radius: 3px; background: #252b32; overflow: hidden; margin: 18px 0 10px; }
+.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--teal)); transition: width .2s; }
+.path { font-size: 12px; color: var(--dim); max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: center; }
+.spinner { width: 54px; height: 54px; border-radius: 50%; border: 4px solid #25303f; border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.actionbar { display: flex; align-items: center; gap: 14px; padding: 18px 36px; border-top: 1px solid #555c69; background: var(--bg); }
+.actionbar .grow { flex: 1; }
+.actionbar .count { color: #fff; font-weight: 700; font-size: 15px; margin-right: 6px; }
+.actionbar .btn { height: 40px; border-radius: 20px; padding: 0 22px; font-size: 15px; }
+.actionbar .btn:not(.primary) { background: transparent; border: 1.5px solid #c9ced6; }
+
+/* ---------- cards ---------- */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+.card h3 { margin: 0 0 6px; font-size: 15px; }
+.card p { margin: 0; color: var(--sub); line-height: 1.5; }
+.stack > * + * { margin-top: 14px; }
+.row { display: flex; align-items: center; gap: 12px; }
+.row .grow { flex: 1; min-width: 0; }
+
+/* ---------- health ---------- */
+.hero { display: flex; align-items: center; gap: 30px; padding: 28px; }
+.hero h2 { margin: 0 0 6px; font-size: 20px; }
+.hero p { max-width: 520px; }
+.gauge { width: 132px; height: 132px; flex: none; position: relative; }
+.gauge svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.gauge .val { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 13px; color: var(--sub); }
+.gauge .val b { display: block; font-size: 22px; color: var(--text); }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+.tile .k { display: flex; align-items: center; gap: 8px; color: var(--sub); font-weight: 600; }
+.tile .v { font-size: 22px; font-weight: 700; }
+.tile .s { color: var(--sub); font-size: 13px; flex: 1; }
+.tile .meter { height: 6px; border-radius: 3px; background: #252b32; overflow: hidden; }
+.tile .meter i { display: block; height: 100%; background: var(--accent); }
+.status-good { color: var(--good); }
+.status-warn { color: var(--warn); }
+
+/* ---------- lists (startup, programs) ---------- */
+.list { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.lrow { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.lrow:first-child { border-top: 0; }
+.lrow:hover { background: #22272e; }
+.avatar { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: #fff; flex: none; }
+.lrow .main { flex: 1; min-width: 0; }
+.lrow .main b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .main small { display: block; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .meta { width: 120px; text-align: right; color: var(--sub); font-size: 13px; flex: none; }
+.lrow .chip { font-size: 12px; color: var(--sub); background: #262c33; padding: 3px 9px; border-radius: 10px; white-space: nowrap; flex: none; }
+.lrow .actions { display: flex; gap: 8px; flex: none; }
+.toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.search { flex: 1; max-width: 380px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); padding: 0 12px 0 36px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236c7681' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 11px center; }
+.search:focus, select:focus, input[type=time]:focus { border-color: var(--accent); }
+select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); padding: 0 10px; outline: none; }
+.loading { padding: 40px; text-align: center; color: var(--sub); }
+
+/* ---------- modal and toast ---------- */
+.modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 10; }
+.modal-back.show { display: flex; }
+.modal { width: 440px; max-width: calc(100% - 40px); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 22px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal h3 { margin: 0 0 10px; font-size: 17px; }
+.modal .body { color: var(--sub); line-height: 1.5; }
+.modal .body .warnbox { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #2b2619; color: #f3d39b; }
+.modal .btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.toast { position: fixed; right: 20px; bottom: 20px; max-width: 420px; padding: 12px 16px; border-radius: 10px; background: #2a2f37; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.4); transform: translateY(20px); opacity: 0; transition: all .2s; pointer-events: none; z-index: 20; line-height: 1.45; }
+.toast.show { transform: none; opacity: 1; }
+.toast.err { border-color: #5a2a2a; background: #3a2324; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #2f363e; border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">
+      <defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c4e93"/><stop offset="1" stop-color="#2f7cf6"/></linearGradient></defs>
+      <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#lg)"/>
+      <path d="M41 21.5a15 15 0 1 0 0 21" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+      <path d="M48 26l2.2 5.8L56 34l-5.8 2.2L48 42l-2.2-5.8L40 34l5.8-2.2z" fill="#5eead4"/>
+    </svg>
+    <div><b>Credence</b><span>PC Cleaner</span></div>
+  </div>
+  <nav class="nav" id="nav">
+    <button data-page="health"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Health Check</button>
+    <button data-page="clean"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Custom Clean</button>
+    <button data-page="startup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>Startup Manager</button>
+    <button data-page="uninstall"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Uninstaller</button>
+  </nav>
+  <div class="side-spacer"></div>
+  <nav class="nav">
+    <button data-page="settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+  </nav>
+  <div class="side-foot">
+    <div class="admin"><span class="dot" id="adminDot"></span><span id="adminText">Checking...</span></div>
+    <button class="btn small" id="sideAdminBtn" style="display:none">Restart as administrator</button>
+    <div id="versionText"></div>
+  </div>
+</aside>
+
+<main>
+  <!-- Health Check -->
+  <section class="page" id="page-health">
+    <div class="page-head"><div class="grow"><h1>Health Check</h1><p>A quick look at junk, startup apps and disk space.</p></div></div>
+    <div class="page-body stack" id="healthBody"></div>
+  </section>
+
+  <!-- Custom Clean -->
+  <section class="page" id="page-clean">
+    <div class="page-head"><div class="grow"><h1>Custom Clean</h1></div>
+      <button class="btn small" id="btnConfigure" style="border-radius:16px;background:transparent;border:1.5px solid #c9ced6">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Configure</button></div>
+    <div class="tabs" id="tabs">
+      <button data-tab="junk" class="active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="m10 12 4 4m0-4-4 4"/></svg>Junk</button>
+      <button data-tab="browsers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 9h18"/><path d="m13 13 7 3-3 1-1 3z"/></svg>Browser</button>
+    </div>
+    <div class="clean-wrap">
+      <div class="picker">
+        <div class="select-row">
+          <label><input type="checkbox" class="cb" id="selAll" aria-label="Select all"> Select all</label>
+          <span class="grow"></span>
+          <button class="link" id="btnRecommended" title="Tick only the items that are safe for anyone">Recommended</button>
+        </div>
+        <div class="groups" id="groups"></div>
+      </div>
+      <div class="results" id="results"></div>
+    </div>
+    <div class="actionbar">
+      <span class="count" id="selCount">0 selected</span>
+      <span class="grow"></span>
+      <button class="btn" id="btnStop" style="display:none">Stop</button>
+      <button class="btn" id="btnScan">Scan now</button>
+      <button class="btn primary" id="btnClean">Clean and fix</button>
+    </div>
+  </section>
+
+  <!-- Startup -->
+  <section class="page" id="page-startup">
+    <div class="page-head"><div class="grow"><h1>Startup Manager</h1><p>Turn off apps you don't need at sign-in. Nothing is deleted, and Task Manager shows the same setting.</p></div>
+      <button class="btn small" id="startupRefresh">Refresh</button></div>
+    <div class="page-body" id="startupBody"><div class="loading">Loading...</div></div>
+  </section>
+
+  <!-- Uninstaller -->
+  <section class="page" id="page-uninstall">
+    <div class="page-head"><div class="grow"><h1>Uninstaller</h1><p>Remove programs you no longer use. Each one runs its own uninstaller.</p></div></div>
+    <div class="page-body">
+      <div class="toolbar">
+        <input class="search" id="progSearch" placeholder="Search programs" aria-label="Search programs">
+        <select id="progSort" aria-label="Sort">
+          <option value="name">Sort by name</option>
+          <option value="size">Sort by size</option>
+          <option value="date">Sort by install date</option>
+        </select>
+        <span class="grow"></span>
+        <span class="muted" id="progCount"></span>
+        <button class="btn small" id="progRefresh">Refresh</button>
+      </div>
+      <div id="progBody"><div class="loading">Loading...</div></div>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section class="page" id="page-settings">
+    <div class="page-head"><div class="grow"><h1>Settings</h1><p>Automatic cleaning, logs and information about CPC.</p></div></div>
+    <div class="page-body stack" id="settingsBody"></div>
+  </section>
+</main>
+
+<div class="modal-back" id="modalBack">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="modalTitle"></h3>
+    <div class="body" id="modalBody"></div>
+    <div class="btns"><button class="btn" id="modalCancel">Cancel</button><button class="btn primary" id="modalOk">OK</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- bridge
+const api = new Proxy({}, {
+  get: (_, name) => (...args) => {
+    const fn = window["cpc" + name];
+    if (typeof fn !== "function") return Promise.reject(new Error("CPC backend not available"));
+    return fn(...args);
+  }
+});
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function fmtBytes(n) {
+  if (!n || n < 1024) return (n || 0) + " B";
+  const u = "KMGTPE"; let i = -1;
+  do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+  return n.toFixed(1) + " " + u[i] + "B";
+}
+const files = n => n === 1 ? "1 file" : n.toLocaleString() + " files";
+const errText = e => (e && e.message) ? e.message : String(e);
+
+let toastTimer;
+function toast(msg, isErr) {
+  const t = $("#toast");
+  t.textContent = msg; t.className = "toast show" + (isErr ? " err" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = "toast", 4500);
+}
+
+function confirmBox(title, html, okText = "OK", danger = false) {
+  return new Promise(resolve => {
+    $("#modalTitle").textContent = title;
+    $("#modalBody").innerHTML = html;
+    const ok = $("#modalOk"), cancel = $("#modalCancel"), back = $("#modalBack");
+    ok.textContent = okText; ok.className = "btn " + (danger ? "danger" : "primary");
+    const done = v => { back.classList.remove("show"); ok.onclick = cancel.onclick = null; document.onkeydown = null; resolve(v); };
+    ok.onclick = () => done(true); cancel.onclick = () => done(false);
+    document.onkeydown = e => { if (e.key === "Escape") done(false); };
+    back.classList.add("show"); ok.focus();
+  });
+}
+
+const palette = ["#2f7cf6", "#16a37f", "#c2410c", "#7c3aed", "#0e7490", "#be185d", "#4d7c0f", "#b45309"];
+function avatarColor(name) { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0; return palette[h % palette.length]; }
+const groupColors = { "Google Chrome": "#1a73e8", "Microsoft Edge": "#0f8a7e", "Firefox": "#e8590c", "Brave": "#d9480f", "Vivaldi": "#c92a2a" };
+const groupGlyph = {
+  "System": '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  "Windows Update and logs": '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>',
+  "Applications": '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+  "Advanced": '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>',
+};
+const groupBg = { "System": "#2f7cf6", "Windows Update and logs": "#0e7490", "Applications": "#7c3aed", "Advanced": "#64748b" };
+const chevron = '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg>';
+
+// ---------------------------------------------------------------- state
+const S = {
+  info: null, targets: [], checked: new Set(), tab: "junk", open: new Set(),
+  run: null,          // { owner: "clean"|"health", mode, total, index, name, path, results: {id: result}, summary }
+  lastClean: null,    // last finished run shown on Custom Clean
+  health: null,       // { state: "idle"|"running"|"done", junk, startup, summary }
+  startup: null, programs: null, schedule: null,
+};
+const tabOf = t => t.section === "Browsers" ? "browsers" : "junk";
+const groupOrder = ["System", "Windows Update and logs", "Applications", "Advanced", "Google Chrome", "Microsoft Edge", "Firefox", "Brave", "Vivaldi"];
+
+// ---------------------------------------------------------------- navigation
+function show(page) {
+  document.querySelectorAll("#nav button, .nav button").forEach(b => b.classList.toggle("active", b.dataset.page === page));
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + page));
+  if (page === "startup") S.startup ? renderStartup() : loadStartup();
+  if (page === "uninstall") S.programs ? renderPrograms() : loadPrograms();
+  if (page === "settings") renderSettings();
+  if (page === "health") renderHealth();
+}
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => show(b.dataset.page));
+
+// ---------------------------------------------------------------- custom clean: picker
+function renderPicker() {
+  const list = S.targets.filter(t => tabOf(t) === S.tab);
+  const groups = [];
+  for (const t of list) {
+    let g = groups.find(x => x.name === t.group);
+    if (!g) groups.push(g = { name: t.group, items: [] });
+    g.items.push(t);
+  }
+  groups.sort((a, b) => groupOrder.indexOf(a.name) - groupOrder.indexOf(b.name));
+  const busy = !!S.run;
+  $("#groups").innerHTML = groups.map(g => {
+    const sel = g.items.filter(t => t.selectable);
+    const on = sel.filter(t => S.checked.has(t.id)).length;
+    const icon = groupGlyph[g.name]
+      ? `<span class="gicon" style="background:${groupBg[g.name]}">${groupGlyph[g.name]}</span>`
+      : `<span class="gicon" style="background:${groupColors[g.name] || avatarColor(g.name)}">${esc(g.name[0])}</span>`;
+    return `<div class="group ${S.open.has(g.name) ? "open" : ""} ${on ? "some" : ""}" data-group="${esc(g.name)}">
+      <div class="group-head">
+        <input type="checkbox" class="cb gcb" aria-label="${esc(g.name)}" ${on && on === sel.length ? "checked" : ""} ${sel.length === 0 || busy ? "disabled" : ""} data-ind="${on > 0 && on < sel.length ? 1 : 0}">
+        ${icon}<span class="name">${esc(g.name)}</span><span class="count">${on}/${g.items.length}</span>${chevron}
+      </div>
+      <div class="group-items">${g.items.map(t => `
+        <label class="item ${t.selectable ? "" : "locked"}" title="${esc(t.description)}">
+          <input type="checkbox" class="cb icb" data-id="${t.id}" aria-label="${esc(t.name)}" ${S.checked.has(t.id) ? "checked" : ""} ${!t.selectable || busy ? "disabled" : ""}>
+          <span class="label">${esc(t.label)}<small>${esc(t.description)}</small></span>
+          ${t.selectable ? "" : '<span class="pill" title="Restart CPC as administrator to use this">Admin</span>'}
+        </label>`).join("")}
+      </div></div>`;
+  }).join("");
+  document.querySelectorAll(".gcb").forEach(cb => cb.indeterminate = cb.dataset.ind === "1");
+  const sel = list.filter(t => t.selectable), on = sel.filter(t => S.checked.has(t.id)).length;
+  const all = $("#selAll");
+  all.checked = on > 0 && on === sel.length; all.indeterminate = on > 0 && on < sel.length; all.disabled = busy;
+  $("#btnRecommended").disabled = busy;
+  $("#selCount").textContent = S.checked.size + " selected";
+}
+
+$("#groups").addEventListener("click", e => {
+  const head = e.target.closest(".group-head");
+  if (!head || e.target.classList.contains("cb")) return;
+  const name = head.parentElement.dataset.group;
+  S.open.has(name) ? S.open.delete(name) : S.open.add(name);
+  head.parentElement.classList.toggle("open");
+});
+$("#groups").addEventListener("change", e => {
+  const cb = e.target;
+  if (cb.classList.contains("icb")) {
+    cb.checked ? S.checked.add(cb.dataset.id) : S.checked.delete(cb.dataset.id);
+  } else if (cb.classList.contains("gcb")) {
+    const name = cb.closest(".group").dataset.group;
+    S.targets.filter(t => t.group === name && t.selectable && tabOf(t) === S.tab)
+      .forEach(t => cb.checked ? S.checked.add(t.id) : S.checked.delete(t.id));
+  }
+  selectionChanged();
+});
+$("#selAll").onchange = e => {
+  S.targets.filter(t => tabOf(t) === S.tab && t.selectable).forEach(t => e.target.checked ? S.checked.add(t.id) : S.checked.delete(t.id));
+  selectionChanged();
+};
+$("#btnRecommended").onclick = () => {
+  S.checked = new Set(S.targets.filter(t => t.default && t.selectable).map(t => t.id));
+  selectionChanged();
+  toast("Ticked the recommended items on both tabs.");
+};
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  S.tab = b.dataset.tab;
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("active", x === b));
+  renderPicker();
+  if (!S.run) renderResults();
+});
+$("#btnConfigure").onclick = () => show("settings");
+let saveTimer;
+function selectionChanged() {
+  renderPicker();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => api.SetSelected([...S.checked]).catch(() => {}), 400);
+}
+
+// ---------------------------------------------------------------- custom clean: results panel
+const emptyStates = {
+  junk: { title: "Clean up system clutter", lead: "Free up space and keep Windows running smoothly.",
+    text: "Temporary files, logs and caches build up over time. Click <b>Scan now</b> to see what can go. Nothing is deleted until you click <b>Clean and fix</b> and confirm.",
+    icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="m10 12 4 4m0-4-4 4"/></svg>' },
+  browsers: { title: "Clear your browsing data", lead: "Protect your privacy and speed up your browser.",
+    text: "Websites leave behind caches, cookies and history. Caches are ticked by default. Cookies sign you out of sites and history is your list of visited pages, so those start unticked.",
+    icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 9h18"/><path d="m13 13 7 3-3 1-1 3z" stroke="#f2c94c"/></svg>' },
+};
+function renderResults() {
+  const el = $("#results");
+  const r = S.run && S.run.owner === "clean" ? S.run : null;
+  const last = S.lastClean;
+  if (r) {
+    const pct = r.total ? Math.round((r.index / r.total) * 100) : 0;
+    el.innerHTML = `<div class="empty"><div class="spinner"></div>
+      <h2>${r.mode === "clean" ? "Cleaning" : "Scanning"} ${esc(r.name || "")}</h2>
+      <p>${r.index + 1 > r.total ? r.total : r.index + 1} of ${r.total} items</p>
+      <div class="progress"><i style="width:${pct}%"></i></div>
+      <div class="path" id="curPath">${esc(r.path || "")}</div></div>`;
+    return;
+  }
+  if (!last) {
+    const e = emptyStates[S.tab] || emptyStates.junk;
+    el.innerHTML = `<div class="empty"><div class="icon-ring">${e.icon}</div><h2>${e.title}</h2><p class="lead">${e.lead}</p><p>${e.text}</p></div>`;
+    return;
+  }
+  const s = last.summary, cleaned = s.mode === "clean";
+  const rows = Object.values(last.results).map(x => ({ ...x, t: S.targets.find(t => t.id === x.id) })).filter(x => x.t);
+  const found = rows.filter(x => x.bytes > 0 || x.files > 0 || x.error || (x.note && x.files === 0 && x.note !== "Nothing to clean"));
+  const zero = rows.length - found.length;
+  const max = Math.max(1, ...found.map(x => x.bytes));
+  let html = `<div class="res-head">
+    <div class="big ${cleaned ? "good" : ""}">${cleaned ? "Freed " : ""}${fmtBytes(s.bytes)}${cleaned ? "" : " found"}</div>
+    <div class="msg">${esc(s.message)} ${cleaned ? "" : (s.bytes > 0 ? "Click <b>Clean and fix</b> to remove it." : "")}
+    ${s.logPath ? ` <button class="link" id="openLog">View log</button>` : ""}</div></div><div class="res-list">`;
+  let lastGroup = "";
+  found.sort((a, b) => groupOrder.indexOf(a.t.group) - groupOrder.indexOf(b.t.group) || b.bytes - a.bytes);
+  for (const x of found) {
+    if (x.t.group !== lastGroup) { html += `<div class="res-group">${esc(x.t.group)}</div>`; lastGroup = x.t.group; }
+    const note = x.error ? `<div class="note err">${esc(x.error)}</div>`
+      : x.failed ? `<div class="note">${x.failed} in use and skipped</div>` : (x.files === 0 && x.note ? `<div class="note">${esc(x.note)}</div>` : "");
+    html += `<div class="res-row"><span>${esc(x.t.label)} <span class="dim">${x.files ? "· " + files(x.files) : ""}</span></span>
+      <span class="size">${x.bytes ? fmtBytes(x.bytes) : ""}</span>
+      ${x.bytes ? `<div class="bar"><i style="width:${Math.max(2, x.bytes / max * 100)}%"></i></div>` : ""}${note}</div>`;
+  }
+  if (zero) html += `<div class="res-zero">${zero} other item${zero === 1 ? "" : "s"} had nothing to ${cleaned ? "remove" : "clean"}.</div>`;
+  el.innerHTML = html + "</div>";
+  const ol = $("#openLog"); if (ol) ol.onclick = () => api.OpenPath(s.logPath).catch(e => toast(errText(e), true));
+}
+
+function setBusy(b) {
+  $("#btnScan").style.display = b ? "none" : "";
+  $("#btnClean").style.display = b ? "none" : "";
+  $("#btnStop").style.display = b ? "" : "none";
+  renderPicker();
+}
+
+async function startRun(owner, mode, ids) {
+  if (S.run) return;
+  if (!ids.length) { toast("Tick at least one item first.", true); return; }
+  if (mode === "clean") {
+    let open = [];
+    try { open = await api.OpenApps(ids); } catch (e) {}
+    const warn = open.length ? `<div class="warnbox">${esc(open.join(", "))} ${open.length === 1 ? "is" : "are"} open. Close ${open.length === 1 ? "it" : "them"} first for a full clean, or files in use will be skipped.</div>` : "";
+    const ok = await confirmBox("Clean selected items?", `CPC will permanently delete files from ${ids.length} item${ids.length === 1 ? "" : "s"}. This can't be undone.${warn}`, "Clean", true);
+    if (!ok) return;
+  }
+  S.run = { owner, mode, total: ids.length, index: 0, name: "", path: "", results: {} };
+  if (owner === "clean") setBusy(true);
+  renderResults(); renderHealth();
+  try { await (mode === "clean" ? api.Clean(ids) : api.Scan(ids)); }
+  catch (e) { S.run = null; setBusy(false); renderResults(); renderHealth(); toast(errText(e), true); }
+}
+$("#btnScan").onclick = () => startRun("clean", "scan", [...S.checked]);
+$("#btnClean").onclick = () => startRun("clean", "clean", [...S.checked]);
+$("#btnStop").onclick = () => api.Cancel();
+
+// Events pushed from Go.
+window.cpcEvent = (name, p) => {
+  const r = S.run;
+  if (!r) return;
+  if (name === "progress") { r.index = p.index; r.total = p.total; r.name = p.name; r.path = ""; if (r.owner === "clean") renderResults(); else renderHealth(); }
+  else if (name === "file") { r.path = p.path; const el = $("#curPath"); if (el) el.textContent = p.path; }
+  else if (name === "result") { r.results[p.id] = p; }
+  else if (name === "finished") {
+    r.summary = p; S.run = null;
+    if (r.owner === "clean") { S.lastClean = r; setBusy(false); renderResults(); }
+    else finishHealth(r);
+    if (p.mode === "clean") refreshInfo();
+  }
+};
+
+// ---------------------------------------------------------------- health check
+const recommendedIds = () => S.targets.filter(t => t.default && t.selectable).map(t => t.id);
+
+async function runHealth() {
+  S.health = { state: "running" };
+  renderHealth();
+  try { S.startup = await api.Startup(); } catch (e) { S.startup = []; }
+  startRun("health", "scan", recommendedIds());
+}
+function finishHealth(r) {
+  if (r.mode === "clean") {
+    S.health = { state: "fixed", summary: r.summary };
+  } else {
+    S.health = { state: "done", summary: r.summary, results: r.results };
+  }
+  renderHealth();
+}
+async function fixHealth() { await startRun("health", "clean", recommendedIds()); }
+
+function gauge(fraction, label, value, color) {
+  const c = 2 * Math.PI * 52, off = c * (1 - Math.min(1, Math.max(0, fraction)));
+  return `<div class="gauge"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="#252b32" stroke-width="10"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>
+    <div class="val"><div><b>${value}</b>${label}</div></div></div>`;
+}
+
+function renderHealth() {
+  const el = $("#healthBody");
+  if (!el || !S.info) return;
+  const h = S.health || { state: "idle" };
+  const r = S.run && S.run.owner === "health" ? S.run : null;
+  const used = S.info.diskTotal ? 1 - S.info.diskFree / S.info.diskTotal : 0;
+  let hero;
+  if (r) {
+    hero = `<div class="card hero"><div class="spinner"></div><div class="grow"><h2>${r.mode === "clean" ? "Cleaning up" : "Checking your PC"}...</h2>
+      <p>${esc(r.name || "Starting")}</p><div class="progress"><i style="width:${r.total ? Math.round(r.index / r.total * 100) : 0}%"></i></div>
+      <div class="path" id="curPath" style="text-align:left;direction:ltr">${esc(r.path || "")}</div></div></div>`;
+  } else if (h.state === "done") {
+    const junk = h.summary.bytes;
+    hero = `<div class="card hero">${gauge(junk > 0 ? Math.min(1, junk / (2 * 1024 ** 3)) : 0, "junk", fmtBytes(junk), junk > 500 * 1024 ** 2 ? "#f2a93b" : "#2f7cf6")}
+      <div class="grow"><h2>${junk > 0 ? fmtBytes(junk) + " of junk can be removed" : "Your PC looks clean"}</h2>
+      <p>${junk > 0 ? "These are the Recommended items: temp files, Recycle Bin, caches and error reports. Cookies and history are left alone." : "Nothing in the Recommended items needs cleaning right now."}</p>
+      <div class="row" style="margin-top:16px">${junk > 0 ? '<button class="btn primary big" id="hFix">Fix it</button>' : ""}
+      <button class="btn big" id="hAgain">Check again</button><button class="link" id="hCustom">Customize in Custom Clean</button></div></div></div>`;
+  } else if (h.state === "fixed") {
+    hero = `<div class="card hero">${gauge(1, "freed", fmtBytes(h.summary.bytes), "#34c77b")}
+      <div class="grow"><h2 class="status-good">All done</h2><p>${esc(h.summary.message)}</p>
+      <div class="row" style="margin-top:16px"><button class="btn big" id="hAgain">Check again</button>
+      ${h.summary.logPath ? '<button class="link" id="hLog">View log</button>' : ""}</div></div></div>`;
+  } else {
+    hero = `<div class="card hero">${gauge(used, "disk used", Math.round(used * 100) + "%", used > .9 ? "#ef5d5a" : "#2f7cf6")}
+      <div class="grow"><h2>Run a health check</h2>
+      <p>CPC checks for junk using the Recommended items, counts your startup apps and looks at free space. Nothing is removed until you choose to fix it.</p>
+      <div class="row" style="margin-top:16px"><button class="btn primary big" id="hRun">Run Health Check</button></div></div></div>`;
+  }
+  const st = S.startup;
+  const stOn = st ? st.filter(x => x.enabled).length : null;
+  const tiles = `<div class="tiles">
+    <div class="tile"><div class="k">Disk space (${esc(S.info.drive)})</div>
+      <div class="v">${S.info.diskTotal ? fmtBytes(S.info.diskFree) : "Unknown"}</div>
+      <div class="s">${S.info.diskTotal ? "free of " + fmtBytes(S.info.diskTotal) : ""}</div>
+      <div class="meter"><i style="width:${Math.round(used * 100)}%;background:${used > .9 ? "var(--bad)" : "var(--accent)"}"></i></div></div>
+    <div class="tile"><div class="k">Startup apps</div>
+      <div class="v">${stOn === null ? "-" : stOn + " on"}</div>
+      <div class="s">${stOn === null ? "Run a health check to count them." : (stOn > 8 ? "That's a lot. Turning some off speeds up sign-in." : "A reasonable number.")}</div>
+      <div><button class="link" id="hStartup">Review startup apps</button></div></div>
+    <div class="tile"><div class="k">Junk files</div>
+      <div class="v">${h.state === "done" ? fmtBytes(h.summary.bytes) : h.state === "fixed" ? "Cleaned" : "-"}</div>
+      <div class="s">${h.state === "done" ? files(h.summary.files) + " in the Recommended items." : "Temp files, caches, Recycle Bin and error reports."}</div>
+      <div><button class="link" id="hCustom2">Open Custom Clean</button></div></div>
+  </div>`;
+  el.innerHTML = hero + tiles;
+  const on = (id, fn) => { const b = $("#" + id); if (b) b.onclick = fn; };
+  on("hRun", runHealth); on("hAgain", runHealth); on("hFix", fixHealth);
+  on("hCustom", () => show("clean")); on("hCustom2", () => show("clean")); on("hStartup", () => show("startup"));
+  on("hLog", () => api.OpenPath(h.summary.logPath).catch(e => toast(errText(e), true)));
+}
+
+// ---------------------------------------------------------------- startup manager
+async function loadStartup() {
+  $("#startupBody").innerHTML = '<div class="loading">Loading...</div>';
+  try { S.startup = await api.Startup(); } catch (e) { S.startup = []; toast(errText(e), true); }
+  renderStartup();
+}
+function renderStartup() {
+  const rows = S.startup || [];
+  if (!rows.length) { $("#startupBody").innerHTML = '<div class="card"><p>No startup apps found.</p></div>'; return; }
+  const on = rows.filter(x => x.enabled).length;
+  $("#startupBody").innerHTML = `<p class="muted" style="margin:0 0 12px">${on} of ${rows.length} apps start with Windows.</p><div class="list">` + rows.map(x => `
+    <div class="lrow">
+      <div class="avatar" style="background:${avatarColor(x.name)}">${esc((x.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
+      <div class="main"><b>${esc(x.name.replace(/\.lnk$/i, ""))}</b><small title="${esc(x.command)}">${esc(x.command)}</small></div>
+      <span class="chip">${esc(x.location)}</span>
+      <button class="link" data-loc="${x.index}" style="font-size:13px">Open location</button>
+      <label class="switch" title="${x.locked ? "Applies to all users. Restart as administrator to change it." : (x.enabled ? "Enabled" : "Disabled")}">
+        <input type="checkbox" data-idx="${x.index}" aria-label="${esc(x.name)} enabled" ${x.enabled ? "checked" : ""} ${x.locked ? "disabled" : ""}><span></span></label>
+    </div>`).join("") + "</div>";
+}
+$("#startupBody").addEventListener("change", async e => {
+  const i = e.target.dataset.idx; if (i === undefined) return;
+  try { S.startup = await api.SetStartup(+i, e.target.checked); }
+  catch (err) { toast(errText(err), true); try { S.startup = await api.Startup(); } catch (_) {} }
+  renderStartup();
+});
+$("#startupBody").addEventListener("click", e => {
+  const i = e.target.dataset.loc; if (i === undefined) return;
+  api.StartupLocation(+i).catch(err => toast(errText(err), true));
+});
+$("#startupRefresh").onclick = loadStartup;
+
+// ---------------------------------------------------------------- uninstaller
+async function loadPrograms() {
+  $("#progBody").innerHTML = '<div class="loading">Loading...</div>';
+  try { S.programs = await api.Programs(); } catch (e) { S.programs = []; toast(errText(e), true); }
+  renderPrograms();
+}
+function renderPrograms() {
+  const q = $("#progSearch").value.trim().toLowerCase();
+  const sort = $("#progSort").value;
+  let rows = (S.programs || []).filter(p => !q || p.name.toLowerCase().includes(q) || p.publisher.toLowerCase().includes(q));
+  if (sort === "size") rows = rows.slice().sort((a, b) => b.sizeKB - a.sizeKB);
+  if (sort === "date") rows = rows.slice().sort((a, b) => (Date.parse(b.installed) || 0) - (Date.parse(a.installed) || 0));
+  $("#progCount").textContent = `${rows.length} of ${(S.programs || []).length} programs`;
+  if (!rows.length) { $("#progBody").innerHTML = '<div class="card"><p>No programs match.</p></div>'; return; }
+  $("#progBody").innerHTML = '<div class="list">' + rows.map(p => `
+    <div class="lrow">
+      <div class="avatar" style="background:${avatarColor(p.name)}">${esc((p.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
+      <div class="main"><b>${esc(p.name)}</b><small>${esc([p.publisher, p.version].filter(Boolean).join("  ·  "))}</small></div>
+      <span class="meta">${esc(p.size || "")}</span>
+      <span class="meta">${esc(p.installed || "")}</span>
+      <div class="actions">${p.hasFolder ? `<button class="btn small ghost" data-folder="${p.index}">Folder</button>` : ""}
+        <button class="btn small" data-uninstall="${p.index}" aria-label="Uninstall ${esc(p.name)}">Uninstall</button></div>
+    </div>`).join("") + "</div>";
+}
+$("#progSearch").oninput = renderPrograms;
+$("#progSort").onchange = renderPrograms;
+$("#progRefresh").onclick = loadPrograms;
+$("#progBody").addEventListener("click", async e => {
+  const u = e.target.dataset.uninstall, f = e.target.dataset.folder;
+  if (f !== undefined) { api.ProgramFolder(+f).catch(err => toast(errText(err), true)); return; }
+  if (u === undefined) return;
+  const p = S.programs.find(x => x.index === +u);
+  if (!await confirmBox("Uninstall " + p.name + "?", "The program's own uninstaller will open and walk you through it. Click <b>Refresh</b> when it's done.", "Uninstall")) return;
+  try { await api.Uninstall(+u); toast("Uninstaller started for " + p.name + "."); } catch (err) { toast(errText(err), true); }
+});
+
+// ---------------------------------------------------------------- settings
+const days = [["MON", "Monday"], ["TUE", "Tuesday"], ["WED", "Wednesday"], ["THU", "Thursday"], ["FRI", "Friday"], ["SAT", "Saturday"], ["SUN", "Sunday"]];
+async function renderSettings() {
+  try { S.schedule = await api.Schedule(); } catch (e) { S.schedule = { enabled: false }; }
+  const sc = S.schedule, admin = S.info.elevated;
+  $("#settingsBody").innerHTML = `
+    <div class="card"><div class="row"><div class="grow"><h3>Automatic cleaning</h3>
+      <p>Runs a clean once a week in the background using the items ticked in Custom Clean. Apps that are open at the time are skipped. Each run writes a log.</p></div>
+      <label class="switch"><input type="checkbox" id="schedOn" aria-label="Turn automatic cleaning on or off" ${sc.enabled ? "checked" : ""} ${admin ? "" : "disabled"}><span></span></label></div>
+      <div class="row" style="margin-top:14px">
+        <select id="schedDay" aria-label="Day">${days.map(([v, n]) => `<option value="${v}" ${v === "SUN" ? "selected" : ""}>${n}</option>`).join("")}</select>
+        <input type="time" id="schedAt" value="12:00" aria-label="Time">
+        <span class="muted">${sc.enabled ? "On. Next run: " + esc(sc.nextRun || "scheduled") : (admin ? "Off" : "Restart CPC as administrator to turn this on.")}</span></div>
+      <p class="dim" style="margin-top:10px;font-size:12px">The PC needs to be on at that time. Windows runs it later if it was off or asleep.</p></div>
+    <div class="card"><div class="row"><div class="grow"><h3>Cleaning logs</h3><p>Every clean records each file it deleted. The last 30 logs are kept.</p></div>
+      <button class="btn small" id="openLogs">Open logs folder</button></div></div>
+    <div class="card"><h3>What CPC never touches</h3>
+      <p>Your documents, photos, bookmarks and saved passwords. Firefox history, because Firefox keeps it in the same file as bookmarks. Anything newer than 24 hours in temp folders. CPC also has no registry cleaner on purpose. Registry cleaning doesn't speed Windows up and is the most common way cleaners break PCs.</p></div>
+    <div class="card"><div class="row"><div class="grow"><h3>About</h3>
+      <p>${esc(S.info.app)} ${esc(S.info.version)}. ${admin ? "Running as administrator." : "Not running as administrator, so system items are locked."}</p></div>
+      ${admin ? "" : '<button class="btn small" id="setAdmin">Restart as administrator</button>'}</div></div>`;
+  $("#openLogs").onclick = () => api.OpenLogs().catch(e => toast("No logs yet. Run a clean first.", true));
+  const sa = $("#setAdmin"); if (sa) sa.onclick = restartAdmin;
+  $("#schedOn").onchange = async e => {
+    try {
+      S.schedule = await api.SetSchedule(e.target.checked, $("#schedDay").value, $("#schedAt").value);
+      toast(S.schedule.enabled ? "Automatic cleaning is on." : "Automatic cleaning is off.");
+    } catch (err) { toast(errText(err), true); }
+    renderSettings();
+  };
+}
+
+// ---------------------------------------------------------------- startup of the page
+async function restartAdmin() { try { await api.RestartAdmin(); } catch (e) { toast("Restart was cancelled.", true); } }
+$("#sideAdminBtn").onclick = restartAdmin;
+
+async function refreshInfo() {
+  try { S.info = await api.Info(); } catch (e) { return; }
+  $("#adminDot").className = "dot" + (S.info.elevated ? "" : " warn");
+  $("#adminText").textContent = S.info.elevated ? "Running as administrator" : "Limited mode, not administrator";
+  $("#sideAdminBtn").style.display = S.info.elevated ? "none" : "";
+  $("#versionText").textContent = "Version " + S.info.version;
+  renderHealth();
+}
+
+async function init() {
+  try {
+    await refreshInfo();
+    S.targets = await api.Targets();
+    S.checked = new Set(S.targets.filter(t => t.checked).map(t => t.id));
+  } catch (e) { toast("Couldn't load: " + errText(e), true); }
+  renderPicker(); renderResults();
+  show("health");
+}
+init();
+</script>
+</body>
+</html>

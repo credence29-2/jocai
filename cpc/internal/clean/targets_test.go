@@ -8,7 +8,7 @@ import (
 func TestTargetsWellFormed(t *testing.T) {
 	ids := map[string]bool{}
 	for _, tg := range AllTargets() {
-		if tg.ID == "" || tg.Name == "" || tg.Section == "" || tg.Description == "" {
+		if tg.ID == "" || tg.Name == "" || tg.Section == "" || tg.Group == "" || tg.Description == "" {
 			t.Errorf("incomplete target %+v", tg)
 		}
 		if ids[tg.ID] {
@@ -45,6 +45,17 @@ func TestNoBroadRulesOnUserFolders(t *testing.T) {
 					t.Errorf("%s: rule on bare %s with no file filter", tg.ID, b)
 				}
 			}
+		}
+	}
+}
+
+func TestLabels(t *testing.T) {
+	for _, tg := range AllTargets() {
+		if tg.ID == "chrome.cookies" && tg.Label() != "Cookies" {
+			t.Errorf("chrome cookies label = %q", tg.Label())
+		}
+		if tg.ID == "win.recycle" && tg.Label() != "Recycle Bin" {
+			t.Errorf("recycle label = %q", tg.Label())
 		}
 	}
 }

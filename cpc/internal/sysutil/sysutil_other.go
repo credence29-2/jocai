@@ -15,3 +15,10 @@ func ShowInExplorer(string) error           { return errNotWindows }
 func ShellOpen(string) error                { return errNotWindows }
 func RunCommandLine(string) error           { return errNotWindows }
 func ShellRunAs(string) error               { return errNotWindows }
+
+func DiskSpace(string) (uint64, uint64, error)  { return 0, 0, errNotWindows }
+func DarkTitleBar(uintptr)                      {}
+func MessageBox(string, string, bool)           {}
+func ScheduleStatus(string) (bool, string)      { return false, "" }
+func ScheduleWeekly(_, _, _, _, _ string) error { return errNotWindows }
+func ScheduleDelete(string) error               { return errNotWindows }

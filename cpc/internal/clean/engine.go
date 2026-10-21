@@ -51,8 +51,10 @@ type Custom interface {
 
 // Target is one checkbox in the cleaner list.
 type Target struct {
-	ID          string
-	Section     string
+	ID      string
+	Section string
+	// Group is the collapsible heading the item sits under in the UI.
+	Group       string
 	Name        string
 	Description string
 	Default     bool

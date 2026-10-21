@@ -1,0 +1,45 @@
+name: CPC Windows test
+
+on:
+  push:
+    paths:
+      - "cpc/**"
+      - ".github/workflows/cpc-windows-test.yml"
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: cpc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cpc/go.mod
+          cache-dependency-path: cpc/go.sum
+      - name: Unit tests on Windows
+        run: go test ./...
+      - name: Build
+        run: go build -trimpath -ldflags "-H windowsgui -s -w" -o dist\CPC.exe .
+      - name: Make sure WebView2 Runtime is installed
+        shell: pwsh
+        run: |
+          $keys = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+                  "HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+          $v = $keys | ForEach-Object { (Get-ItemProperty $_ -ErrorAction SilentlyContinue).pv } | Where-Object { $_ } | Select-Object -First 1
+          if ($v) { "WebView2 Runtime $v already installed" } else {
+            Invoke-WebRequest "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile "$env:RUNNER_TEMP\wv2.exe"
+            Start-Process "$env:RUNNER_TEMP\wv2.exe" -ArgumentList "/silent /install" -Wait
+            "Installed WebView2 Runtime"
+          }
+      - name: Smoke test
+        shell: pwsh
+        run: ./scripts/smoke-test.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-screenshots
+          path: cpc/smoke/
+          if-no-files-found: ignore

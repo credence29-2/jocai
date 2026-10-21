@@ -1,32 +1,25 @@
-// Command cpc is Credence PC Cleaner, a small CCleaner replacement for Windows.
+// Command cpc is Credence PC Cleaner, a CCleaner replacement for Windows.
+//
+// The window is a WebView2 page (web/index.html, embedded in the exe). The
+// page calls Go through bound functions named cpc<Method>, see api.go.
 package main
 
 import (
+	_ "embed"
 	"os"
+	"reflect"
 	"strings"
 
-	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
+	webview2 "github.com/jchv/go-webview2"
 
 	"github.com/credence29-2/jocai/cpc/internal/settings"
 	"github.com/credence29-2/jocai/cpc/internal/sysutil"
 )
 
-// version is set at build time with -ldflags "-X main.version=...".
-var version = "1.0.0"
+//go:embed web/index.html
+var indexHTML string
 
-const appName = "Credence PC Cleaner"
-
-type app struct {
-	mw       *walk.MainWindow
-	dataDir  string
-	elevated bool
-	cfg      settings.Settings
-
-	cleaner  *cleanerTab
-	startup  *startupTab
-	programs *programsTab
-}
+const webview2Download = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
 
 func main() {
 	for _, a := range os.Args[1:] {
@@ -36,91 +29,57 @@ func main() {
 		}
 	}
 
-	a := &app{dataDir: settings.Dir(), elevated: sysutil.IsElevated()}
-	a.cfg = settings.Load(a.dataDir)
-	a.cleaner = newCleanerTab(a)
-	a.startup = newStartupTab(a)
-	a.programs = newProgramsTab(a)
-
-	var icon interface{}
-	if ic, err := walk.NewIconFromResource("APP"); err == nil {
-		icon = ic
-	}
-
-	adminText := "Running as administrator"
-	if !a.elevated {
-		adminText = "Not running as administrator. Some items are unavailable."
-	}
-
-	var adminBtn *walk.PushButton
-	err := MainWindow{
-		AssignTo: &a.mw,
-		Title:    appName,
-		Icon:     icon,
-		Size:     Size{Width: 1000, Height: 680},
-		MinSize:  Size{Width: 760, Height: 500},
-		Layout:   VBox{Margins: Margins{Left: 8, Top: 8, Right: 8, Bottom: 4}},
-		Children: []Widget{
-			Composite{
-				Layout: HBox{MarginsZero: true},
-				Children: []Widget{
-					Label{Text: appName, Font: Font{PointSize: 14, Bold: true}},
-					Label{Text: "v" + version, TextColor: walk.RGB(110, 110, 110)},
-					HSpacer{},
-					Label{Text: adminText, TextColor: walk.RGB(110, 110, 110)},
-					PushButton{
-						AssignTo:  &adminBtn,
-						Text:      "Restart as administrator",
-						Visible:   !a.elevated,
-						OnClicked: a.restartElevated,
-					},
-				},
-			},
-			TabWidget{
-				Pages: []TabPage{
-					a.cleaner.page(),
-					a.startup.page(),
-					a.programs.page(),
-				},
-			},
+	dataDir := settings.Dir()
+	w := webview2.NewWithOptions(webview2.WebViewOptions{
+		AutoFocus: true,
+		DataPath:  dataDir + `\WebView2`,
+		WindowOptions: webview2.WindowOptions{
+			Title:  appName,
+			Width:  1180,
+			Height: 760,
+			IconId: 1,
+			Center: true,
 		},
-	}.Create()
-	if err != nil {
-		walk.MsgBox(nil, appName, "Could not start: "+err.Error(), walk.MsgBoxIconError)
-		return
-	}
-
-	// Stretch the last column to fill the table. Done after creation because
-	// walk cannot size columns that do not exist yet. Purely cosmetic.
-	for _, tv := range []*walk.TableView{a.cleaner.table, a.startup.table, a.programs.table} {
-		_ = tv.SetLastColumnStretched(true)
-	}
-
-	a.cleaner.init()
-	a.startup.refresh()
-	a.programs.refresh()
-
-	a.mw.Closing().Attach(func(canceled *bool, _ walk.CloseReason) {
-		if a.cleaner.busy() {
-			a.cleaner.cancel()
-		}
-		a.cleaner.saveSelection()
 	})
-	a.mw.Run()
+	if w == nil {
+		sysutil.MessageBox(appName, "CPC needs the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and updated Windows 10.\n\n"+
+			"It wasn't found on this PC. Your browser will open the download page. Install it, then start CPC again.", true)
+		_ = sysutil.ShellOpen(webview2Download)
+		os.Exit(1)
+	}
+	defer w.Destroy()
+	w.SetSize(900, 600, webview2.HintMin)
+	sysutil.DarkTitleBar(uintptr(w.Window()))
+
+	a := newAPI(dataDir, sysutil.IsElevated(), func(name string, payload any) {
+		js := eventJS(name, payload)
+		w.Dispatch(func() { w.Eval(js) })
+	})
+	a.restartElevated = func() error {
+		if err := sysutil.ShellRunAs(a.exe); err != nil {
+			return err
+		}
+		w.Terminate()
+		return nil
+	}
+	if err := bindAll(w, a); err != nil {
+		sysutil.MessageBox(appName, "Could not start: "+err.Error(), true)
+		os.Exit(1)
+	}
+	w.SetHtml(indexHTML)
+	w.Run()
+	a.Cancel()
 }
 
-func (a *app) restartElevated() {
-	exe, err := os.Executable()
-	if err != nil {
-		return
+// bindAll exposes every exported api method to the page as cpc<Method>.
+func bindAll(w webview2.WebView, a *api) error {
+	v := reflect.ValueOf(a)
+	t := v.Type()
+	for i := 0; i < t.NumMethod(); i++ {
+		m := t.Method(i)
+		if err := w.Bind("cpc"+m.Name, v.Method(i).Interface()); err != nil {
+			return err
+		}
 	}
-	if err := sysutil.ShellRunAs(exe); err != nil {
-		// The user said no to the UAC prompt. Stay open.
-		return
-	}
-	a.mw.Close()
-}
-
-func (a *app) warn(msg string) {
-	walk.MsgBox(a.mw, appName, msg, walk.MsgBoxIconWarning)
+	return nil
 }

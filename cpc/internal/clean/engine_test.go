@@ -224,7 +224,11 @@ func TestNamedFilesAllowedOneLevelDeep(t *testing.T) {
 		namedFilesOnly(Rule{Root: "/x", Files: []string{"a"}, Recursive: true}) {
 		t.Fatal("wildcard, empty or recursive rules must not get the relaxed check")
 	}
-	if !safeRootDepth("/x", 1) || safeRootDepth("/", 1) || safeRootDepth("/x", 2) {
+	one, root := "/x", "/"
+	if runtime.GOOS == "windows" {
+		one, root = `C:\x`, `C:\`
+	}
+	if !safeRootDepth(one, 1) || safeRootDepth(root, 1) || safeRootDepth(one, 2) {
 		t.Fatal("depth check wrong")
 	}
 }

@@ -140,3 +140,87 @@ func RunCommandLine(cmdline string) error {
 func ShellRunAs(exe string) error {
 	return shellExecute("runas", exe, "")
 }
+
+// DiskSpace returns total and free bytes for the drive holding path.
+func DiskSpace(path string) (total, free uint64, err error) {
+	p, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return 0, 0, err
+	}
+	var avail uint64
+	err = windows.GetDiskFreeSpaceEx(p, &avail, &total, &free)
+	return total, avail, err
+}
+
+var (
+	dwmapi                    = windows.NewLazySystemDLL("dwmapi.dll")
+	procDwmSetWindowAttribute = dwmapi.NewProc("DwmSetWindowAttribute")
+	user32                    = windows.NewLazySystemDLL("user32.dll")
+	procMessageBoxW           = user32.NewProc("MessageBoxW")
+)
+
+// DarkTitleBar asks Windows 10 20H1+ and 11 to draw a dark title bar.
+func DarkTitleBar(hwnd uintptr) {
+	on := int32(1)
+	for _, attr := range []uintptr{20, 19} { // DWMWA_USE_IMMERSIVE_DARK_MODE, and its pre-20H1 value
+		if r, _, _ := procDwmSetWindowAttribute.Call(hwnd, attr, uintptr(unsafe.Pointer(&on)), 4); r == 0 {
+			return
+		}
+	}
+}
+
+// MessageBox shows a plain Windows message box.
+func MessageBox(title, text string, warning bool) {
+	t, _ := windows.UTF16PtrFromString(title)
+	m, _ := windows.UTF16PtrFromString(text)
+	flags := uintptr(0x40) // MB_ICONINFORMATION
+	if warning {
+		flags = 0x30 // MB_ICONWARNING
+	}
+	procMessageBoxW.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), flags)
+}
+
+func schtasks(args ...string) (string, error) {
+	cmd := exec.Command("schtasks.exe", args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000} // CREATE_NO_WINDOW
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
+// ScheduleStatus reports whether the named scheduled task exists, with its
+// next run time when Windows gives one.
+func ScheduleStatus(name string) (exists bool, nextRun string) {
+	out, err := schtasks("/query", "/tn", name, "/fo", "list")
+	if err != nil {
+		return false, ""
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if k, v, ok := strings.Cut(line, ":"); ok && strings.EqualFold(strings.TrimSpace(k), "Next Run Time") {
+			return true, strings.TrimSpace(v)
+		}
+	}
+	return true, ""
+}
+
+// ScheduleWeekly creates or replaces a weekly task that runs exe with args,
+// elevated, on the given day (MON..SUN) at hh:mm.
+func ScheduleWeekly(name, exe, args, day, at string) error {
+	out, err := schtasks("/create", "/f", "/tn", name, "/tr", `"`+exe+`" `+args,
+		"/sc", "weekly", "/d", day, "/st", at, "/rl", "highest")
+	if err != nil {
+		return errors.New(out)
+	}
+	return nil
+}
+
+// ScheduleDelete removes the named task. Missing tasks are not an error.
+func ScheduleDelete(name string) error {
+	if ok, _ := ScheduleStatus(name); !ok {
+		return nil
+	}
+	out, err := schtasks("/delete", "/f", "/tn", name)
+	if err != nil {
+		return errors.New(out)
+	}
+	return nil
+}
