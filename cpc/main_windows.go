@@ -55,6 +55,7 @@ func main() {
 		js := eventJS(name, payload)
 		w.Dispatch(func() { w.Eval(js) })
 	})
+	a.hwnd = uintptr(w.Window())
 	a.restartElevated = func() error {
 		if err := sysutil.ShellRunAs(a.exe); err != nil {
 			return err

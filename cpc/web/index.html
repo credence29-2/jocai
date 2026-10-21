@@ -164,7 +164,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
 .tile .s { color: var(--sub); font-size: 13px; flex: 1; }
 .tile .meter { height: 6px; border-radius: 3px; background: #252b32; overflow: hidden; }
 .tile .meter i { display: block; height: 100%; background: var(--accent); }
-.status-good { color: var(--good); }
+.status-good, .lrow .chip.status-good { color: var(--good); }
 .status-warn { color: var(--warn); }
 
 /* ---------- lists (startup, programs) ---------- */
@@ -184,6 +184,9 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
 .search:focus, select:focus, input[type=time]:focus { border-color: var(--accent); }
 select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); padding: 0 10px; outline: none; }
 .loading { padding: 40px; text-align: center; color: var(--sub); }
+.page > .tabs { padding: 0 24px; }
+.tabs button[data-st] { font-size: 14px; }
+.hero .icon-ring { width: 72px; height: 72px; display: grid; place-items: center; flex: none; }
 
 /* ---------- modal and toast ---------- */
 .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 10; }
@@ -217,12 +220,16 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
   <nav class="nav" id="nav">
     <button data-page="health"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Health Check</button>
     <button data-page="clean"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Custom Clean</button>
-    <button data-page="startup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>Startup Manager</button>
     <button data-page="uninstall"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Uninstaller</button>
+    <button data-page="dupes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/></svg>Duplicate Finder</button>
+    <button data-page="startup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>Startup Manager</button>
+    <button data-page="updater"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M12 8v5l3 2"/></svg>Software Updater</button>
+    <button data-page="drivers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>Driver Check</button>
   </nav>
   <div class="side-spacer"></div>
   <nav class="nav">
     <button data-page="settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    <button data-page="help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg>Help</button>
   </nav>
   <div class="side-foot">
     <div class="admin"><span class="dot" id="adminDot"></span><span id="adminText">Checking...</span></div>
@@ -270,8 +277,13 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
 
   <!-- Startup -->
   <section class="page" id="page-startup">
-    <div class="page-head"><div class="grow"><h1>Startup Manager</h1><p>Turn off apps you don't need at sign-in. Nothing is deleted, and Task Manager shows the same setting.</p></div>
+    <div class="page-head"><div class="grow"><h1>Startup Manager</h1><p id="startupIntro">Turn off apps you don't need at sign-in. Nothing is deleted, and Task Manager shows the same setting.</p></div>
       <button class="btn small" id="startupRefresh">Refresh</button></div>
+    <div class="tabs" id="stTabs" style="margin-bottom:14px">
+      <button data-st="apps" class="active">Startup apps</button>
+      <button data-st="tasks">Scheduled tasks</button>
+      <button data-st="services">Background services</button>
+    </div>
     <div class="page-body" id="startupBody"><div class="loading">Loading...</div></div>
   </section>
 
@@ -292,6 +304,32 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
       </div>
       <div id="progBody"><div class="loading">Loading...</div></div>
     </div>
+  </section>
+
+  <!-- Duplicate Finder -->
+  <section class="page" id="page-dupes">
+    <div class="page-head"><div class="grow"><h1>Duplicate Finder</h1><p>Find identical copies of files. CPC compares the actual content, not just names, and moves extras to the Recycle Bin.</p></div></div>
+    <div class="page-body" id="dupeBody"></div>
+  </section>
+
+  <!-- Software Updater -->
+  <section class="page" id="page-updater">
+    <div class="page-head"><div class="grow"><h1>Software Updater</h1><p>Keep apps up to date with winget, the app installer built into Windows.</p></div>
+      <button class="btn small" id="updRefresh">Check again</button></div>
+    <div class="page-body" id="updBody"></div>
+  </section>
+
+  <!-- Driver Check -->
+  <section class="page" id="page-drivers">
+    <div class="page-head"><div class="grow"><h1>Driver Check</h1><p>Hardware with driver problems, and how old your most important drivers are.</p></div>
+      <button class="btn small" id="drvRefresh">Check again</button></div>
+    <div class="page-body stack" id="drvBody"></div>
+  </section>
+
+  <!-- Help -->
+  <section class="page" id="page-help">
+    <div class="page-head"><div class="grow"><h1>Help</h1><p>What each part of CPC does, and what it never touches.</p></div></div>
+    <div class="page-body stack" id="helpBody"></div>
   </section>
 
   <!-- Settings -->
@@ -390,6 +428,10 @@ function show(page) {
   if (page === "startup") S.startup ? renderStartup() : loadStartup();
   if (page === "uninstall") S.programs ? renderPrograms() : loadPrograms();
   if (page === "settings") renderSettings();
+  if (page === "dupes") renderDupes();
+  if (page === "updater") S.updates ? renderUpdates() : loadUpdates();
+  if (page === "drivers") S.drivers ? renderDrivers() : loadDrivers();
+  if (page === "help") renderHelp();
   if (page === "health") renderHealth();
 }
 document.querySelectorAll(".nav button").forEach(b => b.onclick = () => show(b.dataset.page));
@@ -660,8 +702,26 @@ $("#btnScan").onclick = () => S.tab === "registry" ? regScan() : startRun("clean
 $("#btnClean").onclick = () => S.tab === "registry" ? regFix() : startRun("clean", "clean", [...S.checked]);
 $("#btnStop").onclick = () => api.Cancel();
 
+// Slow calls return a token right away and deliver the result later as an
+// "async" event, so the window never freezes.
+const pending = {}, early = {};
+async function slow(tokenPromise) {
+  const token = await tokenPromise;
+  if (early[token]) { const p = early[token]; delete early[token]; return p.error ? Promise.reject(new Error(p.error)) : p.result; }
+  return new Promise((res, rej) => pending[token] = { res, rej });
+}
+
 // Events pushed from Go.
 window.cpcEvent = (name, p) => {
+  if (name === "async") {
+    const w = pending[p.token];
+    if (!w) { early[p.token] = p; return; }
+    delete pending[p.token];
+    p.error ? w.rej(new Error(p.error)) : w.res(p.result);
+    return;
+  }
+  if (name.startsWith("dupe")) return dupeEvent(name, p);
+  if (name.startsWith("upd")) return updEvent(name, p);
   if (name === "regScanned") {
     S.reg.busy = false; S.reg.issues = p; S.reg.picked = new Set(p.map(i => i.id));
     renderPicker(); renderResults(); return;
@@ -762,12 +822,64 @@ function renderHealth() {
 }
 
 // ---------------------------------------------------------------- startup manager
+let stTab = "apps";
+const stIntro = {
+  apps: "Turn off apps you don't need at sign-in. Nothing is deleted, and Task Manager shows the same setting.",
+  tasks: "Tasks other programs scheduled to run in the background, like updaters. Windows' own tasks are hidden.",
+  services: "Background services installed by other programs. Manual means the service only starts when something needs it, which usually frees memory without breaking anything.",
+};
+document.querySelectorAll("#stTabs button").forEach(b => b.onclick = () => {
+  stTab = b.dataset.st;
+  document.querySelectorAll("#stTabs button").forEach(x => x.classList.toggle("active", x === b));
+  $("#startupIntro").textContent = stIntro[stTab];
+  if (stTab === "apps") S.startup ? renderStartup() : loadStartup();
+  if (stTab === "tasks") S.tasks ? renderTasks() : loadTasks();
+  if (stTab === "services") S.services ? renderServices() : loadServices();
+});
 async function loadStartup() {
+  if (stTab !== "apps") return stTab === "tasks" ? loadTasks() : loadServices();
   $("#startupBody").innerHTML = '<div class="loading">Loading...</div>';
   try { S.startup = await api.Startup(); } catch (e) { S.startup = []; toast(errText(e), true); }
   renderStartup();
 }
+async function loadTasks() {
+  $("#startupBody").innerHTML = '<div class="loading">Loading scheduled tasks...</div>';
+  try { S.tasks = await slow(api.Tasks()) || []; } catch (e) { S.tasks = []; toast(errText(e), true); }
+  if (stTab === "tasks") renderTasks();
+}
+async function loadServices() {
+  $("#startupBody").innerHTML = '<div class="loading">Loading services...</div>';
+  try { S.services = await slow(api.Services()) || []; } catch (e) { S.services = []; toast(errText(e), true); }
+  if (stTab === "services") renderServices();
+}
+function renderTasks() {
+  const rows = S.tasks || [];
+  if (!rows.length) { $("#startupBody").innerHTML = '<div class="card"><p>No scheduled tasks from other programs.</p></div>'; return; }
+  const locked = !S.info.elevated;
+  $("#startupBody").innerHTML = `<p class="muted" style="margin:0 0 12px">${rows.filter(x => x.enabled).length} of ${rows.length} tasks are on.${locked ? " Restart as administrator to change them." : ""}</p><div class="list">` + rows.map((x, i) => `
+    <div class="lrow">
+      <div class="avatar" style="background:${avatarColor(x.name)}">${esc((x.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
+      <div class="main"><b>${esc(x.name)}</b><small title="${esc(x.action)}">${esc(x.action || x.path)}</small></div>
+      <span class="chip">${esc(x.author || x.path)}</span>
+      <label class="switch"><input type="checkbox" data-task="${i}" aria-label="${esc(x.name)} enabled" ${x.enabled ? "checked" : ""} ${locked ? "disabled" : ""}><span></span></label>
+    </div>`).join("") + "</div>";
+}
+function renderServices() {
+  const rows = S.services || [];
+  if (!rows.length) { $("#startupBody").innerHTML = '<div class="card"><p>No services from other programs.</p></div>'; return; }
+  const locked = !S.info.elevated;
+  $("#startupBody").innerHTML = `<p class="muted" style="margin:0 0 12px">${rows.length} services from other programs.${locked ? " Restart as administrator to change them." : ""}</p><div class="list">` + rows.map((x, i) => `
+    <div class="lrow">
+      <div class="avatar" style="background:${avatarColor(x.displayName)}">${esc((x.displayName.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
+      <div class="main"><b>${esc(x.displayName)}</b><small title="${esc(x.description || x.path)}">${esc(x.description || x.path)}</small></div>
+      <span class="chip">${esc(x.state)}</span>
+      <select data-svc="${i}" aria-label="${esc(x.displayName)} start type" ${locked ? "disabled" : ""}>
+        ${["Automatic", "Manual", "Disabled"].map(m => `<option ${x.startMode === m ? "selected" : ""}>${m}</option>`).join("")}
+      </select>
+    </div>`).join("") + "</div>";
+}
 function renderStartup() {
+  if (stTab !== "apps") return;
   const rows = S.startup || [];
   if (!rows.length) { $("#startupBody").innerHTML = '<div class="card"><p>No startup apps found.</p></div>'; return; }
   const on = rows.filter(x => x.enabled).length;
@@ -782,6 +894,20 @@ function renderStartup() {
     </div>`).join("") + "</div>";
 }
 $("#startupBody").addEventListener("change", async e => {
+  const t = e.target.dataset.task, sv = e.target.dataset.svc;
+  if (t !== undefined) {
+    const x = S.tasks[+t];
+    try { S.tasks = await slow(api.SetTask(x.path + x.name, e.target.checked)); toast(x.name + (e.target.checked ? " turned on." : " turned off.")); }
+    catch (err) { toast(errText(err), true); }
+    renderTasks(); return;
+  }
+  if (sv !== undefined) {
+    const x = S.services[+sv], mode = e.target.value;
+    if (mode === "Disabled" && !await confirmBox("Disable " + x.displayName + "?", "The program that installed it may stop working properly until you set it back to Manual or Automatic.", "Disable", true)) { renderServices(); return; }
+    try { S.services = await slow(api.SetService(x.name, mode)); toast(x.displayName + " set to " + mode + "."); }
+    catch (err) { toast(errText(err), true); }
+    renderServices(); return;
+  }
   const i = e.target.dataset.idx; if (i === undefined) return;
   try { S.startup = await api.SetStartup(+i, e.target.checked); }
   catch (err) { toast(errText(err), true); try { S.startup = await api.Startup(); } catch (_) {} }
@@ -791,7 +917,7 @@ $("#startupBody").addEventListener("click", e => {
   const i = e.target.dataset.loc; if (i === undefined) return;
   api.StartupLocation(+i).catch(err => toast(errText(err), true));
 });
-$("#startupRefresh").onclick = loadStartup;
+$("#startupRefresh").onclick = () => { S.startup = S.tasks = S.services = null; loadStartup(); };
 
 // ---------------------------------------------------------------- uninstaller
 async function loadPrograms() {
@@ -828,6 +954,174 @@ $("#progBody").addEventListener("click", async e => {
   if (!await confirmBox("Uninstall " + p.name + "?", "The program's own uninstaller will open and walk you through it. Click <b>Refresh</b> when it's done.", "Uninstall")) return;
   try { await api.Uninstall(+u); toast("Uninstaller started for " + p.name + "."); } catch (err) { toast(errText(err), true); }
 });
+
+// ---------------------------------------------------------------- duplicate finder
+const D = { folders: null, minKB: 1024, state: "setup", files: 0, path: "", result: null, picked: new Set(), last: null };
+async function renderDupes() {
+  if (!D.folders) { try { D.folders = await api.DupeDefaults(); } catch (e) { D.folders = []; } }
+  const el = $("#dupeBody");
+  if (D.state === "searching") {
+    el.innerHTML = `<div class="card hero"><div class="spinner"></div><div class="grow"><h2>Comparing files...</h2>
+      <p>${D.files.toLocaleString()} files looked at so far.</p><div class="path" id="dupePath" style="text-align:left;direction:ltr">${esc(D.path)}</div>
+      <div class="row" style="margin-top:14px"><button class="btn" id="dupeStop">Stop</button></div></div></div>`;
+    $("#dupeStop").onclick = () => api.DupeCancel();
+    return;
+  }
+  if (D.state === "results" && D.result) return renderDupeResults(el);
+  el.innerHTML = `<div class="card stack">
+      <div><h3>Where to look</h3><p>Your personal folders are filled in. Program and Windows folders are always skipped.</p></div>
+      <div class="list">${D.folders.length ? D.folders.map((f, i) => `<div class="lrow"><div class="main"><b>${esc(f)}</b></div><button class="btn small ghost" data-rmf="${i}">Remove</button></div>`).join("") : '<div class="lrow"><div class="main muted">No folders yet.</div></div>'}</div>
+      <div class="row"><button class="btn small" id="dupeAdd">Add folder</button><span class="grow"></span>
+        <span class="muted">Ignore files smaller than</span>
+        <select id="dupeMin" aria-label="Minimum size">${[[0, "nothing"], [100, "100 KB"], [1024, "1 MB"], [10240, "10 MB"], [102400, "100 MB"]].map(([v, n]) => `<option value="${v}" ${v === D.minKB ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      <div class="row"><button class="btn primary big" id="dupeGo">Search for duplicates</button></div>
+    </div>
+    ${D.last ? `<div class="card"><p class="${D.last.error ? "" : "status-good"}">${esc(D.last.text)}</p></div>` : ""}`;
+  el.querySelectorAll("[data-rmf]").forEach(b => b.onclick = () => { D.folders.splice(+b.dataset.rmf, 1); renderDupes(); });
+  $("#dupeMin").onchange = e => D.minKB = +e.target.value;
+  $("#dupeAdd").onclick = async () => { const f = await api.PickFolder(); if (f && !D.folders.includes(f)) { D.folders.push(f); renderDupes(); } };
+  $("#dupeGo").onclick = async () => {
+    try { D.state = "searching"; D.files = 0; D.path = ""; D.last = null; renderDupes(); await api.DupeScan(D.folders, D.minKB); }
+    catch (e) { D.state = "setup"; renderDupes(); toast(errText(e), true); }
+  };
+}
+function renderDupeResults(el) {
+  const g = D.result.groups;
+  if (!g.length) {
+    el.innerHTML = `<div class="card hero"><div class="icon-ring" style="color:var(--good)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></div>
+      <div class="grow"><h2>No duplicates found</h2><p>${esc(D.result.error || "Every file in those folders is unique.")}</p><div class="row" style="margin-top:14px"><button class="btn" id="dupeBack">Search again</button></div></div></div>`;
+    $("#dupeBack").onclick = () => { D.state = "setup"; renderDupes(); };
+    return;
+  }
+  let sel = 0, selBytes = 0;
+  g.forEach(gr => gr.files.forEach(f => { if (D.picked.has(f.id)) { sel++; selBytes += f.size; } }));
+  el.innerHTML = `<div class="card"><div class="row"><div class="grow"><h3>${g.length.toLocaleString()} sets of duplicates, ${fmtBytes(D.result.wasted)} could be freed</h3>
+      <p>${D.result.error ? esc(D.result.error) + " " : ""}Pick the copies to remove. CPC always keeps at least one copy of each file.</p></div>
+      <button class="btn small" id="dupeBack">New search</button></div>
+      <div class="row" style="margin-top:12px"><button class="btn small" id="pickOld">Keep the oldest copy</button><button class="btn small" id="pickNew">Keep the newest copy</button><button class="btn small ghost" id="pickNone">Clear selection</button>
+      <span class="grow"></span><b>${sel} selected (${fmtBytes(selBytes)})</b><button class="btn primary" id="dupeDel" ${sel ? "" : "disabled"}>Move to Recycle Bin</button></div></div>
+    <div class="stack" style="margin-top:14px">${g.slice(0, 300).map(gr => `<div class="list">
+      <div class="lrow" style="background:#2b3039"><div class="main"><b>${esc(gr.files[0].path.split(/[\\/]/).pop())}</b><small>${gr.files.length} copies, ${fmtBytes(gr.size)} each</small></div></div>
+      ${gr.files.map(f => `<label class="lrow" style="cursor:pointer"><input type="checkbox" class="cb" data-df="${f.id}" ${D.picked.has(f.id) ? "checked" : ""}>
+        <div class="main"><b style="font-weight:400">${esc(f.path)}</b><small>Modified ${esc(f.modified)}</small></div>
+        <button class="link" data-show="${esc(f.path)}" style="font-size:13px">Show</button></label>`).join("")}</div>`).join("")}
+      ${g.length > 300 ? `<p class="muted">Showing the 300 largest sets. Remove some and search again to see the rest.</p>` : ""}</div>`;
+  const pick = keepIdx => { D.picked = new Set(); g.forEach(gr => gr.files.forEach((f, i) => { if (i !== keepIdx(gr)) D.picked.add(f.id); })); renderDupes(); };
+  $("#pickOld").onclick = () => pick(() => 0);
+  $("#pickNew").onclick = () => pick(gr => gr.files.length - 1);
+  $("#pickNone").onclick = () => { D.picked = new Set(); renderDupes(); };
+  $("#dupeBack").onclick = () => { D.state = "setup"; renderDupes(); };
+  el.querySelectorAll("[data-df]").forEach(cb => cb.onchange = () => { cb.checked ? D.picked.add(+cb.dataset.df) : D.picked.delete(+cb.dataset.df); renderDupes(); });
+  el.querySelectorAll("[data-show]").forEach(b => b.onclick = e => { e.preventDefault(); api.ShowFile(b.dataset.show).catch(err => toast(errText(err), true)); });
+  $("#dupeDel").onclick = async () => {
+    if (!await confirmBox("Move " + sel + " file" + (sel === 1 ? "" : "s") + " to the Recycle Bin?", "That frees about " + fmtBytes(selBytes) + " once the Recycle Bin is emptied. You can restore them from the Recycle Bin until then.", "Move files")) return;
+    try { await api.DupeDelete([...D.picked]); } catch (e) { toast(errText(e), true); }
+  };
+}
+function dupeEvent(name, p) {
+  if (name === "dupeProgress") { D.files = p.files; D.path = p.path; const el = $("#dupePath"); if (el) { el.textContent = p.path; el.previousElementSibling.textContent = p.files.toLocaleString() + " files looked at so far."; } }
+  if (name === "dupeFinished") { D.state = "results"; D.result = p; D.picked = new Set(); renderDupes(); }
+  if (name === "dupeDeleted") {
+    if (p.error) { toast(p.error, true); return; }
+    D.last = { text: "Moved " + p.deleted + " file" + (p.deleted === 1 ? "" : "s") + " (" + fmtBytes(p.bytes) + ") to the Recycle Bin." };
+    D.state = "setup"; D.result = null; D.picked = new Set(); renderDupes(); toast(D.last.text);
+  }
+}
+
+// ---------------------------------------------------------------- software updater
+const U = { status: {}, busy: false, picked: new Set() };
+async function loadUpdates() {
+  $("#updBody").innerHTML = '<div class="loading">Checking for updates. This can take a minute...</div>';
+  try { S.updates = await slow(api.Updates()); } catch (e) { S.updates = { available: true, updates: [], error: errText(e) }; }
+  U.status = {}; U.picked = new Set((S.updates.updates || []).map(u => u.id));
+  renderUpdates();
+}
+function renderUpdates() {
+  const el = $("#updBody"), d = S.updates;
+  if (!d.available) {
+    el.innerHTML = `<div class="card"><h3>winget isn't installed</h3><p>Software Updater uses winget, which comes with the App Installer app from Microsoft. It's included with Windows 11 and recent Windows 10. Install App Installer from the Microsoft Store, then click Check again.</p></div>`;
+    return;
+  }
+  const list = d.updates || [];
+  if (!list.length) {
+    el.innerHTML = `<div class="card hero"><div class="icon-ring" style="color:var(--good)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></div>
+      <div class="grow"><h2>${d.error ? "Couldn't check for updates" : "Everything is up to date"}</h2><p>${esc(d.error || "Every app winget knows about is on its latest version. Apps from the Microsoft Store update themselves.")}</p></div></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="toolbar"><b>${list.length} update${list.length === 1 ? "" : "s"} available</b><span class="grow"></span>
+      <button class="btn primary" id="updGo" ${U.busy || !U.picked.size ? "disabled" : ""}>Update selected (${U.picked.size})</button></div>
+    <div class="list">${list.map(u => {
+      const st = U.status[u.id] || {};
+      const badge = st.status === "updating" ? '<span class="chip">Updating...</span>' : st.status === "updated" ? '<span class="chip status-good">Updated</span>' : st.status === "failed" ? `<span class="chip" style="color:var(--bad)" title="${esc(st.error)}">Failed</span>` : "";
+      return `<label class="lrow" style="cursor:pointer"><input type="checkbox" class="cb" data-upd="${esc(u.id)}" ${U.picked.has(u.id) ? "checked" : ""} ${U.busy || st.status === "updated" ? "disabled" : ""}>
+        <div class="avatar" style="background:${avatarColor(u.name)}">${esc((u.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
+        <div class="main"><b>${esc(u.name)}</b><small>${esc(u.id)}</small></div>
+        <span class="meta">${esc(u.version)}</span><span class="meta" style="color:var(--text)">${esc(u.available)}</span>${badge}</label>`;
+    }).join("")}</div>
+    <p class="dim" style="font-size:12px;margin-top:10px">Updates install silently. A few apps may still show their own installer or need to be closed first.</p>`;
+  el.querySelectorAll("[data-upd]").forEach(cb => cb.onchange = () => { cb.checked ? U.picked.add(cb.dataset.upd) : U.picked.delete(cb.dataset.upd); renderUpdates(); });
+  $("#updGo").onclick = async () => {
+    try { U.busy = true; renderUpdates(); await api.UpdateApps([...U.picked]); } catch (e) { U.busy = false; renderUpdates(); toast(errText(e), true); }
+  };
+}
+function updEvent(name, p) {
+  if (name === "updProgress") { U.status[p.id] = p; if (p.status === "updated") U.picked.delete(p.id); }
+  if (name === "updFinished") { U.busy = false; toast(p.updated + " updated" + (p.failed ? ", " + p.failed + " failed." : "."), p.failed > 0); }
+  if (S.updates) renderUpdates();
+}
+$("#updRefresh").onclick = loadUpdates;
+
+// ---------------------------------------------------------------- driver check
+async function loadDrivers() {
+  $("#drvBody").innerHTML = '<div class="loading">Checking your hardware...</div>';
+  try { S.drivers = await slow(api.Drivers()); } catch (e) { S.drivers = { devices: [], drivers: [], error: errText(e) }; }
+  renderDrivers();
+}
+function renderDrivers() {
+  const d = S.drivers, now = Date.now();
+  const age = s => s ? Math.floor((now - Date.parse(s)) / (365.25 * 864e5)) : null;
+  const classNames = { DISPLAY: "Graphics", NET: "Network", MEDIA: "Audio", BLUETOOTH: "Bluetooth", CAMERA: "Camera", IMAGE: "Camera", PRINTER: "Printer" };
+  $("#drvBody").innerHTML = `
+    <div class="card"><div class="row"><div class="grow"><h3>${d.devices.length ? d.devices.length + " device" + (d.devices.length === 1 ? " has" : "s have") + " a problem" : "No hardware problems found"}</h3>
+      <p>${d.devices.length ? "Windows reports these in Device Manager." : "Device Manager doesn't report any errors."}</p></div>
+      <button class="btn small" id="drvDM">Open Device Manager</button></div>
+      ${d.devices.length ? `<div class="list" style="margin-top:12px">${d.devices.map(x => `<div class="lrow"><div class="main"><b>${esc(x.name)}</b><small>${esc(x.problem)} (code ${x.code})</small></div><span class="chip">${esc(x.class || "Device")}</span></div>`).join("")}</div>` : ""}</div>
+    <div class="card"><div class="row"><div class="grow"><h3>Get driver updates safely</h3>
+      <p>The safest source for drivers is Windows Update, then the PC or part maker's own website. CPC doesn't download drivers from third-party sites, which is where most driver updater problems come from.</p></div></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary small" id="drvOpt">Windows Update driver updates</button><button class="btn small" id="drvWU">Check for Windows updates</button></div></div>
+    <div class="card"><h3>Your key drivers</h3><p>Graphics, network, audio and Bluetooth drivers, oldest first. Very old drivers are worth checking on the maker's website.</p>
+      ${d.drivers.length ? `<div class="list" style="margin-top:12px">${d.drivers.map(x => { const a = age(x.date);
+        return `<div class="lrow"><div class="main"><b>${esc(x.device)}</b><small>${esc(x.manufacturer)} · version ${esc(x.version)}</small></div>
+          <span class="chip">${esc(classNames[x.class] || x.class)}</span>
+          <span class="meta ${a !== null && a >= 4 ? "status-warn" : ""}">${x.date ? esc(x.date) + (a !== null && a >= 4 ? " (" + a + " yrs)" : "") : ""}</span></div>`; }).join("")}</div>` : '<p class="muted" style="margin-top:8px">No driver details available.</p>'}
+      ${d.error ? `<p class="dim" style="margin-top:8px">${esc(d.error)}</p>` : ""}</div>`;
+  $("#drvDM").onclick = () => api.OpenSettings("devicemanager").catch(e => toast(errText(e), true));
+  $("#drvOpt").onclick = () => api.OpenSettings("optionalupdates").catch(e => toast(errText(e), true));
+  $("#drvWU").onclick = () => api.OpenSettings("windowsupdate").catch(e => toast(errText(e), true));
+}
+$("#drvRefresh").onclick = loadDrivers;
+
+// ---------------------------------------------------------------- help
+function renderHelp() {
+  const items = [
+    ["Health Check", "A quick scan using the Recommended items, plus a look at startup apps and free space. Fix it cleans only the Recommended items."],
+    ["Custom Clean", "Pick exactly what to clean. Junk covers Windows, apps and system files. Browser covers caches, cookies, history, sessions and saved passwords. Scan first to see sizes. Every clean writes a log of each deleted file."],
+    ["Registry", "Removes registry entries that point to files that are gone, usually left by uninstalled programs. Every fix is backed up and can be undone. This tidies things up but rarely makes a PC faster."],
+    ["Uninstaller", "Lists installed programs and runs each one's own uninstaller."],
+    ["Duplicate Finder", "Finds byte-for-byte identical files and moves the extra copies to the Recycle Bin. One copy of every file is always kept."],
+    ["Startup Manager", "Turns off startup apps, scheduled tasks from other programs and third-party background services. Nothing is deleted, so every change can be reversed."],
+    ["Software Updater", "Uses winget, Microsoft's app installer, to update apps silently. Store apps update themselves."],
+    ["Driver Check", "Shows hardware with problems and how old your key drivers are, and points you to Windows Update for safe driver updates."],
+    ["Automatic cleaning", "Settings can schedule a weekly clean with the items you ticked in Custom Clean. It skips apps that are open. You can also run CPC.exe /auto from a script or RMM tool."],
+    ["What CPC never touches", "Documents, photos, bookmarks, Windows' own scheduled tasks and services, COM and ActiveX registry entries, and anything newer than 24 hours in temp folders. Cookies, history and passwords are only cleaned if you tick them."],
+    ["Not included", "Cloud Drive Cleaner needs sign-in to your cloud accounts, so it isn't included. Duplicate Finder does search your local OneDrive folder. Wiping free space and driver downloads from third-party sites are left out on purpose."],
+  ];
+  $("#helpBody").innerHTML = items.map(([h, p]) => `<div class="card"><h3>${esc(h)}</h3><p>${esc(p)}</p></div>`).join("") +
+    `<div class="card"><div class="row"><div class="grow"><h3>Logs and backups</h3><p>Cleaning logs and registry backups are kept in your AppData folder under CredencePCCleaner.</p></div>
+      <button class="btn small" id="helpLogs">Open logs</button><button class="btn small" id="helpBk">Open registry backups</button></div></div>`;
+  $("#helpLogs").onclick = () => api.OpenLogs().catch(() => toast("No logs yet. Run a clean first.", true));
+  $("#helpBk").onclick = () => api.OpenBackups().catch(e => toast(errText(e), true));
+}
 
 // ---------------------------------------------------------------- settings
 const days = [["MON", "Monday"], ["TUE", "Tuesday"], ["WED", "Wednesday"], ["THU", "Thursday"], ["FRI", "Friday"], ["SAT", "Saturday"], ["SUN", "Sunday"]];

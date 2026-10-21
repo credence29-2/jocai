@@ -55,6 +55,9 @@ type api struct {
 	regMu     sync.Mutex
 	regIssues []regclean.Issue
 	regBusy   bool
+
+	t    tools
+	hwnd uintptr
 }
 
 func newAPI(dataDir string, elevated bool, emit func(string, any)) *api {
@@ -73,12 +76,12 @@ func newAPI(dataDir string, elevated bool, emit func(string, any)) *api {
 // ---- general -------------------------------------------------------------
 
 type infoDTO struct {
-	App       string `json:"app"`
-	Version   string `json:"version"`
-	Elevated  bool   `json:"elevated"`
-	LogsDir   string `json:"logsDir"`
-	DiskTotal uint64 `json:"diskTotal"`
-	DiskFree  uint64 `json:"diskFree"`
+	App       string   `json:"app"`
+	Version   string   `json:"version"`
+	Elevated  bool     `json:"elevated"`
+	LogsDir   string   `json:"logsDir"`
+	DiskTotal uint64   `json:"diskTotal"`
+	DiskFree  uint64   `json:"diskFree"`
 	Drive     string   `json:"drive"`
 	Groups    []string `json:"groups"`
 }

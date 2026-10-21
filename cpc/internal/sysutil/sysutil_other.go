@@ -26,3 +26,7 @@ func ScheduleDelete(string) error               { return errNotWindows }
 func ClearClipboard() error                       { return errNotWindows }
 func RunHidden(string, ...string) (string, error) { return "", errNotWindows }
 func RemoveProtectedTree(string) error            { return errNotWindows }
+
+func PickFolder(uintptr, string) string { return "" }
+func RecycleFiles([]string) error       { return errNotWindows }
+func PowerShellJSON(string, any) error  { return errNotWindows }

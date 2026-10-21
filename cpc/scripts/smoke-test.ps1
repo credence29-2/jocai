@@ -141,6 +141,40 @@ Click $win "Junk" | Out-Null
 
 Click $win "Startup Manager" | Out-Null
 if (Expect $win "(start with Windows|No startup apps found)" "Startup Manager rendered") { Shot "6-startup" }
+Click $win "Scheduled tasks" | Out-Null
+if (Expect $win "(tasks are on|No scheduled tasks)" "Scheduled tasks tab rendered" 60) { Write-Host "Tasks: $(Texts $win)" }
+Click $win "Background services" | Out-Null
+if (Expect $win "(services from other programs|No services from other programs)" "Background services tab rendered" 60) { Shot "6b-services" }
+Click $win "Startup apps" | Out-Null
+
+# Duplicate Finder: plant two identical files in Documents and remove one.
+$docs = [Environment]::GetFolderPath("MyDocuments")
+$blob = New-Object byte[] 2100000; (New-Object Random 7).NextBytes($blob)
+New-Item -ItemType Directory -Force "$docs\cpc-dupes\a", "$docs\cpc-dupes\b" | Out-Null
+[IO.File]::WriteAllBytes("$docs\cpc-dupes\a\report.bin", $blob); (Get-Item "$docs\cpc-dupes\a\report.bin").LastWriteTime = (Get-Date).AddDays(-10)
+[IO.File]::WriteAllBytes("$docs\cpc-dupes\b\report copy.bin", $blob)
+Click $win "Duplicate Finder" | Out-Null
+Click $win "Search for duplicates" | Out-Null
+if (Expect $win "(sets of duplicates|No duplicates found)" "duplicate search finished" 180) {
+    Shot "6c-dupes"
+    if ((Texts $win) -match "sets of duplicates") {
+        Click $win "Keep the oldest copy" | Out-Null
+        Click $win "Move to Recycle Bin" | Out-Null
+        Click $win "Move files" | Out-Null
+        Start-Sleep 3
+        $a = Test-Path "$docs\cpc-dupes\a\report.bin"; $b = Test-Path "$docs\cpc-dupes\b\report copy.bin"
+        if ($a -and -not $b) { Pass "duplicate moved to Recycle Bin, oldest copy kept" } else { Fail "duplicate removal wrong: oldest=$a newer=$b" }
+    } else { Fail "planted duplicates were not found" }
+}
+
+Click $win "Software Updater" | Out-Null
+if (Expect $win "(updates? available|Everything is up to date|winget isn't installed|Couldn't check)" "Software Updater finished checking" 240) { Shot "6d-updater"; Write-Host "Updater: $(Texts $win)" }
+
+Click $win "Driver Check" | Out-Null
+if (Expect $win "(has a problem|have a problem|No hardware problems found)" "Driver Check finished" 120) { Shot "6e-drivers" }
+
+Click $win "Help" | Out-Null
+Expect $win "What CPC never touches" "Help rendered" | Out-Null
 
 Click $win "Uninstaller" | Out-Null
 if (Expect $win "programs" "Uninstaller rendered") { Shot "7-uninstaller" }

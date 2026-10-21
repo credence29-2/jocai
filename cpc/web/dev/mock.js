@@ -16,6 +16,8 @@
     targets.push({ id: b + k, section: "Browsers", group: b, label: k, name: b + " - " + k, description: k + " for " + b, default: !!def, needsAdmin: false, selectable: true, checked: !!def });
   targets.push({ id: "ff.cache", section: "Browsers", group: "Firefox", label: "Cache", name: "Firefox - Cache", description: "", default: true, needsAdmin: false, selectable: true, checked: true });
   const emit = (n, p) => window.cpcEvent && window.cpcEvent(n, p);
+  let tok = 0;
+  const later = (result, error) => { const t = ++tok; setTimeout(() => emit("async", error ? { token: t, error } : { token: t, result }), 30); return t; };
   const sizes = { "win.temp.user": 812e6, "win.recycle": 2.1e9, "win.thumbs": 64e6, "win.wer": 3.2e6, "Google ChromeCache": 433e6, "Microsoft EdgeCache": 210e6 };
   function run(ids, clean) {
     let i = 0, tot = { files: 0, bytes: 0 };
@@ -66,6 +68,29 @@
     cpcRegFix: async ids => setTimeout(() => emit("regFixed", { fixed: ids.length, failed: 0, backup: "C:\\backups\\registry-x", name: "registry-x" }), 100),
     cpcRegBackups: async () => [{ name: "registry-x", when: "Oct 21, 2026 6:02 PM", count: 2 }],
     cpcRegRestore: async () => null, cpcOpenBackups: async () => null,
-    cpcOpenLogs: async () => null, cpcOpenPath: async () => null, cpcRestartAdmin: async () => null,
+    cpcOpenLogs: async () => null,
+    cpcTasks: async () => later([
+      { name: "GoogleUpdateTaskMachineUA", path: "\\", state: "Ready", author: "Google LLC", action: "C:\\Program Files (x86)\\Google\\Update\\GoogleUpdate.exe /ua", enabled: true },
+      { name: "Adobe Acrobat Update Task", path: "\\", state: "Disabled", author: "Adobe Systems", action: "C:\\Program Files (x86)\\Common Files\\Adobe\\ARM\\1.0\\AdobeARM.exe", enabled: false }]),
+    cpcSetTask: async () => later(null, "Restart CPC as administrator to change scheduled tasks."),
+    cpcServices: async () => later([
+      { name: "AdobeARMservice", displayName: "Adobe Acrobat Update Service", startMode: "Automatic", state: "Running", path: "C:\\Program Files (x86)\\Common Files\\Adobe\\ARM\\1.0\\armsvc.exe", description: "Keeps Adobe Acrobat up to date." },
+      { name: "TeamViewer", displayName: "TeamViewer", startMode: "Manual", state: "Stopped", path: "C:\\Program Files\\TeamViewer\\TeamViewer_Service.exe", description: "" }]),
+    cpcSetService: async () => later([]),
+    cpcDrivers: async () => later({ devices: [{ name: "Unknown USB Device (Device Descriptor Request Failed)", class: "USB", code: 43, problem: "Windows stopped this device because it reported problems." }],
+      drivers: [{ device: "Realtek PCIe GbE Family Controller", class: "NET", version: "10.38.1128.2019", date: "2019-11-28", manufacturer: "Realtek" },
+                { device: "Intel(R) UHD Graphics 620", class: "DISPLAY", version: "31.0.101.2125", date: "2023-05-10", manufacturer: "Intel Corporation" }] }),
+    cpcOpenSettings: async () => null,
+    cpcUpdates: async () => later({ available: true, updates: [
+      { name: "Google Chrome", id: "Google.Chrome", version: "130.0.6723.70", available: "131.0.6778.86" },
+      { name: "Zoom Workplace", id: "Zoom.Zoom", version: "6.2.5.4567", available: "6.3.0.5527" },
+      { name: "7-Zip 23.01 (x64)", id: "7zip.7zip", version: "23.01", available: "24.08" }] }),
+    cpcUpdateApps: async ids => { ids.forEach((id, i) => setTimeout(() => { emit("updProgress", { id, index: i, total: ids.length, status: i === 1 ? "failed" : "updated", error: "Installer failed" }); if (i === ids.length - 1) emit("updFinished", { updated: ids.length - 1, failed: 1 }); }, 50 * (i + 1))); return null; },
+    cpcDupeDefaults: async () => ["C:\\Users\\Jacob\\Documents", "C:\\Users\\Jacob\\Downloads", "C:\\Users\\Jacob\\Pictures", "C:\\Users\\Jacob\\OneDrive"],
+    cpcPickFolder: async () => "D:\\Photos",
+    cpcDupeScan: async () => { setTimeout(() => emit("dupeFinished", { wasted: 1.3e9, groups: [
+      { id: 0, size: 1.2e9, files: [{ id: 0, path: "C:\\Users\\Jacob\\Downloads\\Win11_23H2.iso", size: 1.2e9, modified: "Jan 4, 2025" }, { id: 1, path: "C:\\Users\\Jacob\\Documents\\ISOs\\Win11_23H2.iso", size: 1.2e9, modified: "Mar 9, 2025" }] },
+      { id: 1, size: 4.2e6, files: [{ id: 2, path: "C:\\Users\\Jacob\\Pictures\\IMG_2041.jpg", size: 4.2e6, modified: "Jul 1, 2024" }, { id: 3, path: "C:\\Users\\Jacob\\OneDrive\\Pictures\\IMG_2041.jpg", size: 4.2e6, modified: "Jul 1, 2024" }, { id: 4, path: "C:\\Users\\Jacob\\Downloads\\IMG_2041 (1).jpg", size: 4.2e6, modified: "Aug 2, 2024" }] }] }), 80); return null; },
+    cpcDupeCancel: async () => null, cpcDupeDelete: async () => null, cpcShowFile: async () => null, cpcOpenPath: async () => null, cpcRestartAdmin: async () => null,
   });
 })();

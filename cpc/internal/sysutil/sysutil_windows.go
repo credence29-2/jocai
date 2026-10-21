@@ -2,7 +2,9 @@
 package sysutil
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -266,4 +268,107 @@ func RemoveProtectedTree(path string) error {
 		return errors.New(strings.TrimSpace(out))
 	}
 	return nil
+}
+
+var (
+	procSHBrowseForFolderW   = shell32.NewProc("SHBrowseForFolderW")
+	procSHGetPathFromIDListW = shell32.NewProc("SHGetPathFromIDListW")
+	procSHFileOperationW     = shell32.NewProc("SHFileOperationW")
+	ole32                    = windows.NewLazySystemDLL("ole32.dll")
+	procCoTaskMemFree        = ole32.NewProc("CoTaskMemFree")
+)
+
+type browseInfo struct {
+	Owner       uintptr
+	Root        uintptr
+	DisplayName *uint16
+	Title       *uint16
+	Flags       uint32
+	Callback    uintptr
+	LParam      uintptr
+	Image       int32
+}
+
+// PickFolder shows the Windows folder picker. Returns "" if cancelled.
+func PickFolder(owner uintptr, title string) string {
+	name := make([]uint16, windows.MAX_PATH)
+	t, _ := windows.UTF16PtrFromString(title)
+	bi := browseInfo{Owner: owner, DisplayName: &name[0], Title: t, Flags: 0x0001 | 0x0040} // RETURNONLYFSDIRS | NEWDIALOGSTYLE
+	pidl, _, _ := procSHBrowseForFolderW.Call(uintptr(unsafe.Pointer(&bi)))
+	if pidl == 0 {
+		return ""
+	}
+	defer procCoTaskMemFree.Call(pidl)
+	buf := make([]uint16, 32768)
+	if r, _, _ := procSHGetPathFromIDListW.Call(pidl, uintptr(unsafe.Pointer(&buf[0]))); r == 0 {
+		return ""
+	}
+	return windows.UTF16ToString(buf)
+}
+
+type shFileOp struct {
+	Hwnd          uintptr
+	Func          uint32
+	From          *uint16
+	To            *uint16
+	Flags         uint16
+	AnyAborted    int32
+	NameMappings  uintptr
+	ProgressTitle *uint16
+}
+
+// RecycleFiles moves files to the Recycle Bin so they can be restored.
+func RecycleFiles(paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	var from []uint16
+	for _, p := range paths {
+		u, err := windows.UTF16FromString(p) // includes the trailing NUL
+		if err != nil {
+			return err
+		}
+		from = append(from, u...)
+	}
+	from = append(from, 0) // list ends with a double NUL
+	const (
+		foDelete        = 3
+		fofSilent       = 0x0004
+		fofNoConfirm    = 0x0010
+		fofAllowUndo    = 0x0040
+		fofNoErrorUI    = 0x0400
+		fofNoConfirmMkd = 0x0200
+	)
+	op := shFileOp{Func: foDelete, From: &from[0], Flags: fofSilent | fofNoConfirm | fofAllowUndo | fofNoErrorUI | fofNoConfirmMkd}
+	r, _, _ := procSHFileOperationW.Call(uintptr(unsafe.Pointer(&op)))
+	if r != 0 {
+		return fmt.Errorf("Windows could not move the files to the Recycle Bin (code %d)", r)
+	}
+	if op.AnyAborted != 0 {
+		return errors.New("moving files to the Recycle Bin was cancelled")
+	}
+	return nil
+}
+
+// PowerShellJSON runs a PowerShell script that writes JSON and decodes it.
+func PowerShellJSON(script string, out any) error {
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command",
+		"[Console]::OutputEncoding=[Text.Encoding]::UTF8; "+script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	b, err := cmd.Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			return fmt.Errorf("%v: %s", err, strings.TrimSpace(string(ee.Stderr)))
+		}
+		return err
+	}
+	b = []byte(strings.TrimSpace(string(b)))
+	if len(b) == 0 {
+		b = []byte("[]")
+	}
+	// A single object comes back without brackets.
+	if b[0] == '{' {
+		b = append(append([]byte{'['}, b...), ']')
+	}
+	return json.Unmarshal(b, out)
 }

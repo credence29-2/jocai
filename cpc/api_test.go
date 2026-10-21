@@ -170,3 +170,47 @@ func TestRegistryAPIGuards(t *testing.T) {
 		t.Error("path traversal accepted")
 	}
 }
+
+func TestToolGuards(t *testing.T) {
+	a := newAPI(t.TempDir(), false, func(string, any) {})
+	if err := a.DupeScan([]string{"/definitely/not/here"}, 0); err == nil {
+		t.Error("missing folder accepted")
+	}
+	if err := a.DupeDelete([]int{1}); err == nil {
+		t.Error("delete without a search accepted")
+	}
+	if err := a.UpdateApps(nil); err == nil {
+		t.Error("empty update list accepted")
+	}
+	if err := a.OpenSettings("cmd.exe"); err == nil {
+		t.Error("arbitrary settings target accepted")
+	}
+	if err := a.ShowFile("/etc/passwd"); err == nil {
+		t.Error("ShowFile outside search results accepted")
+	}
+}
+
+func TestDupeScanEvents(t *testing.T) {
+	d := t.TempDir()
+	root := filepath.Join(d, "docs", "stuff")
+	os.MkdirAll(root, 0o755)
+	os.WriteFile(filepath.Join(root, "a.txt"), []byte("same content"), 0o644)
+	os.WriteFile(filepath.Join(root, "b.txt"), []byte("same content"), 0o644)
+	got := make(chan dupeResultDTO, 1)
+	a := newAPI(t.TempDir(), false, func(name string, p any) {
+		if name == "dupeFinished" {
+			got <- p.(dupeResultDTO)
+		}
+	})
+	if err := a.DupeScan([]string{root}, 0); err != nil {
+		t.Fatal(err)
+	}
+	r := <-got
+	if len(r.Groups) != 1 || r.Wasted != 12 {
+		t.Fatalf("result %+v", r)
+	}
+	ids := []int{r.Groups[0].Files[0].ID, r.Groups[0].Files[1].ID}
+	if err := a.DupeDelete(ids); err == nil {
+		t.Fatal("deleting every copy must be refused")
+	}
+}
