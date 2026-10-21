@@ -117,27 +117,35 @@ Click $win "Browser" | Out-Null
 Expect $win "Clear your browsing data|Google Chrome" "Browser tab rendered" | Out-Null
 
 Click $win "Registry" | Out-Null
+# Plant a startup entry that points to a program that doesn't exist.
+$runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+New-ItemProperty -Path $runKey -Name "CPCTestBroken" -Value '"C:\Program Files\CPCMissingApp\gone.exe" /tray' -PropertyType String -Force | Out-Null
 if (Expect $win "Fix issues in the Windows Registry" "Registry tab rendered") {
     Click $win "Select all" | Out-Null
     Click $win "Scan for issues" | Out-Null
-    if (Expect $win "(issues? found|No issues found)" "registry scan finished" 120) {
+    if (Expect $win "(\d+ issues? found|No issues found)" "registry scan finished" 120) {
         Shot "5b-registry"
-        Write-Host "Registry scan text: $(Texts $win)"
-        if ((Texts $win) -match "issues? found") {
+        $t = Texts $win
+        if ($t -match "CPCTestBroken") { Pass "planted broken startup entry was found" } else { Fail "planted broken startup entry not found. Screen: $t" }
+        if ($t -match "MuxSvcHost|VsGraphicsHelper") { Fail "Windows-owned entries were flagged" } else { Pass "no Windows-owned false positives" }
+        if ($t -match "\d+ issues? found") {
             Click $win "Fix selected issues" | Out-Null
             Click $win "Fix issues" | Out-Null
             if (Expect $win "Fixed \d+ issue" "registry fix finished with a backup" 120) {
+                if ((Get-ItemProperty $runKey -Name "CPCTestBroken" -ErrorAction SilentlyContinue)) { Fail "broken entry still present after fix" } else { Pass "broken entry removed" }
                 $bk = Get-ChildItem "$env:LOCALAPPDATA\CredencePCCleaner\backups" -Directory | Sort-Object Name | Select-Object -Last 1
                 $regs = @(Get-ChildItem "$($bk.FullName)\*.reg")
                 if ($regs.Count -gt 0) { Pass "registry backup written ($($regs.Count) files)" } else { Fail "no registry backup files" }
-                Get-Content "$($bk.FullName)\changes.log" | Select-Object -First 20
                 Click $win "Undo these changes" | Out-Null
                 Click $win "Restore" | Out-Null
-                Expect $win "Backup restored" "registry backup restored" 60 | Out-Null
+                if (Expect $win "Backup restored" "registry backup restored" 60) {
+                    if ((Get-ItemProperty $runKey -Name "CPCTestBroken" -ErrorAction SilentlyContinue)) { Pass "undo put the entry back" } else { Fail "undo did not restore the entry" }
+                }
             }
         }
     }
 }
+Remove-ItemProperty -Path $runKey -Name "CPCTestBroken" -ErrorAction SilentlyContinue
 Click $win "Junk" | Out-Null
 
 Click $win "Startup Manager" | Out-Null
