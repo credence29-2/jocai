@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "cpc/**"
+      - "!cpc/**/*.md"
       - ".github/workflows/cpc-windows-test.yml"
   workflow_dispatch:
 

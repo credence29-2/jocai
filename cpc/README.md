@@ -1,89 +1,82 @@
 # Credence PC Cleaner (CPC)
 
-A small, no-nonsense replacement for CCleaner. One portable `CPC.exe`, no installer, no ads, no upsells, no background service, nothing phoning home.
+A CCleaner replacement for Windows. One portable `CPC.exe`, no installer, no ads, no upsells, nothing phoning home.
 
-## What it does
+## What's in it
 
-**Cleaner tab.** Tick what you want, click **Analyze** to see how much space you'd get back, then **Run Cleaner**. Nothing is deleted until you click Run Cleaner and confirm.
-
-| Section | Items |
+| Section | What it does |
 | --- | --- |
-| Windows | Temp files (yours and Windows'), Recycle Bin, thumbnail cache, error reports, DNS cache, memory dumps, Windows Update download cache, Delivery Optimization cache, old Windows logs, graphics shader cache, Prefetch, Recent documents list |
-| Browsers | Chrome, Edge, Brave, Vivaldi: cache, cookies, history. Firefox: cache, cookies |
-| Applications | Microsoft Teams (classic and new), Discord, Spotify, Zoom logs |
+| Health Check | One-click scan of the Recommended items, plus startup app count and free disk space. Fix it cleans only the Recommended items. |
+| Custom Clean, Junk tab | Windows, System, Windows Update and logs, Applications, Windows Store, Multimedia, Windows Downloads, AI Tools, Utilities and Advanced groups. Includes temp files, Recycle Bin, clipboard, caches, crash dumps, Windows.old and DISM component cleanup. |
+| Custom Clean, Browser tab | Chrome, Edge, Firefox, Brave and Vivaldi: internet cache, cookies, history, session, saved form data and saved passwords. Only caches are ticked by default. |
+| Custom Clean, Registry tab | Application paths, obsolete software, run at startup, MUI cache, shared DLLs, installer folders, help files, fonts, firewall rules and sound events. Every fix is backed up and can be undone. |
+| Uninstaller | Installed programs with size and install date. Runs each program's own uninstaller. |
+| Duplicate Finder | Byte-for-byte duplicate files in your folders, including OneDrive. Extras go to the Recycle Bin. One copy is always kept. |
+| Startup Manager | Startup apps, scheduled tasks from other programs, and third-party background services. Nothing is deleted, so every change can be reversed. |
+| Software Updater | Lists and installs app updates silently through winget, which ships with Windows. |
+| Driver Check | Hardware with Device Manager errors, explained in plain words, plus the age of your key drivers and a shortcut to Windows Update's driver updates. |
+| Settings | Weekly automatic cleaning through Task Scheduler, folders to never clean, logs. |
 
-"Recommended" ticks only the items that are safe for anyone: temp files, Recycle Bin, thumbnails, error reports, DNS, and browser caches. Cookies, history and anything that makes the PC slower afterwards are off unless you tick them.
-
-**Startup tab.** Lists everything that launches at sign-in (registry Run keys and Startup folders) and lets you enable or disable it. CPC uses the same switch Task Manager uses, so nothing is deleted and Task Manager shows the same state. Double-click a row to toggle it.
-
-**Programs tab.** Searchable list of installed programs with publisher, version, size and install date. **Uninstall...** launches the program's own uninstaller.
+Nothing is deleted until you confirm. Every clean writes a log of each deleted file to `%LOCALAPPDATA%\CredencePCCleaner\logs`. Registry backups go to `%LOCALAPPDATA%\CredencePCCleaner\backups`.
 
 ## Safety rules built in
 
 - Temp files newer than 24 hours are left alone so running installers aren't broken.
-- Files that are in use are skipped and counted, never forced.
+- Files in use are skipped and counted, never forced.
 - Links, junctions and other reparse points are never followed.
-- Every location is checked before cleaning. If a path doesn't resolve properly, or resolves to a drive root or a top level folder, it's refused.
-- Bookmarks, saved passwords, and Firefox history (stored in the same file as bookmarks) are never touched.
-- If a browser or app is open, CPC tells you which ones before cleaning.
-- Every clean writes a log of each deleted file to `%LOCALAPPDATA%\CredencePCCleaner\logs` (the last 30 are kept). The **Open log** button appears after a clean.
+- Every location is checked before cleaning. A path that doesn't resolve cleanly, or resolves to a drive root or top-level folder, is refused.
+- Cookies, history, sessions, saved passwords, Downloads and Windows.old are always off until you tick them. A unit test enforces this.
+- The registry cleaner only flags entries pointing to files that are definitely gone on a local drive that is present. It never touches COM, ActiveX, type libraries or services, and it understands 64-bit Windows' System32 redirection.
+- Windows' own scheduled tasks and services are hidden and can't be changed.
+- Driver Check never downloads drivers from third-party sites.
 
-## What it deliberately doesn't do
+## What's deliberately left out
 
-No registry cleaner. Registry cleaning doesn't make Windows measurably faster and is the most common way cleaners break PCs. Microsoft doesn't support it either. No "driver updater" and no "performance booster" either.
+- **Cloud Drive Cleaner.** It needs sign-in to cloud accounts. Duplicate Finder does search your local OneDrive folder.
+- **Third-party driver downloads.** That's where driver updaters cause the most trouble. CPC points you to Windows Update and the maker's site.
+- **Wipe free space.** It's slow, wears SSDs, and isn't cleaning.
 
 ## Running it
 
-Just run `CPC.exe`. It asks for administrator rights (UAC) if your account is an admin. Standard users can still run it, and admin-only items are greyed out.
+Run `CPC.exe`. It asks for administrator rights (UAC) if your account is an admin. Standard users can still run it, and admin-only items are locked.
 
-Windows will show a SmartScreen "Windows protected your PC" warning the first time because the exe isn't code-signed. Click **More info** then **Run anyway**. See "Code signing" below to get rid of that.
+CPC needs the Microsoft Edge WebView2 Runtime. It's built into Windows 11 and updated Windows 10. If it's missing, CPC opens Microsoft's download page.
+
+Windows shows a SmartScreen warning the first time because the exe isn't code-signed. Click **More info** then **Run anyway**.
 
 ### Scheduled or remote cleaning
 
-`CPC.exe /auto` runs a clean with no window, using the items last ticked in the app (or the Recommended set if it's never been opened). Anything whose program is open at the time is skipped. It writes the same log and exits with 0 on success, 1 if some items errored.
-
-Weekly clean at 3 AM Sunday, from an admin command prompt:
-
-```
-schtasks /create /tn "CPC weekly clean" /tr "\"C:\Tools\CPC.exe\" /auto" /sc weekly /d SUN /st 03:00 /rl highest
-```
-
-This also works from an RMM tool or remote shell.
-
-Settings live in `%LOCALAPPDATA%\CredencePCCleaner\settings.json`.
+Turn on **Settings > Automatic cleaning** for a weekly clean. Or run `CPC.exe /auto` yourself, from Task Scheduler, a script or an RMM tool. It cleans the items last ticked in Custom Clean, or the Recommended set if it's never been opened. It skips anything whose program is open, honors the never-clean folders, writes a log, and exits with 0 on success.
 
 ## Building
 
-You need Go 1.24 or newer. Go builds the Windows exe from Windows, Mac or Linux. Nothing else is needed.
-
-Windows (PowerShell):
+You need Go 1.24 or newer. Go builds the Windows exe from Windows, Mac or Linux.
 
 ```
-.\build.ps1
+./build.sh        # Mac or Linux
+.\build.ps1       # Windows PowerShell
 ```
 
-Mac or Linux:
+Output goes to `dist\CPC.exe` and `dist\CPC-arm64.exe`.
 
-```
-./build.sh
-```
+The interface is `web/index.html`, embedded into the exe. To work on it in a normal browser, load `web/dev/mock.js` first. It fakes the backend.
 
-Output goes to `dist\CPC.exe` (64-bit Intel/AMD) and `dist\CPC-arm64.exe` (Windows on ARM).
-
-The icon, manifest and version info are pre-built into `rsrc_windows_*.syso`. To change them, edit `winres/winres.json` or the icon PNGs and run:
+The icon, manifest and version info are pre-built into `rsrc_windows_*.syso`. To change them, edit `winres/winres.json` and run:
 
 ```
 go install github.com/tc-hib/go-winres@latest
 go-winres make --in winres/winres.json --arch amd64,arm64
 ```
 
-Tests run anywhere with `go test ./...`.
+## Testing
 
-GitHub Actions builds both exes on every push that touches `cpc/`. Download them from the run's **Artifacts** section.
+- `go test ./...` runs the unit tests anywhere.
+- The **CPC Windows test** GitHub workflow runs on a real Windows machine. It runs the unit tests natively, cleans planted junk with `/auto`, and then drives the actual window through UI Automation. That covers Health Check, scan, clean and confirm, registry scan, fix and undo, Duplicate Finder, Startup Manager tabs, Software Updater, Driver Check, the weekly schedule switch, and Help.
+- The **CPC build** workflow produces the exes as a downloadable artifact on every push.
 
 ## Code signing
 
-Unsigned exes trigger SmartScreen and some antivirus tools are suspicious of anything that deletes files in bulk. If CPC goes out to client or customer PCs, sign it. An OV code signing certificate runs roughly $200 to $400 a year. Azure Trusted Signing is cheaper if you qualify. Then:
+Unsigned exes trigger SmartScreen, and some antivirus tools are wary of anything that deletes files in bulk. If CPC goes out to client PCs, sign it. An OV code signing certificate runs about $200 to $400 a year. Azure Trusted Signing is cheaper if you qualify.
 
 ```
 signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /a dist\CPC.exe
@@ -93,11 +86,17 @@ signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /a dist\CP
 
 | Path | What's in it |
 | --- | --- |
+| `web/index.html` | The whole interface |
+| `api.go`, `api_tools.go` | Functions the interface calls, and the events it receives |
+| `main_windows.go` | Creates the WebView2 window |
+| `auto_windows.go` | `/auto` mode |
 | `internal/clean` | Cleaning engine, safety checks, and the list of clean targets |
-| `internal/startup` | Startup items and the Task Manager compatible enable/disable |
-| `internal/programs` | Installed programs and uninstall launching |
-| `internal/settings` | Saved selection and clean logs |
-| `internal/sysutil` | Win32 calls: elevation, Recycle Bin, DNS flush, process list |
-| `*_windows.go` | The window and its three tabs, plus `/auto` mode |
+| `internal/regclean` | Registry scan, backup, fix and restore |
+| `internal/dupes` | Duplicate Finder |
+| `internal/systools` | Scheduled tasks, services, drivers, winget |
+| `internal/startup` | Startup apps, compatible with Task Manager |
+| `internal/programs` | Installed programs and uninstall |
+| `internal/settings` | Saved choices and logs |
+| `internal/sysutil` | Win32 calls |
 
-To add a new clean target, add an entry to `internal/clean/targets.go`. The tests check every target for obvious mistakes like a missing description or an unfiltered rule on a whole user folder.
+To add a clean item, add it to `internal/clean/targets.go`. The tests catch common mistakes, like a missing description or a risky item that's on by default.
