@@ -53,7 +53,6 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         ui = Ui(this, Palette.of(this))
         val p = ui.p
-        goEdgeToEdge(p.night)
 
         junk = JunkScreen(this)
         apps = AppsScreen(this)
@@ -97,6 +96,9 @@ class MainActivity : Activity() {
             insets
         }
         setContentView(root)
+        // Must run after setContentView: the window's decor view (and its
+        // insets controller) doesn't exist before that and Android crashes.
+        goEdgeToEdge(p.night)
         show(savedInstanceState?.getInt("tab") ?: 0)
     }
 
