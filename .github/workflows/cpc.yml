@@ -1,0 +1,36 @@
+name: CPC build
+
+on:
+  push:
+    paths:
+      - "cpc/**"
+      - ".github/workflows/cpc.yml"
+  pull_request:
+    paths:
+      - "cpc/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cpc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cpc/go.mod
+          cache-dependency-path: cpc/go.sum
+      - name: Vet
+        run: |
+          go vet ./...
+          GOOS=windows go vet ./...
+      - name: Test and build
+        run: ./build.sh "1.0.${{ github.run_number }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CPC
+          path: |
+            cpc/dist/CPC.exe
+            cpc/dist/CPC-arm64.exe
