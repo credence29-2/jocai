@@ -203,3 +203,4 @@ if ($gui.HasExited) { Fail "CPC crashed during the test" } else { Pass "CPC stil
 
 if ($failed) { Write-Host "SMOKE TEST FAILED:"; $failures | ForEach-Object { Write-Host " - $_" }; exit 1 }
 Write-Host "SMOKE TEST PASSED"
+exit 0
