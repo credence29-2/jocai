@@ -299,3 +299,23 @@ func TestShallowRules(t *testing.T) {
 		t.Fatal("matchesEverything wrong")
 	}
 }
+
+func TestExcludedFoldersAreNeverCleaned(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "temp")
+	write(t, filepath.Join(root, "junk.tmp"), 5, 0)
+	write(t, filepath.Join(root, "Keep", "important.dat"), 5, 0)
+	write(t, filepath.Join(root, "KeepMore", "x.dat"), 5, 0) // prefix match must not catch this
+	e := NewEngine()
+	e.Exclude = []string{filepath.Join(root, "keep")} // different case on purpose
+	c := e.Clean(context.Background(), &Target{Rules: []Rule{{Root: root, Recursive: true}}}, nil, nil)
+	if c.Files != 2 {
+		t.Fatalf("clean = %+v, want 2 files", c)
+	}
+	if !exists(filepath.Join(root, "Keep", "important.dat")) {
+		t.Fatal("excluded folder was cleaned")
+	}
+	if exists(filepath.Join(root, "KeepMore", "x.dat")) {
+		t.Fatal("folder that only shares a prefix should still be cleaned")
+	}
+}

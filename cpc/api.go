@@ -70,7 +70,60 @@ func newAPI(dataDir string, elevated bool, emit func(string, any)) *api {
 	}
 	a.eng = clean.NewEngine()
 	a.eng.Elevated = elevated
+	a.eng.Exclude = append([]string(nil), a.cfg.Exclude...)
 	return a
+}
+
+// Exclusions returns the folders the cleaner never touches.
+func (a *api) Exclusions() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cfg.Exclude == nil {
+		return []string{}
+	}
+	return append([]string(nil), a.cfg.Exclude...)
+}
+
+// AddExclusion asks for a folder and adds it to the never-clean list.
+func (a *api) AddExclusion() ([]string, error) {
+	if a.busy() {
+		return a.Exclusions(), errors.New("Wait for the current clean to finish.")
+	}
+	f := sysutil.PickFolder(a.hwnd, "Choose a folder CPC should never clean")
+	if f == "" {
+		return a.Exclusions(), nil
+	}
+	a.mu.Lock()
+	for _, x := range a.cfg.Exclude {
+		if strings.EqualFold(x, f) {
+			a.mu.Unlock()
+			return a.Exclusions(), nil
+		}
+	}
+	a.cfg.Exclude = append(a.cfg.Exclude, f)
+	a.eng.Exclude = append([]string(nil), a.cfg.Exclude...)
+	err := settings.Save(a.dataDir, a.cfg)
+	a.mu.Unlock()
+	return a.Exclusions(), err
+}
+
+// RemoveExclusion takes a folder off the never-clean list.
+func (a *api) RemoveExclusion(folder string) ([]string, error) {
+	if a.busy() {
+		return a.Exclusions(), errors.New("Wait for the current clean to finish.")
+	}
+	a.mu.Lock()
+	var keep []string
+	for _, x := range a.cfg.Exclude {
+		if !strings.EqualFold(x, folder) {
+			keep = append(keep, x)
+		}
+	}
+	a.cfg.Exclude = keep
+	a.eng.Exclude = append([]string(nil), keep...)
+	err := settings.Save(a.dataDir, a.cfg)
+	a.mu.Unlock()
+	return a.Exclusions(), err
 }
 
 // ---- general -------------------------------------------------------------
@@ -175,7 +228,7 @@ func (a *api) pick(ids []string) []*clean.Target {
 
 // OpenApps lists programs that are open and would stop a full clean.
 func (a *api) OpenApps(ids []string) []string {
-	var names []string
+	names := []string{} // never nil: the page expects a list
 	for _, p := range clean.OpenProcesses(a.pick(ids), sysutil.RunningProcesses()) {
 		names = append(names, friendlyProcess(p))
 	}

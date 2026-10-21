@@ -545,7 +545,7 @@ document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
   renderPicker();
   if (!S.run) renderResults();
 });
-$("#btnConfigure").onclick = () => show("settings");
+$("#btnConfigure").onclick = () => { show("settings"); setTimeout(() => { const x = $("#exclAdd"); if (x) x.scrollIntoView({ block: "center" }); }, 200); };
 let saveTimer;
 function selectionChanged() {
   renderPicker();
@@ -687,7 +687,7 @@ async function startRun(owner, mode, ids) {
   if (!ids.length) { toast("Tick at least one item first.", true); return; }
   if (mode === "clean") {
     let open = [];
-    try { open = await api.OpenApps(ids); } catch (e) {}
+    try { open = (await api.OpenApps(ids)) || []; } catch (e) { open = []; }
     const warn = open.length ? `<div class="warnbox">${esc(open.join(", "))} ${open.length === 1 ? "is" : "are"} open. Close ${open.length === 1 ? "it" : "them"} first for a full clean, or files in use will be skipped.</div>` : "";
     const ok = await confirmBox("Clean selected items?", `CPC will permanently delete files from ${ids.length} item${ids.length === 1 ? "" : "s"}. This can't be undone.${warn}`, "Clean", true);
     if (!ok) return;
@@ -1137,6 +1137,10 @@ async function renderSettings() {
         <input type="time" id="schedAt" value="12:00" aria-label="Time">
         <span class="muted">${sc.enabled ? "On. Next run: " + esc(sc.nextRun || "scheduled") : (admin ? "Off" : "Restart CPC as administrator to turn this on.")}</span></div>
       <p class="dim" style="margin-top:10px;font-size:12px">The PC needs to be on at that time. Windows runs it later if it was off or asleep.</p></div>
+    <div class="card"><div class="row"><div class="grow"><h3>Never clean these folders</h3>
+      <p>Custom Clean, Health Check and automatic cleaning skip these folders and everything inside them.</p></div>
+      <button class="btn small" id="exclAdd">Add folder</button></div>
+      <div class="list" style="margin-top:12px" id="exclList"></div></div>
     <div class="card"><div class="row"><div class="grow"><h3>Cleaning logs</h3><p>Every clean records each file it deleted. The last 30 logs are kept.</p></div>
       <button class="btn small" id="openLogs">Open logs folder</button></div></div>
     <div class="card"><h3>What CPC never touches</h3>
@@ -1144,6 +1148,15 @@ async function renderSettings() {
     <div class="card"><div class="row"><div class="grow"><h3>About</h3>
       <p>${esc(S.info.app)} ${esc(S.info.version)}. ${admin ? "Running as administrator." : "Not running as administrator, so system items are locked."}</p></div>
       ${admin ? "" : '<button class="btn small" id="setAdmin">Restart as administrator</button>'}</div></div>`;
+  const drawExcl = list => {
+    $("#exclList").innerHTML = list.length ? list.map((f, i) => `<div class="lrow"><div class="main"><b style="font-weight:400">${esc(f)}</b></div><button class="btn small ghost" data-rmx="${i}">Remove</button></div>`).join("")
+      : '<div class="lrow"><div class="main muted">No folders excluded.</div></div>';
+    document.querySelectorAll("[data-rmx]").forEach(b => b.onclick = async () => {
+      try { drawExcl(await api.RemoveExclusion(list[+b.dataset.rmx])); } catch (e) { toast(errText(e), true); }
+    });
+  };
+  try { drawExcl(await api.Exclusions()); } catch (e) { drawExcl([]); }
+  $("#exclAdd").onclick = async () => { try { drawExcl(await api.AddExclusion()); } catch (e) { toast(errText(e), true); } };
   $("#openLogs").onclick = () => api.OpenLogs().catch(e => toast("No logs yet. Run a clean first.", true));
   const sa = $("#setAdmin"); if (sa) sa.onclick = restartAdmin;
   $("#schedOn").onchange = async e => {

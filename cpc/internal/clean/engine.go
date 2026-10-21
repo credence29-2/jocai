@@ -79,6 +79,8 @@ type Engine struct {
 	Now func() time.Time
 	// Elevated tells the engine whether Admin rules can run.
 	Elevated bool
+	// Exclude lists folders that are never cleaned, whatever the rules say.
+	Exclude []string
 	// remove is overridable for tests.
 	remove func(string) error
 }
@@ -247,6 +249,12 @@ func (e *Engine) visit(ctx context.Context, r Rule, done *[]os.FileInfo, prog Pr
 				}
 				return nil
 			}
+			if e.excluded(path) {
+				if d.IsDir() {
+					return fs.SkipDir
+				}
+				return nil
+			}
 			if d.IsDir() {
 				if path == root {
 					return nil
@@ -349,6 +357,21 @@ func (e *Engine) Clean(ctx context.Context, t *Target, prog Progress, logf func(
 		}
 	}
 	return res
+}
+
+// excluded reports whether p is one of the excluded folders or inside one.
+func (e *Engine) excluded(p string) bool {
+	lp := strings.ToLower(filepath.Clean(p))
+	for _, x := range e.Exclude {
+		lx := strings.ToLower(filepath.Clean(x))
+		if lx == "" || lx == "." {
+			continue
+		}
+		if lp == lx || strings.HasPrefix(lp, strings.TrimRight(lx, `\/`)+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
 }
 
 func sameAsAny(fi os.FileInfo, list []os.FileInfo) bool {

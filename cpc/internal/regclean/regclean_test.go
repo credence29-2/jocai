@@ -82,3 +82,20 @@ func TestCategoriesUnique(t *testing.T) {
 		seen[c.ID] = true
 	}
 }
+
+func TestWow64Variants(t *testing.T) {
+	v := wow64Variants(`C:\Windows\system32\VsGraphicsHelper.dll`)
+	if len(v) != 3 || v[1] != `C:\Windows\SysWOW64\VsGraphicsHelper.dll` || v[2] != `C:\Windows\Sysnative\VsGraphicsHelper.dll` {
+		t.Fatalf("variants = %v", v)
+	}
+	if len(wow64Variants(`C:\Program Files\App\a.dll`)) != 1 {
+		t.Fatal("non-system paths should have no variants")
+	}
+}
+
+func TestUnderWindows(t *testing.T) {
+	t.Setenv("SystemRoot", `C:\Windows`)
+	if !UnderWindows(`C:\WINDOWS\system32\MuxSvcHost.exe`) || UnderWindows(`C:\Windows.old\x.exe`) || UnderWindows(`C:\Program Files\x.exe`) {
+		t.Fatal("UnderWindows wrong")
+	}
+}

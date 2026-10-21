@@ -17,6 +17,8 @@ type Settings struct {
 	// Selected maps target IDs to whether they are ticked. Targets not in the
 	// map fall back to their default.
 	Selected map[string]bool `json:"selected"`
+	// Exclude lists folders the cleaner must never touch.
+	Exclude []string `json:"exclude,omitempty"`
 }
 
 // Dir returns CPC's data folder, creating it if needed.

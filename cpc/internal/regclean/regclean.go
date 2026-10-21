@@ -74,7 +74,39 @@ type fs interface {
 
 type realFS struct{}
 
-func (realFS) Exists(p string) bool { _, err := os.Stat(p); return err == nil || !os.IsNotExist(err) }
+func (realFS) Exists(p string) bool {
+	for _, c := range wow64Variants(p) {
+		if _, err := os.Stat(c); err == nil || !os.IsNotExist(err) {
+			return true
+		}
+	}
+	return false
+}
+
+// wow64Variants returns p plus the folders 64-bit Windows may really mean
+// by it. A 32-bit program's "C:\Windows\System32" is actually SysWOW64.
+func wow64Variants(p string) []string {
+	out := []string{p}
+	lower := strings.ToLower(p)
+	for _, pair := range [][2]string{{`\system32\`, `\SysWOW64\`}, {`\system32\`, `\Sysnative\`}, {`\syswow64\`, `\System32\`}} {
+		if i := strings.Index(lower, pair[0]); i >= 0 {
+			out = append(out, p[:i]+pair[1]+p[i+len(pair[0]):])
+		}
+	}
+	return out
+}
+
+// UnderWindows reports whether p is inside the Windows folder. Missing
+// files there usually belong to optional Windows features, so several
+// categories leave them alone.
+func UnderWindows(p string) bool {
+	root := os.Getenv("SystemRoot")
+	if root == "" {
+		root = `C:\Windows`
+	}
+	lp, lr := strings.ToLower(p), strings.ToLower(strings.TrimRight(root, `\`))
+	return strings.HasPrefix(lp, lr+`\`)
+}
 func (realFS) DriveExists(root string) bool {
 	_, err := os.Stat(root)
 	return err == nil

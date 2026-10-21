@@ -69,6 +69,9 @@
     cpcRegBackups: async () => [{ name: "registry-x", when: "Oct 21, 2026 6:02 PM", count: 2 }],
     cpcRegRestore: async () => null, cpcOpenBackups: async () => null,
     cpcOpenLogs: async () => null,
+    cpcExclusions: async () => (window.__excl = window.__excl || ["C:\\Users\\Jacob\\AppData\\Local\\Temp\\POS-Backups"]),
+    cpcAddExclusion: async () => (window.__excl.push("D:\\Keep"), window.__excl),
+    cpcRemoveExclusion: async f => (window.__excl = window.__excl.filter(x => x !== f)),
     cpcTasks: async () => later([
       { name: "GoogleUpdateTaskMachineUA", path: "\\", state: "Ready", author: "Google LLC", action: "C:\\Program Files (x86)\\Google\\Update\\GoogleUpdate.exe /ua", enabled: true },
       { name: "Adobe Acrobat Update Task", path: "\\", state: "Disabled", author: "Adobe Systems", action: "C:\\Program Files (x86)\\Common Files\\Adobe\\ARM\\1.0\\AdobeARM.exe", enabled: false }]),

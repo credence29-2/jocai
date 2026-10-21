@@ -104,7 +104,7 @@ func Scan(cats []string, elevated bool) []Issue {
 			for _, base := range []string{`SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths`, `SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths`} {
 				for _, sk := range subkeys(r, base) {
 					p := base + `\` + sk
-					if path, missing := MissingPath(getString(r, p, ""), s.f); missing {
+					if path, missing := MissingPath(getString(r, p, ""), s.f); missing && !UnderWindows(path) {
 						s.add("apppaths", full(r, p), "", true, false, "Points to missing "+path)
 					}
 				}
@@ -173,7 +173,7 @@ func Scan(cats []string, elevated bool) []Issue {
 	if want["shareddlls"] && elevated {
 		for _, p := range []string{`SOFTWARE\Microsoft\Windows\CurrentVersion\SharedDLLs`, `SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\SharedDLLs`} {
 			for _, n := range valueNames(hklm, p) {
-				if path, missing := MissingPath(n, s.f); missing {
+				if path, missing := MissingPath(n, s.f); missing && !UnderWindows(path) {
 					s.add("shareddlls", full(hklm, p), n, false, false, path+" is gone")
 				}
 			}
@@ -194,7 +194,7 @@ func Scan(cats []string, elevated bool) []Issue {
 					if name == "" || data == "" {
 						return
 					}
-					if path, missing := MissingPath(filepath.Join(strings.TrimSpace(data), name), s.f); missing {
+					if path, missing := MissingPath(filepath.Join(strings.TrimSpace(data), name), s.f); missing && !UnderWindows(path) {
 						s.add("help", full(r, p), name, false, false, path+" is gone")
 					}
 				})
@@ -223,7 +223,7 @@ func Scan(cats []string, elevated bool) []Issue {
 		p := `SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules`
 		eachString(hklm, p, func(name, data string) {
 			if app := FirewallApp(data); app != "" && !strings.EqualFold(app, "system") {
-				if path, missing := MissingPath(app, s.f); missing {
+				if path, missing := MissingPath(app, s.f); missing && !UnderWindows(path) {
 					s.add("firewall", full(hklm, p), name, false, false, "Rule for "+path+", which is gone")
 				}
 			}

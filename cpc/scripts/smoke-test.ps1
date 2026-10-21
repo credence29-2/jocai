@@ -5,7 +5,8 @@ $ErrorActionPreference = "Stop"
 $exe = (Resolve-Path "dist\CPC.exe").Path
 $shots = New-Item -ItemType Directory -Force -Path "smoke"
 $failed = $false
-function Fail($msg) { Write-Host "FAIL: $msg" -ForegroundColor Red; $script:failed = $true }
+$failures = New-Object System.Collections.Generic.List[string]
+function Fail($msg) { Write-Host "FAIL: $msg" -ForegroundColor Red; $script:failed = $true; $script:failures.Add($msg.Substring(0, [Math]::Min(300, $msg.Length))) }
 function Pass($msg) { Write-Host "PASS: $msg" -ForegroundColor Green }
 
 function Seed {
@@ -40,7 +41,7 @@ $proc = Start-Process $exe -ArgumentList "/auto" -PassThru -Wait
 if ($proc.ExitCode -eq 0) { Pass "/auto exit code 0" } else { Fail "/auto exit code $($proc.ExitCode)" }
 Check-Cleaned $p "/auto"
 $log = Get-ChildItem "$env:LOCALAPPDATA\CredencePCCleaner\logs\*.log" | Sort-Object LastWriteTime | Select-Object -Last 1
-Write-Host "----- /auto log -----"; Get-Content $log.FullName | Select-Object -First 60; Write-Host "---------------------"
+Write-Host "----- /auto log (summary lines) -----"; Get-Content $log.FullName | Where-Object { $_ -notmatch '^deleted ' } | Select-Object -First 80; Write-Host "---------------------"
 
 # ---------------------------------------------------------------- GUI
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
@@ -191,5 +192,5 @@ if ($LASTEXITCODE -ne 0) { Pass "weekly scheduled task removed" } else { Fail "s
 
 if ($gui.HasExited) { Fail "CPC crashed during the test" } else { Pass "CPC still running at the end"; Stop-Process -Id $gui.Id }
 
-if ($failed) { Write-Host "SMOKE TEST FAILED"; exit 1 }
+if ($failed) { Write-Host "SMOKE TEST FAILED:"; $failures | ForEach-Object { Write-Host " - $_" }; exit 1 }
 Write-Host "SMOKE TEST PASSED"

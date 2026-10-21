@@ -40,6 +40,7 @@ func runAuto() int {
 
 	eng := clean.NewEngine()
 	eng.Elevated = elevated
+	eng.Exclude = cfg.Exclude
 	sum := clean.Run(context.Background(), eng, targets, true, clean.Hooks{
 		OnStart: func(_ int, t *clean.Target) { log.Printf(""); log.Printf("[%s]", t.Name) },
 		Deleted: func(p string) { log.Printf("deleted %s", p) },

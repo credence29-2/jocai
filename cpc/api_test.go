@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 
 	"github.com/credence29-2/jocai/cpc/internal/clean"
@@ -212,5 +213,35 @@ func TestDupeScanEvents(t *testing.T) {
 	ids := []int{r.Groups[0].Files[0].ID, r.Groups[0].Files[1].ID}
 	if err := a.DupeDelete(ids); err == nil {
 		t.Fatal("deleting every copy must be refused")
+	}
+}
+
+func TestExclusionsPersistAndApply(t *testing.T) {
+	dir := t.TempDir()
+	a := newAPI(dir, false, func(string, any) {})
+	a.cfg.Exclude = []string{"/keep/me"}
+	if _, err := a.RemoveExclusion("/KEEP/ME"); err != nil {
+		t.Fatal(err)
+	}
+	if len(a.Exclusions()) != 0 || len(a.eng.Exclude) != 0 {
+		t.Fatal("exclusion not removed (case-insensitive)")
+	}
+	b := newAPI(dir, false, func(string, any) {})
+	if len(b.Exclusions()) != 0 {
+		t.Fatal("removal not saved")
+	}
+}
+
+// The page reads .length on these, so they must encode as [] not null.
+func TestListsNeverEncodeAsNull(t *testing.T) {
+	a := newAPI(t.TempDir(), false, func(string, any) {})
+	for name, v := range map[string]any{
+		"OpenApps": a.OpenApps(nil), "Exclusions": a.Exclusions(), "RegBackups": a.RegBackups(),
+		"DupeDefaults": a.DupeDefaults(), "Targets": a.Targets(), "RegCategories": a.RegCategories(),
+	} {
+		b, _ := json.Marshal(v)
+		if string(b) == "null" {
+			t.Errorf("%s encodes as null", name)
+		}
 	}
 }
