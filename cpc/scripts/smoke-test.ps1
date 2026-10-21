@@ -119,6 +119,7 @@ Expect $win "Clear your browsing data|Google Chrome" "Browser tab rendered" | Ou
 Click $win "Registry" | Out-Null
 # Plant a startup entry that points to a program that doesn't exist.
 $runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+if (-not (Test-Path $runKey)) { New-Item -Path $runKey | Out-Null }
 New-ItemProperty -Path $runKey -Name "CPCTestBroken" -Value '"C:\Program Files\CPCMissingApp\gone.exe" /tray' -PropertyType String -Force | Out-Null
 if (Expect $win "Fix issues in the Windows Registry" "Registry tab rendered") {
     Click $win "Select all" | Out-Null
