@@ -1144,7 +1144,7 @@ async function renderSettings() {
     <div class="card"><div class="row"><div class="grow"><h3>Cleaning logs</h3><p>Every clean records each file it deleted. The last 30 logs are kept.</p></div>
       <button class="btn small" id="openLogs">Open logs folder</button></div></div>
     <div class="card"><h3>What CPC never touches</h3>
-      <p>Your documents, photos, bookmarks and saved passwords. Firefox history, because Firefox keeps it in the same file as bookmarks. Anything newer than 24 hours in temp folders. CPC also has no registry cleaner on purpose. Registry cleaning doesn't speed Windows up and is the most common way cleaners break PCs.</p></div>
+      <p>Your documents, photos and bookmarks. Firefox history, because Firefox keeps it in the same file as bookmarks. Anything newer than 24 hours in temp folders. Windows' own scheduled tasks and services, and COM and ActiveX registry entries. Cookies, history and saved passwords are only cleaned if you tick them, and every registry fix is backed up first so it can be undone.</p></div>
     <div class="card"><div class="row"><div class="grow"><h3>About</h3>
       <p>${esc(S.info.app)} ${esc(S.info.version)}. ${admin ? "Running as administrator." : "Not running as administrator, so system items are locked."}</p></div>
       ${admin ? "" : '<button class="btn small" id="setAdmin">Restart as administrator</button>'}</div></div>`;
