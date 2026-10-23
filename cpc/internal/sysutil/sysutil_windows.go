@@ -2,12 +2,14 @@
 package sysutil
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -352,10 +354,20 @@ func RecycleFiles(paths []string) error {
 
 // PowerShellJSON runs a PowerShell script that writes JSON and decodes it.
 func PowerShellJSON(script string, out any) error {
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command",
+	return PowerShellJSONTimeout(script, 2*time.Minute, out)
+}
+
+// PowerShellJSONTimeout is PowerShellJSON with a time limit.
+func PowerShellJSONTimeout(script string, limit time.Duration, out any) error {
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command",
 		"[Console]::OutputEncoding=[Text.Encoding]::UTF8; "+script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	b, err := cmd.Output()
+	if ctx.Err() != nil {
+		return errors.New("timed out")
+	}
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
 			return fmt.Errorf("%v: %s", err, strings.TrimSpace(string(ee.Stderr)))

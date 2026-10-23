@@ -2,7 +2,10 @@
 
 package sysutil
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 var errNotWindows = errors.New("only supported on Windows")
 
@@ -27,6 +30,7 @@ func ClearClipboard() error                       { return errNotWindows }
 func RunHidden(string, ...string) (string, error) { return "", errNotWindows }
 func RemoveProtectedTree(string) error            { return errNotWindows }
 
-func PickFolder(uintptr, string) string { return "" }
-func RecycleFiles([]string) error       { return errNotWindows }
-func PowerShellJSON(string, any) error  { return errNotWindows }
+func PickFolder(uintptr, string) string                      { return "" }
+func RecycleFiles([]string) error                            { return errNotWindows }
+func PowerShellJSON(string, any) error                       { return errNotWindows }
+func PowerShellJSONTimeout(string, time.Duration, any) error { return errNotWindows }

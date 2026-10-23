@@ -21,6 +21,7 @@ type tools struct {
 	dupeGroups []dupes.Group
 	dupeCancel context.CancelFunc
 	updBusy    bool
+	drvBusy    bool
 }
 
 // async runs slow work off the UI thread. The page gets an "async" event
@@ -71,25 +72,133 @@ func (a *api) SetService(name, mode string) int {
 	})
 }
 
-// ---- Driver Check ----------------------------------------------------------
+// ---- Driver Updater ----------------------------------------------------------
 
 type driversDTO struct {
-	Devices []systools.Device `json:"devices"`
-	Drivers []systools.Driver `json:"drivers"`
+	Updates   []systools.DriverUpdate `json:"updates"`
+	Ignored   []systools.DriverUpdate `json:"ignored"`
+	Installed []systools.Driver       `json:"installed"`
+	Devices   []systools.Device       `json:"devices"`
+	Links     []systools.MakerLink    `json:"links"`
+	WUError   string                  `json:"wuError,omitempty"`
 }
 
+// Drivers checks Windows Update for driver updates and lists installed
+// drivers and problem devices. Searching Windows Update can take a minute.
 func (a *api) Drivers() int {
 	return a.async(func() (any, error) {
-		d, err1 := systools.ProblemDevices()
-		k, err2 := systools.KeyDrivers()
-		if d == nil {
-			d = []systools.Device{}
+		var res driversDTO
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			up, ign, err := systools.DriverUpdates()
+			res.Updates, res.Ignored = up, ign
+			if err != nil {
+				res.WUError = err.Error()
+			}
+		}()
+		inst, _ := systools.InstalledDrivers()
+		dev, _ := systools.ProblemDevices()
+		maker := systools.SystemMaker()
+		wg.Wait()
+		systools.MatchUpdates(res.Updates, inst)
+		systools.MatchUpdates(res.Ignored, inst)
+		res.Installed, res.Devices = inst, dev
+		res.Links = systools.MakerLinks(maker, inst)
+		if res.Updates == nil {
+			res.Updates = []systools.DriverUpdate{}
 		}
-		if k == nil {
-			k = []systools.Driver{}
+		if res.Ignored == nil {
+			res.Ignored = []systools.DriverUpdate{}
 		}
-		return driversDTO{Devices: d, Drivers: k}, errors.Join(err1, err2)
+		if res.Installed == nil {
+			res.Installed = []systools.Driver{}
+		}
+		if res.Devices == nil {
+			res.Devices = []systools.Device{}
+		}
+		if res.Links == nil {
+			res.Links = []systools.MakerLink{}
+		}
+		return res, nil
 	})
+}
+
+// InstallDrivers installs the chosen driver updates one at a time,
+// optionally after making a restore point. Progress arrives as
+// "drvProgress" and the end as "drvFinished".
+func (a *api) InstallDrivers(ids []string, restorePoint bool) error {
+	if !a.elevated {
+		return errors.New("Restart CPC as administrator to install drivers.")
+	}
+	if len(ids) == 0 {
+		return errors.New("Tick at least one driver first.")
+	}
+	for _, id := range ids {
+		if !systools.ValidUpdateID(id) {
+			return errors.New("unexpected update id")
+		}
+	}
+	a.t.mu.Lock()
+	if a.t.drvBusy {
+		a.t.mu.Unlock()
+		return errors.New("Drivers are already being installed.")
+	}
+	a.t.drvBusy = true
+	a.t.mu.Unlock()
+	go func() {
+		defer func() { a.t.mu.Lock(); a.t.drvBusy = false; a.t.mu.Unlock() }()
+		fin := map[string]any{"installed": 0, "failed": 0, "reboot": false}
+		if restorePoint {
+			a.emit("drvProgress", map[string]any{"stage": "restore"})
+			note, err := systools.RestorePoint("Before Credence PC Cleaner driver update")
+			if err != nil {
+				fin["error"] = err.Error() + ". No drivers were installed. Untick the restore point option to install anyway."
+				a.emit("drvFinished", fin)
+				return
+			}
+			fin["restore"] = note
+		}
+		ok, failed, reboot := 0, 0, false
+		for i, id := range ids {
+			a.emit("drvProgress", map[string]any{"stage": "installing", "id": id, "index": i, "total": len(ids)})
+			r, err := systools.InstallDriverUpdate(id)
+			p := map[string]any{"stage": "done", "id": id, "ok": r.OK, "text": r.Text, "reboot": r.Reboot}
+			if err != nil {
+				p["ok"], p["text"] = false, err.Error()
+			}
+			if p["ok"] == true {
+				ok++
+			} else {
+				failed++
+			}
+			reboot = reboot || r.Reboot
+			a.emit("drvProgress", p)
+		}
+		fin["installed"], fin["failed"], fin["reboot"] = ok, failed, reboot
+		a.emit("drvFinished", fin)
+	}()
+	return nil
+}
+
+// IgnoreDriver hides or unhides a driver update in Windows Update.
+func (a *api) IgnoreDriver(id string, ignore bool) int {
+	return a.async(func() (any, error) {
+		if !a.elevated {
+			return nil, errors.New("Restart CPC as administrator to change ignored drivers.")
+		}
+		return nil, systools.SetDriverUpdateHidden(id, ignore)
+	})
+}
+
+// OpenMakerSite opens a known manufacturer driver page.
+func (a *api) OpenMakerSite(key string) error {
+	u, ok := systools.MakerURL(key)
+	if !ok {
+		return errors.New("unknown maker")
+	}
+	return sysutil.ShellOpen(u)
 }
 
 var settingsPages = map[string]string{

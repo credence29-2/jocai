@@ -185,7 +185,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
 select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); padding: 0 10px; outline: none; }
 .loading { padding: 40px; text-align: center; color: var(--sub); }
 .page > .tabs { padding: 0 24px; }
-.tabs button[data-st] { font-size: 14px; }
+.tabs button[data-st], .tabs button[data-dt] { font-size: 14px; }
 .hero .icon-ring { width: 72px; height: 72px; display: grid; place-items: center; flex: none; }
 
 /* ---------- modal and toast ---------- */
@@ -224,7 +224,7 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
     <button data-page="dupes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/></svg>Duplicate Finder</button>
     <button data-page="startup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>Startup Manager</button>
     <button data-page="updater"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M12 8v5l3 2"/></svg>Software Updater</button>
-    <button data-page="drivers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>Driver Check</button>
+    <button data-page="drivers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>Driver Updater</button>
   </nav>
   <div class="side-spacer"></div>
   <nav class="nav">
@@ -319,11 +319,22 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
     <div class="page-body" id="updBody"></div>
   </section>
 
-  <!-- Driver Check -->
+  <!-- Driver Updater -->
   <section class="page" id="page-drivers">
-    <div class="page-head"><div class="grow"><h1>Driver Check</h1><p>Hardware with driver problems, and how old your most important drivers are.</p></div>
-      <button class="btn small" id="drvRefresh">Check again</button></div>
-    <div class="page-body stack" id="drvBody"></div>
+    <div class="page-head"><div class="grow"><h1>Driver Updater</h1></div></div>
+    <div class="tabs" id="drvTabs">
+      <button data-dt="updates" class="active">Updates available</button>
+      <button data-dt="installed">Installed drivers</button>
+      <button data-dt="ignored">Ignored</button>
+    </div>
+    <div class="page-body" id="drvBody" style="padding-top:18px"></div>
+    <div class="actionbar">
+      <button class="btn" id="drvFix">Fix a problem</button>
+      <span class="grow"></span>
+      <span class="count" id="drvSel" style="text-align:right"></span>
+      <button class="btn" id="drvRefresh">Scan again</button>
+      <button class="btn primary" id="drvGo">Update selected</button>
+    </div>
   </section>
 
   <!-- Help -->
@@ -722,6 +733,7 @@ window.cpcEvent = (name, p) => {
   }
   if (name.startsWith("dupe")) return dupeEvent(name, p);
   if (name.startsWith("upd")) return updEvent(name, p);
+  if (name.startsWith("drv")) return drvEvent(name, p);
   if (name === "regScanned") {
     S.reg.busy = false; S.reg.issues = p; S.reg.picked = new Set(p.map(i => i.id));
     renderPicker(); renderResults(); return;
@@ -1071,33 +1083,181 @@ function updEvent(name, p) {
 }
 $("#updRefresh").onclick = loadUpdates;
 
-// ---------------------------------------------------------------- driver check
+// ---------------------------------------------------------------- driver updater
+const DR = { tab: "updates", picked: new Set(), status: {}, busy: false, scannedAt: null, reboot: false, closed: new Set() };
 async function loadDrivers() {
-  $("#drvBody").innerHTML = '<div class="loading">Checking your hardware...</div>';
-  try { S.drivers = await slow(api.Drivers()); } catch (e) { S.drivers = { devices: [], drivers: [], error: errText(e) }; }
+  DR.loading = true; DR.status = {}; renderDrivers();
+  try { S.drivers = await slow(api.Drivers()); } catch (e) { S.drivers = { updates: [], ignored: [], installed: [], devices: [], links: [], wuError: errText(e) }; }
+  DR.loading = false; DR.scannedAt = Date.now();
+  DR.picked = new Set(S.drivers.updates.map(u => u.id));
   renderDrivers();
 }
+document.querySelectorAll("#drvTabs button").forEach(b => b.onclick = () => {
+  DR.tab = b.dataset.dt; renderDrivers();
+});
+function drvGroups(list) {
+  const groups = [];
+  for (const x of list) { let g = groups.find(y => y.name === x.group); if (!g) groups.push(g = { name: x.group, items: [] }); g.items.push(x); }
+  return groups;
+}
+const drvIcons = {
+  "Audio": '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  "Bluetooth": '<path d="m7 7 10 10-5 5V2l5 5L7 17"/>',
+  "Connectivity": '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  "Graphics": '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  "Camera": '<path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/>',
+  "Storage": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 14h18M7 17h.01"/>',
+  "USB": '<path d="M12 2v16M8 6l4-4 4 4M7 12h10M7 12v3M17 12v3"/><circle cx="12" cy="20" r="2"/>',
+  "Input devices": '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
+  "Printers": '<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  "Firmware": '<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+  "System and chipset": '<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+  "Other": '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
+};
+const dicon = g => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${drvIcons[g] || drvIcons.Other}</svg>`;
+const fmtDate = d => { if (!d) return ""; const t = Date.parse(d); return isNaN(t) ? d : new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }); };
+function ago(t) { if (!t) return ""; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "a few seconds ago" : m === 1 ? "1 minute ago" : m < 60 ? m + " minutes ago" : "over an hour ago"; }
+
 function renderDrivers() {
-  const d = S.drivers, now = Date.now();
-  const age = s => s ? Math.floor((now - Date.parse(s)) / (365.25 * 864e5)) : null;
-  const classNames = { DISPLAY: "Graphics", NET: "Network", MEDIA: "Audio", BLUETOOTH: "Bluetooth", CAMERA: "Camera", IMAGE: "Camera", PRINTER: "Printer" };
-  $("#drvBody").innerHTML = `
-    <div class="card"><div class="row"><div class="grow"><h3>${d.devices.length ? d.devices.length + " device" + (d.devices.length === 1 ? " has" : "s have") + " a problem" : "No hardware problems found"}</h3>
-      <p>${d.devices.length ? "Windows reports these in Device Manager." : "Device Manager doesn't report any errors."}</p></div>
-      <button class="btn small" id="drvDM">Open Device Manager</button></div>
-      ${d.devices.length ? `<div class="list" style="margin-top:12px">${d.devices.map(x => `<div class="lrow"><div class="main"><b>${esc(x.name)}</b><small>${esc(x.problem)} (code ${x.code})</small></div><span class="chip">${esc(x.class || "Device")}</span></div>`).join("")}</div>` : ""}</div>
-    <div class="card"><div class="row"><div class="grow"><h3>Get driver updates safely</h3>
-      <p>The safest source for drivers is Windows Update, then the PC or part maker's own website. CPC doesn't download drivers from third-party sites, which is where most driver updater problems come from.</p></div></div>
-      <div class="row" style="margin-top:12px"><button class="btn primary small" id="drvOpt">Windows Update driver updates</button><button class="btn small" id="drvWU">Check for Windows updates</button></div></div>
-    <div class="card"><h3>Your key drivers</h3><p>Graphics, network, audio and Bluetooth drivers, oldest first. Very old drivers are worth checking on the maker's website.</p>
-      ${d.drivers.length ? `<div class="list" style="margin-top:12px">${d.drivers.map(x => { const a = age(x.date);
-        return `<div class="lrow"><div class="main"><b>${esc(x.device)}</b><small>${esc(x.manufacturer)} · version ${esc(x.version)}</small></div>
-          <span class="chip">${esc(classNames[x.class] || x.class)}</span>
-          <span class="meta ${a !== null && a >= 4 ? "status-warn" : ""}">${x.date ? esc(x.date) + (a !== null && a >= 4 ? " (" + a + " yrs)" : "") : ""}</span></div>`; }).join("")}</div>` : '<p class="muted" style="margin-top:8px">No driver details available.</p>'}
-      ${d.error ? `<p class="dim" style="margin-top:8px">${esc(d.error)}</p>` : ""}</div>`;
+  const d = S.drivers, el = $("#drvBody");
+  const tabs = document.querySelectorAll("#drvTabs button");
+  const n = k => d ? d[k].length : null;
+  const labels = { updates: "Updates available", installed: "Installed drivers", ignored: "Ignored" };
+  tabs.forEach(b => { b.classList.toggle("active", b.dataset.dt === DR.tab); const c = { updates: n("updates"), installed: n("installed"), ignored: n("ignored") }[b.dataset.dt]; b.textContent = labels[b.dataset.dt] + (c === null ? "" : ` (${c})`); });
+  const onUpdates = DR.tab === "updates";
+  $("#drvGo").style.display = onUpdates ? "" : "none";
+  const sel = DR.picked.size;
+  $("#drvSel").innerHTML = onUpdates ? `${sel ? sel + " selected" : "Nothing selected"}${DR.scannedAt ? `<br><span class="muted" style="font-weight:400;font-size:13px">Last scan: ${ago(DR.scannedAt)}</span>` : ""}` : (DR.scannedAt ? `<span class="muted" style="font-weight:400;font-size:13px">Last scan: ${ago(DR.scannedAt)}</span>` : "");
+  $("#drvGo").disabled = DR.busy || !sel || !S.info.elevated;
+  $("#drvGo").title = S.info.elevated ? "" : "Restart CPC as administrator to install drivers.";
+  $("#drvRefresh").disabled = DR.busy || DR.loading;
+  if (DR.loading || !d) {
+    el.innerHTML = `<div class="card hero"><div class="spinner"></div><div class="grow"><h2>Checking Windows Update for drivers...</h2>
+      <p>This is the same driver catalog Windows uses for Optional updates. It usually takes under a minute.</p></div></div>`;
+    return;
+  }
+  if (DR.tab === "installed") return renderInstalledDrivers(el, d);
+  if (DR.tab === "ignored") return renderIgnoredDrivers(el, d);
+  let html = "";
+  if (DR.reboot) html += `<div class="card" style="border-color:#6b5a2a;margin-bottom:14px"><div class="row"><div class="grow"><h3 class="status-warn">Restart to finish</h3><p>Some drivers finish installing after a restart.</p></div></div></div>`;
+  if (d.wuError) {
+    html += `<div class="card"><h3>Couldn't check Windows Update</h3><p>${esc(d.wuError)}</p><p style="margin-top:8px">Check the internet connection and that the Windows Update service isn't turned off, then click Scan again.</p></div>`;
+  } else if (!d.updates.length) {
+    html += `<div class="card hero"><div class="icon-ring" style="color:var(--good)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></div>
+      <div class="grow"><h2>Windows Update has no driver updates for this PC</h2><p>Every driver Windows Update knows about is current. Some makers only post newer drivers on their own websites, listed below.</p></div></div>`;
+  } else {
+    html += `<h2 style="margin:0 0 4px;font-size:24px"><span style="color:#f08a3c">${d.updates.length} driver${d.updates.length === 1 ? "" : "s"}</span> to update</h2>
+      <p class="muted" style="margin:0 0 14px">From Windows Update, Microsoft's catalog of tested drivers. Choose the drivers to update for fewer bugs and better security.</p>
+      <div class="list"><div class="lrow" style="background:#2b3039;font-size:13px;color:var(--sub)">
+        <input type="checkbox" class="cb" id="drvAll" aria-label="Select all drivers" ${sel === d.updates.length ? "checked" : ""} ${DR.busy ? "disabled" : ""}>
+        <div class="main">Drivers</div><span class="meta">Installed</span><span class="meta">New version</span><span class="meta">Released</span><span style="width:70px"></span></div>`;
+    for (const g of drvGroups(d.updates)) {
+      const on = g.items.filter(x => DR.picked.has(x.id)).length, open = !DR.closed.has(g.name);
+      html += `<div class="lrow" style="cursor:pointer" data-dg="${esc(g.name)}">
+        <input type="checkbox" class="cb" data-dgc="${esc(g.name)}" aria-label="${esc(g.name)}" ${on === g.items.length ? "checked" : ""} ${DR.busy ? "disabled" : ""}>
+        <div class="main" style="display:flex;align-items:center;gap:10px">${dicon(g.name)}<b>${esc(g.name)} (${g.items.length})</b></div>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="transform:rotate(${open ? 180 : 0}deg)"><path d="m6 9 6 6 6-6"/></svg></div>`;
+      if (open) html += g.items.map(u => {
+        const st = DR.status[u.id];
+        const badge = !st ? "" : st.stage === "installing" ? '<span class="chip">Installing...</span>' : st.stage === "waiting" ? '<span class="chip">Waiting</span>' : st.ok ? `<span class="chip status-good">${esc(st.text)}</span>` : `<span class="chip" style="color:var(--bad)" title="${esc(st.text)}">Failed</span>`;
+        return `<label class="lrow" style="cursor:pointer;padding-left:44px">
+          <input type="checkbox" class="cb" data-du="${esc(u.id)}" aria-label="${esc(u.model)}" ${DR.picked.has(u.id) ? "checked" : ""} ${DR.busy || (st && st.ok) ? "disabled" : ""}>
+          <div class="main"><b>${esc(u.model)}</b><small>${esc(u.provider || u.manufacturer)}${u.size ? " · " + fmtBytes(u.size) : ""}</small></div>
+          <span class="meta">${esc(u.currentVersion || "")}</span><span class="meta" style="color:var(--text)">${esc(versionOf(u))}</span><span class="meta">${esc(fmtDate(u.date))}</span>
+          <span style="width:70px;text-align:right">${badge || `<button class="link" data-ign="${esc(u.id)}" style="font-size:13px" title="Stop offering this driver">Ignore</button>`}</span></label>`;
+      }).join("");
+    }
+    html += `</div>`;
+  }
+  html += makerCard(d);
+  el.innerHTML = html;
+  const all = $("#drvAll"); if (all) all.onchange = () => { DR.picked = all.checked ? new Set(d.updates.map(u => u.id)) : new Set(); renderDrivers(); };
+  el.querySelectorAll("[data-du]").forEach(cb => cb.onchange = () => { cb.checked ? DR.picked.add(cb.dataset.du) : DR.picked.delete(cb.dataset.du); renderDrivers(); });
+  el.querySelectorAll("[data-dgc]").forEach(cb => { cb.onclick = e => e.stopPropagation(); cb.onchange = () => { d.updates.filter(u => u.group === cb.dataset.dgc).forEach(u => cb.checked ? DR.picked.add(u.id) : DR.picked.delete(u.id)); renderDrivers(); }; });
+  el.querySelectorAll("[data-dg]").forEach(r => r.onclick = e => { if (e.target.classList.contains("cb")) return; const g = r.dataset.dg; DR.closed.has(g) ? DR.closed.delete(g) : DR.closed.add(g); renderDrivers(); });
+  el.querySelectorAll("[data-ign]").forEach(b => b.onclick = e => { e.preventDefault(); ignoreDriver(b.dataset.ign, true); });
+  bindMakerLinks(el);
+}
+// Windows Update titles end with the version; the model alone doesn't carry it.
+function versionOf(u) { const m = (u.title || "").match(/(\d+(?:\.\d+){1,4})\s*$/); return m ? m[1] : ""; }
+function makerCard(d) {
+  const links = d.links || [];
+  return `<div class="card" style="margin-top:16px"><h3>Not seeing a driver here?</h3>
+    <p>CPC installs drivers only from Windows Update, so they're tested and signed for Windows. Some makers post newer versions on their own sites first. Get those straight from the maker, never from third-party download sites.</p>
+    <div class="row" style="margin-top:12px;flex-wrap:wrap">${links.map(l => `<button class="btn small" data-mk="${esc(l.key)}">${esc(l.name)}</button>`).join("")}
+    <button class="btn small ghost" data-mk="__optional">Windows optional updates</button></div></div>`;
+}
+function bindMakerLinks(el) {
+  el.querySelectorAll("[data-mk]").forEach(b => b.onclick = () => (b.dataset.mk === "__optional" ? api.OpenSettings("optionalupdates") : api.OpenMakerSite(b.dataset.mk)).catch(e => toast(errText(e), true)));
+}
+function renderInstalledDrivers(el, d) {
+  const q = (DR.q || "").toLowerCase();
+  const list = d.installed.filter(x => !q || (x.device + " " + x.provider + " " + x.manufacturer).toLowerCase().includes(q));
+  let html = `<div class="toolbar"><input class="search" id="drvSearch" placeholder="Search drivers" value="${esc(DR.q || "")}" aria-label="Search drivers"><span class="grow"></span>
+    <span class="muted">${d.installed.filter(x => !x.hasUpdate).length} up to date, ${d.installed.filter(x => x.hasUpdate).length} with an update</span></div><div class="list">`;
+  for (const g of drvGroups(list)) {
+    html += `<div class="lrow" style="background:#2b3039"><div class="main" style="display:flex;align-items:center;gap:10px">${dicon(g.name)}<b>${esc(g.name)} (${g.items.length})</b></div></div>`;
+    html += g.items.map(x => `<div class="lrow" style="padding-left:44px"><div class="main"><b>${esc(x.device)}</b><small>${esc(x.provider || x.manufacturer)}</small></div>
+      ${x.hasUpdate ? '<span class="chip" style="color:#f08a3c">Update available</span>' : ""}
+      <span class="meta">${esc(x.version)}</span><span class="meta">${esc(fmtDate(x.date))}</span></div>`).join("");
+  }
+  el.innerHTML = html + `</div>`;
+  const sb = $("#drvSearch"); sb.oninput = () => { DR.q = sb.value; const pos = sb.selectionStart; renderDrivers(); const n = $("#drvSearch"); n.focus(); n.setSelectionRange(pos, pos); };
+}
+function renderIgnoredDrivers(el, d) {
+  if (!d.ignored.length) { el.innerHTML = `<div class="card"><h3>No ignored drivers</h3><p>Click Ignore next to a driver update to stop Windows Update and CPC from offering it, for example when a newer driver causes trouble.</p></div>`; return; }
+  el.innerHTML = `<p class="muted" style="margin:0 0 12px">Windows Update won't offer these until you stop ignoring them.</p><div class="list">` + d.ignored.map(u => `
+    <div class="lrow"><div style="color:var(--sub)">${dicon(u.group)}</div><div class="main"><b>${esc(u.model)}</b><small>${esc(u.provider || u.manufacturer)} · ${esc(versionOf(u))} · ${esc(fmtDate(u.date))}</small></div>
+      <button class="btn small" data-unign="${esc(u.id)}">Stop ignoring</button></div>`).join("") + `</div>`;
+  el.querySelectorAll("[data-unign]").forEach(b => b.onclick = () => ignoreDriver(b.dataset.unign, false));
+}
+async function ignoreDriver(id, ignore) {
+  const d = S.drivers;
+  try {
+    await slow(api.IgnoreDriver(id, ignore));
+    const from = ignore ? d.updates : d.ignored, to = ignore ? d.ignored : d.updates;
+    const i = from.findIndex(u => u.id === id);
+    if (i >= 0) { to.push(from[i]); from.splice(i, 1); }
+    DR.picked.delete(id);
+    toast(ignore ? "Ignored. Windows Update won't offer it." : "Windows Update will offer it again.");
+  } catch (e) { toast(errText(e), true); }
+  renderDrivers();
+}
+$("#drvGo").onclick = async () => {
+  const ids = [...DR.picked], n = ids.length;
+  if (!n) return;
+  const ok = await confirmBox("Install " + n + " driver update" + (n === 1 ? "" : "s") + "?",
+    `Drivers come from Windows Update and install one at a time. Your screen may flicker or the network may drop for a moment while they install.
+     <label style="display:flex;gap:10px;align-items:center;margin-top:14px;color:var(--text);cursor:pointer"><input type="checkbox" class="cb" id="rpCheck" checked> Create a restore point first (recommended)</label>`, "Install");
+  if (!ok) return;
+  const rp = $("#rpCheck").checked;
+  DR.busy = true; ids.forEach(id => DR.status[id] = { stage: "waiting" }); renderDrivers();
+  try { await api.InstallDrivers(ids, rp); } catch (e) { DR.busy = false; DR.status = {}; renderDrivers(); toast(errText(e), true); }
+};
+$("#drvFix").onclick = () => {
+  const d = S.drivers;
+  const devs = d ? d.devices : [];
+  confirmBox(devs.length ? devs.length + " device" + (devs.length === 1 ? " has" : "s have") + " a problem" : "No hardware problems found",
+    (devs.length ? devs.map(x => `<div style="margin:8px 0"><b style="color:var(--text)">${esc(x.name)}</b><br>${esc(x.problem)} (code ${x.code})</div>`).join("")
+      : "Device Manager doesn't report any errors.") + `<p style="margin-top:12px"><button class="btn small" id="drvDM">Open Device Manager</button></p>`, "Close");
   $("#drvDM").onclick = () => api.OpenSettings("devicemanager").catch(e => toast(errText(e), true));
-  $("#drvOpt").onclick = () => api.OpenSettings("optionalupdates").catch(e => toast(errText(e), true));
-  $("#drvWU").onclick = () => api.OpenSettings("windowsupdate").catch(e => toast(errText(e), true));
+};
+function drvEvent(name, p) {
+  if (name === "drvProgress") {
+    if (p.stage === "restore") toast("Creating a restore point...");
+    if (p.stage === "installing") DR.status[p.id] = { stage: "installing" };
+    if (p.stage === "done") DR.status[p.id] = p;
+  }
+  if (name === "drvFinished") {
+    DR.busy = false;
+    if (p.error) { DR.status = {}; toast(p.error, true); }
+    else {
+      DR.reboot = DR.reboot || p.reboot;
+      Object.keys(DR.status).forEach(id => { if (DR.status[id].ok) DR.picked.delete(id); });
+      toast(`${p.installed} installed${p.failed ? ", " + p.failed + " failed" : ""}.${p.reboot ? " Restart to finish." : ""}${p.restore ? " " + p.restore : ""}`, p.failed > 0);
+    }
+  }
+  if (S.drivers) renderDrivers();
 }
 $("#drvRefresh").onclick = loadDrivers;
 
@@ -1111,7 +1271,7 @@ function renderHelp() {
     ["Duplicate Finder", "Finds byte-for-byte identical files and moves the extra copies to the Recycle Bin. One copy of every file is always kept."],
     ["Startup Manager", "Turns off startup apps, scheduled tasks from other programs and third-party background services. Nothing is deleted, so every change can be reversed."],
     ["Software Updater", "Uses winget, Microsoft's app installer, to update apps silently. Store apps update themselves."],
-    ["Driver Check", "Shows hardware with problems and how old your key drivers are, and points you to Windows Update for safe driver updates."],
+    ["Driver Updater", "Checks Windows Update for newer drivers and installs the ones you pick, with a restore point first. It also lists every installed driver, lets you ignore an update, and Fix a problem shows devices with errors. Some makers post newer drivers only on their own sites, and CPC links to those pages."],
     ["Automatic cleaning", "Settings can schedule a weekly clean with the items you ticked in Custom Clean. It skips apps that are open. You can also run CPC.exe /auto from a script or RMM tool."],
     ["What CPC never touches", "Documents, photos, bookmarks, Windows' own scheduled tasks and services, COM and ActiveX registry entries, and anything newer than 24 hours in temp folders. Cookies, history and passwords are only cleaned if you tick them."],
     ["Not included", "Cloud Drive Cleaner needs sign-in to your cloud accounts, so it isn't included. Duplicate Finder does search your local OneDrive folder. Wiping free space and driver downloads from third-party sites are left out on purpose."],

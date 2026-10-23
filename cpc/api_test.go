@@ -245,3 +245,20 @@ func TestListsNeverEncodeAsNull(t *testing.T) {
 		}
 	}
 }
+
+func TestDriverGuards(t *testing.T) {
+	a := newAPI(t.TempDir(), false, func(string, any) {})
+	if err := a.InstallDrivers([]string{"3f1c3a2e-1d2b-4c5d-9e8f-0a1b2c3d4e5f"}, true); err == nil {
+		t.Error("unelevated install accepted")
+	}
+	b := newAPI(t.TempDir(), true, func(string, any) {})
+	if err := b.InstallDrivers([]string{"not-a-guid; rm -rf"}, false); err == nil {
+		t.Error("bad update id accepted")
+	}
+	if err := b.InstallDrivers(nil, false); err == nil {
+		t.Error("empty list accepted")
+	}
+	if err := b.OpenMakerSite("https://evil.example"); err == nil {
+		t.Error("arbitrary URL accepted")
+	}
+}

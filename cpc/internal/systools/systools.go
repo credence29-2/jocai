@@ -3,6 +3,7 @@
 package systools
 
 import (
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -35,13 +36,178 @@ type Device struct {
 	Problem string `json:"problem"`
 }
 
-// Driver is an installed driver for an important kind of hardware.
+// Driver is an installed driver.
 type Driver struct {
 	Device       string `json:"device"`
 	Class        string `json:"class"`
+	Group        string `json:"group"`
 	Version      string `json:"version"`
 	Date         string `json:"date"`
 	Manufacturer string `json:"manufacturer"`
+	Provider     string `json:"provider"`
+	HardwareID   string `json:"hardwareId"`
+	HasUpdate    bool   `json:"hasUpdate"`
+}
+
+// DriverUpdate is a driver update Windows Update offers for this PC.
+type DriverUpdate struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	Model        string `json:"model"`
+	Provider     string `json:"provider"`
+	Manufacturer string `json:"manufacturer"`
+	Class        string `json:"class"`
+	Group        string `json:"group"`
+	Date         string `json:"date"`
+	Size         int64  `json:"size"`
+	HardwareID   string `json:"hardwareId"`
+	// Current version and date of the installed driver it replaces, when known.
+	CurrentVersion string `json:"currentVersion"`
+	CurrentDate    string `json:"currentDate"`
+}
+
+// MakerLink is a manufacturer's own driver download page.
+type MakerLink struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	URL  string `json:"-"`
+}
+
+// DriverGroup turns a Windows device class into the headings CCleaner
+// style lists use.
+func DriverGroup(class string) string {
+	switch strings.ToLower(strings.TrimSpace(class)) {
+	case "media", "audioendpoint", "audioprocessingobject":
+		return "Audio"
+	case "bluetooth":
+		return "Bluetooth"
+	case "net", "netservice", "nettrans", "netclient":
+		return "Connectivity"
+	case "display", "monitor":
+		return "Graphics"
+	case "camera", "image":
+		return "Camera"
+	case "hidclass", "keyboard", "mouse", "biometric":
+		return "Input devices"
+	case "scsiadapter", "hdc", "diskdrive", "volume", "storagecontroller", "nvme":
+		return "Storage"
+	case "usb", "usbdevice":
+		return "USB"
+	case "printer", "printqueue":
+		return "Printers"
+	case "firmware":
+		return "Firmware"
+	case "system", "softwarecomponent", "extension", "processor", "securitydevices", "computer":
+		return "System and chipset"
+	}
+	return "Other"
+}
+
+// splitIDs splits a list of hardware IDs as Windows reports them.
+func splitIDs(s string) []string {
+	var out []string
+	for _, p := range strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == ',' || r == '\n' || r == ' ' }) {
+		if p = strings.ToUpper(strings.TrimSpace(p)); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// MatchUpdates fills in the installed version for each update and marks
+// installed drivers that have one. Hardware IDs are matched exactly, or by
+// the update's ID being the prefix of a more specific installed ID.
+func MatchUpdates(updates []DriverUpdate, installed []Driver) {
+	for ui := range updates {
+		want := strings.ToUpper(strings.TrimSpace(updates[ui].HardwareID))
+		if want == "" {
+			continue
+		}
+		for di := range installed {
+			for _, id := range splitIDs(installed[di].HardwareID) {
+				if id == want || strings.HasPrefix(id, want+"&") {
+					updates[ui].CurrentVersion = installed[di].Version
+					updates[ui].CurrentDate = installed[di].Date
+					installed[di].HasUpdate = true
+					break
+				}
+			}
+			if updates[ui].CurrentVersion != "" {
+				break
+			}
+		}
+	}
+}
+
+var makerPages = []struct {
+	key, name, url string
+	match          []string
+}{
+	{"intel", "Intel Driver & Support Assistant", "https://www.intel.com/content/www/us/en/support/detect.html", []string{"intel"}},
+	{"amd", "AMD drivers and support", "https://www.amd.com/en/support/download/drivers.html", []string{"amd", "advanced micro devices", "ati technologies"}},
+	{"nvidia", "NVIDIA drivers", "https://www.nvidia.com/en-us/drivers/", []string{"nvidia"}},
+	{"realtek", "Realtek downloads", "https://www.realtek.com/Download/", []string{"realtek"}},
+	{"dell", "Dell drivers and downloads", "https://www.dell.com/support/home/", []string{"dell"}},
+	{"hp", "HP drivers and downloads", "https://support.hp.com/drivers", []string{"hp", "hewlett-packard", "hewlett packard"}},
+	{"lenovo", "Lenovo drivers and downloads", "https://pcsupport.lenovo.com/", []string{"lenovo"}},
+	{"surface", "Surface drivers and firmware", "https://support.microsoft.com/surface-drivers", []string{"surface"}},
+	{"asus", "ASUS download center", "https://www.asus.com/support/download-center/", []string{"asus", "asustek"}},
+	{"acer", "Acer drivers and manuals", "https://www.acer.com/support/drivers-and-manuals", []string{"acer"}},
+	{"msi", "MSI drivers", "https://www.msi.com/support/download", []string{"micro-star", "msi"}},
+}
+
+// MakerLinks picks the maker download pages relevant to this PC from the
+// system maker and the makers of installed drivers.
+func MakerLinks(systemMaker string, installed []Driver) []MakerLink {
+	names := []string{strings.ToLower(systemMaker)}
+	for _, d := range installed {
+		names = append(names, strings.ToLower(d.Manufacturer), strings.ToLower(d.Provider))
+	}
+	var out []MakerLink
+	for _, m := range makerPages {
+		hit := false
+		for _, n := range names {
+			for _, w := range m.match {
+				if n == w || strings.HasPrefix(n, w+" ") || strings.HasPrefix(n, w+",") || strings.HasPrefix(n, w+"(") || strings.Contains(n, " "+w+" ") {
+					hit = true
+				}
+			}
+		}
+		if hit {
+			out = append(out, MakerLink{Key: m.key, Name: m.name, URL: m.url})
+		}
+	}
+	return out
+}
+
+// MakerURL returns the download page for a key from MakerLinks.
+func MakerURL(key string) (string, bool) {
+	for _, m := range makerPages {
+		if m.key == key {
+			return m.url, true
+		}
+	}
+	return "", false
+}
+
+var guid = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// ValidUpdateID reports whether s looks like a Windows Update ID.
+func ValidUpdateID(s string) bool { return guid.MatchString(s) }
+
+// InstallResultText explains a Windows Update result code.
+func InstallResultText(code int) (ok bool, text string) {
+	switch code {
+	case 2:
+		return true, "Installed"
+	case 3:
+		return true, "Installed with warnings"
+	case 4:
+		return false, "Windows Update couldn't install it"
+	case 5:
+		return false, "Installation was cancelled"
+	}
+	return false, "Didn't finish installing"
 }
 
 // Update is an app winget can update.

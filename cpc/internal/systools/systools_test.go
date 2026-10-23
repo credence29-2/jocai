@@ -54,3 +54,51 @@ func TestScModeAndProblems(t *testing.T) {
 		t.Error("code 28 should have its own text")
 	}
 }
+
+func TestDriverGroups(t *testing.T) {
+	cases := map[string]string{"MEDIA": "Audio", "Bluetooth": "Bluetooth", "Net": "Connectivity", "Display": "Graphics", "SoftwareComponent": "System and chipset", "Weird": "Other"}
+	for in, want := range cases {
+		if got := DriverGroup(in); got != want {
+			t.Errorf("DriverGroup(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestMatchUpdates(t *testing.T) {
+	ups := []DriverUpdate{{ID: "a", HardwareID: `PCI\VEN_10EC&DEV_8168`}, {ID: "b", HardwareID: `USB\VID_8087&PID_0AA7`}}
+	inst := []Driver{
+		{Device: "Realtek PCIe GbE", Version: "10.38", Date: "2019-11-28", HardwareID: `PCI\VEN_10EC&DEV_8168&SUBSYS_86771043&REV_15`},
+		{Device: "Intel Wireless Bluetooth", Version: "22.1", Date: "2022-01-01", HardwareID: `usb\vid_8087&pid_0aa7`},
+		{Device: "Something else", HardwareID: `PCI\VEN_10EC&DEV_81680`},
+	}
+	MatchUpdates(ups, inst)
+	if ups[0].CurrentVersion != "10.38" || ups[1].CurrentVersion != "22.1" {
+		t.Fatalf("current versions = %q, %q", ups[0].CurrentVersion, ups[1].CurrentVersion)
+	}
+	if !inst[0].HasUpdate || !inst[1].HasUpdate || inst[2].HasUpdate {
+		t.Fatalf("HasUpdate flags wrong: %+v", inst)
+	}
+}
+
+func TestMakerLinks(t *testing.T) {
+	links := MakerLinks("LENOVO", []Driver{{Manufacturer: "Intel Corporation"}, {Provider: "Realtek Semiconductor Corp."}, {Manufacturer: "Microsoft"}, {Manufacturer: "Shpaint"}})
+	got := map[string]bool{}
+	for _, l := range links {
+		got[l.Key] = true
+	}
+	if !got["lenovo"] || !got["intel"] || !got["realtek"] || got["hp"] || got["amd"] {
+		t.Fatalf("links = %+v", links)
+	}
+	if u, ok := MakerURL("intel"); !ok || u == "" {
+		t.Fatal("intel url missing")
+	}
+	if _, ok := MakerURL("evil"); ok {
+		t.Fatal("unknown key accepted")
+	}
+}
+
+func TestValidUpdateID(t *testing.T) {
+	if !ValidUpdateID("3f1c3a2e-1d2b-4c5d-9e8f-0a1b2c3d4e5f") || ValidUpdateID("x' or 1=1") || ValidUpdateID("") {
+		t.Fatal("ValidUpdateID wrong")
+	}
+}

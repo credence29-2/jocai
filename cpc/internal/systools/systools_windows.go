@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/credence29-2/jocai/cpc/internal/sysutil"
 )
@@ -104,15 +105,162 @@ func ProblemDevices() ([]Device, error) {
 	return out, err
 }
 
-// KeyDrivers lists drivers for graphics, network, audio, Bluetooth and
-// cameras, oldest first.
-func KeyDrivers() ([]Driver, error) {
+// InstalledDrivers lists every driver that belongs to a named device.
+func InstalledDrivers() ([]Driver, error) {
 	var out []Driver
-	err := sysutil.PowerShellJSON(`Get-CimInstance Win32_PnPSignedDriver | Where-Object { $_.DeviceName -and $_.DeviceClass -in 'DISPLAY','NET','MEDIA','BLUETOOTH','CAMERA','IMAGE','PRINTER' } | ForEach-Object {
+	err := sysutil.PowerShellJSON(`Get-CimInstance Win32_PnPSignedDriver | Where-Object { $_.DeviceName } | ForEach-Object {
 	  [pscustomobject]@{ device=$_.DeviceName; class=[string]$_.DeviceClass; version=[string]$_.DriverVersion;
-	    date=$(if ($_.DriverDate) { $_.DriverDate.ToString('yyyy-MM-dd') } else { '' }); manufacturer=[string]$_.Manufacturer } } | ConvertTo-Json -Compress`, &out)
-	sort.Slice(out, func(i, j int) bool { return out[i].Date < out[j].Date })
+	    date=$(if ($_.DriverDate) { $_.DriverDate.ToString('yyyy-MM-dd') } else { '' }); manufacturer=[string]$_.Manufacturer;
+	    provider=[string]$_.DriverProviderName; hardwareId=[string]$_.HardWareID } } | ConvertTo-Json -Compress`, &out)
+	for i := range out {
+		out[i].Group = DriverGroup(out[i].Class)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Group != out[j].Group {
+			return out[i].Group < out[j].Group
+		}
+		return strings.ToLower(out[i].Device) < strings.ToLower(out[j].Device)
+	})
 	return out, err
+}
+
+// SystemMaker returns the PC maker, e.g. "LENOVO" or "Dell Inc.".
+func SystemMaker() string {
+	var out []struct {
+		Maker string `json:"maker"`
+		Model string `json:"model"`
+	}
+	_ = sysutil.PowerShellJSON(`$c = Get-CimInstance Win32_ComputerSystem; [pscustomobject]@{ maker=[string]$c.Manufacturer; model=[string]$c.Model } | ConvertTo-Json -Compress`, &out)
+	if len(out) == 0 {
+		return ""
+	}
+	if strings.Contains(strings.ToLower(out[0].Model), "surface") {
+		return "Surface"
+	}
+	return out[0].Maker
+}
+
+const wuSession = `$s = New-Object -ComObject Microsoft.Update.Session; $s.ClientApplicationID = 'Credence PC Cleaner'; `
+
+const wuShape = `ForEach-Object { [pscustomobject]@{ id=[string]$_.Identity.UpdateID; title=[string]$_.Title; model=[string]$_.DriverModel;
+  provider=[string]$_.DriverProvider; manufacturer=[string]$_.DriverManufacturer; class=[string]$_.DriverClass;
+  date=$(if ($_.DriverVerDate) { ([datetime]$_.DriverVerDate).ToString('yyyy-MM-dd') } else { '' });
+  size=[int64]$_.MaxDownloadSize; hardwareId=[string]$_.DriverHardwareID } }`
+
+type wuResult struct {
+	Updates []DriverUpdate `json:"updates"`
+	Hidden  []DriverUpdate `json:"hidden"`
+}
+
+// DriverUpdates asks Windows Update which driver updates it has for this
+// PC: offered ones and ones the user chose to ignore. This is the same
+// catalog Settings shows under Optional updates.
+func DriverUpdates() (offered, ignored []DriverUpdate, err error) {
+	var out []wuResult
+	err = sysutil.PowerShellJSONTimeout(wuSession+`$q = $s.CreateUpdateSearcher(); $q.Online = $true
+$a = @($q.Search("IsInstalled=0 and Type='Driver' and IsHidden=0").Updates | `+wuShape+`)
+$b = @($q.Search("IsInstalled=0 and Type='Driver' and IsHidden=1").Updates | `+wuShape+`)
+[pscustomobject]@{ updates=$a; hidden=$b } | ConvertTo-Json -Compress -Depth 4`, 5*time.Minute, &out)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Couldn't reach Windows Update: %v", err)
+	}
+	if len(out) == 0 {
+		return nil, nil, nil
+	}
+	fix := func(list []DriverUpdate) []DriverUpdate {
+		for i := range list {
+			list[i].Group = DriverGroup(list[i].Class)
+			if list[i].Model == "" {
+				list[i].Model = list[i].Title
+			}
+		}
+		sort.Slice(list, func(i, j int) bool {
+			if list[i].Group != list[j].Group {
+				return list[i].Group < list[j].Group
+			}
+			return list[i].Model < list[j].Model
+		})
+		return list
+	}
+	return fix(out[0].Updates), fix(out[0].Hidden), nil
+}
+
+// DriverInstallResult is what installing one driver update did.
+type DriverInstallResult struct {
+	OK      bool   `json:"ok"`
+	Text    string `json:"text"`
+	Reboot  bool   `json:"reboot"`
+	HResult int64  `json:"hresult"`
+}
+
+// InstallDriverUpdate downloads and installs one driver update from
+// Windows Update. Needs administrator rights.
+func InstallDriverUpdate(id string) (DriverInstallResult, error) {
+	if !ValidUpdateID(id) {
+		return DriverInstallResult{}, errors.New("unexpected update id")
+	}
+	var out []struct {
+		Code    int   `json:"code"`
+		HResult int64 `json:"hresult"`
+		Reboot  bool  `json:"reboot"`
+	}
+	err := sysutil.PowerShellJSONTimeout(`$ErrorActionPreference = 'Stop'; `+wuSession+`
+$r = $s.CreateUpdateSearcher().Search("UpdateID='`+id+`'")
+if ($r.Updates.Count -eq 0) { throw 'Windows Update no longer offers this driver.' }
+$c = New-Object -ComObject Microsoft.Update.UpdateColl
+$u = $r.Updates.Item(0); if (-not $u.EulaAccepted) { $u.AcceptEula() }; [void]$c.Add($u)
+$d = $s.CreateUpdateDownloader(); $d.Updates = $c; $dr = $d.Download()
+if ($dr.ResultCode -ne 2 -and $dr.ResultCode -ne 3) { throw "The download failed (code $($dr.ResultCode))." }
+$i = $s.CreateUpdateInstaller(); $i.Updates = $c; $ir = $i.Install(); $g = $ir.GetUpdateResult(0)
+[pscustomobject]@{ code=[int]$g.ResultCode; hresult=[int64]$g.HResult; reboot=[bool]$ir.RebootRequired } | ConvertTo-Json -Compress`, 20*time.Minute, &out)
+	if err != nil {
+		return DriverInstallResult{}, err
+	}
+	if len(out) == 0 {
+		return DriverInstallResult{}, errors.New("Windows Update gave no result")
+	}
+	ok, text := InstallResultText(out[0].Code)
+	return DriverInstallResult{OK: ok, Text: text, Reboot: out[0].Reboot, HResult: out[0].HResult}, nil
+}
+
+// SetDriverUpdateHidden ignores or un-ignores a driver update. Windows
+// Update itself will then stop or start offering it.
+func SetDriverUpdateHidden(id string, hidden bool) error {
+	if !ValidUpdateID(id) {
+		return errors.New("unexpected update id")
+	}
+	flag := "$false"
+	if hidden {
+		flag = "$true"
+	}
+	var out []struct{}
+	return sysutil.PowerShellJSONTimeout(`$ErrorActionPreference = 'Stop'; `+wuSession+`
+$r = $s.CreateUpdateSearcher().Search("UpdateID='`+id+`'")
+if ($r.Updates.Count -eq 0) { throw 'Windows Update no longer offers this driver.' }
+$r.Updates.Item(0).IsHidden = `+flag+`
+'{}'`, 3*time.Minute, &out)
+}
+
+// RestorePoint creates a System Restore point. If Windows already made one
+// in the last 24 hours it keeps that one, which is fine.
+func RestorePoint(desc string) (string, error) {
+	var out []struct {
+		Note string `json:"note"`
+	}
+	err := sysutil.PowerShellJSONTimeout(`$ErrorActionPreference = 'Stop'
+Checkpoint-Computer -Description '`+strings.ReplaceAll(desc, "'", "")+`' -RestorePointType MODIFY_SETTINGS -WarningVariable w -WarningAction SilentlyContinue
+[pscustomobject]@{ note=[string]($w -join ' ') } | ConvertTo-Json -Compress`, 3*time.Minute, &out)
+	if err != nil {
+		msg := err.Error()
+		if strings.Contains(strings.ToLower(msg), "disabled") || strings.Contains(msg, "0x80070422") {
+			return "", errors.New("System Restore is turned off on this PC")
+		}
+		return "", fmt.Errorf("Couldn't create a restore point: %v", err)
+	}
+	if len(out) > 0 && strings.Contains(out[0].Note, "1440") {
+		return "A restore point from the last 24 hours already exists.", nil
+	}
+	return "Restore point created.", nil
 }
 
 // WingetAvailable reports whether winget is installed.

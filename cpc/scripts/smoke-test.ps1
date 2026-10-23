@@ -180,8 +180,16 @@ if (Expect $win "(sets of duplicates|No duplicates found)" "duplicate search fin
 Click $win "Software Updater" | Out-Null
 if (Expect $win "(updates? available|Everything is up to date|winget isn't installed|Couldn't check)" "Software Updater finished checking" 240) { Shot "6d-updater"; Write-Host "Updater: $(Texts $win)" }
 
-Click $win "Driver Check" | Out-Null
-if (Expect $win "(has a problem|have a problem|No hardware problems found)" "Driver Check finished" 120) { Shot "6e-drivers" }
+Click $win "Driver Updater" | Out-Null
+if (Expect $win "(drivers? to update|has no driver updates|Couldn't check Windows Update)" "Driver Updater checked Windows Update" 360) {
+    Shot "6e-drivers"
+    $t = Texts $win
+    Write-Host "Drivers: $($t.Substring(0, [Math]::Min(1500, $t.Length)))"
+    Expect $win "Installed drivers \(\d+\)" "installed driver list loaded" 10 | Out-Null
+    Click $win "Fix a problem" | Out-Null
+    Expect $win "(has a problem|have a problem|No hardware problems found)" "Fix a problem shows device status" 20 | Out-Null
+    Click $win "Close" | Out-Null
+}
 
 Click $win "Help" | Out-Null
 Expect $win "What CPC never touches" "Help rendered" | Out-Null

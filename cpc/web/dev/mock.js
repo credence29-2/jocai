@@ -80,9 +80,22 @@
       { name: "AdobeARMservice", displayName: "Adobe Acrobat Update Service", startMode: "Automatic", state: "Running", path: "C:\\Program Files (x86)\\Common Files\\Adobe\\ARM\\1.0\\armsvc.exe", description: "Keeps Adobe Acrobat up to date." },
       { name: "TeamViewer", displayName: "TeamViewer", startMode: "Manual", state: "Stopped", path: "C:\\Program Files\\TeamViewer\\TeamViewer_Service.exe", description: "" }]),
     cpcSetService: async () => later([]),
-    cpcDrivers: async () => later({ devices: [{ name: "Unknown USB Device (Device Descriptor Request Failed)", class: "USB", code: 43, problem: "Windows stopped this device because it reported problems." }],
-      drivers: [{ device: "Realtek PCIe GbE Family Controller", class: "NET", version: "10.38.1128.2019", date: "2019-11-28", manufacturer: "Realtek" },
-                { device: "Intel(R) UHD Graphics 620", class: "DISPLAY", version: "31.0.101.2125", date: "2023-05-10", manufacturer: "Intel Corporation" }] }),
+    cpcDrivers: async () => later({
+      updates: [
+        { id: "11111111-1111-1111-1111-111111111111", title: "Advanced Micro Devices, Inc. - MEDIA - 10.0.1.42", model: "AMD High Definition Audio Device", provider: "Advanced Micro Devices, Inc.", class: "MEDIA", group: "Audio", date: "2025-11-03", size: 1.2e6, currentVersion: "10.0.1.24", currentDate: "2021-06-14" },
+        { id: "22222222-2222-2222-2222-222222222222", title: "Intel Corporation - Bluetooth - 23.40.0.2", model: "Intel(R) Wireless Bluetooth(R)", provider: "Intel Corporation", class: "Bluetooth", group: "Bluetooth", date: "2024-02-21", size: 9.8e6, currentVersion: "22.150.0.6", currentDate: "2022-09-01" },
+        { id: "33333333-3333-3333-3333-333333333333", title: "Realtek - Net - 1168.30.508.2026", model: "Realtek PCIe GbE Family Controller", provider: "Realtek", class: "Net", group: "Connectivity", date: "2026-05-07", size: 2.1e6, currentVersion: "10.38.1128.2019", currentDate: "2019-11-28" },
+        { id: "44444444-4444-4444-4444-444444444444", title: "Intel - Net - 23.40.1.1", model: "Intel(R) Dual Band Wireless-AC 3168", provider: "Intel", class: "Net", group: "Connectivity", date: "2024-03-19", size: 22e6, currentVersion: "20.70.0.5", currentDate: "2019-04-11" }],
+      ignored: [],
+      installed: [
+        { device: "AMD High Definition Audio Device", group: "Audio", version: "10.0.1.24", date: "2021-06-14", provider: "Advanced Micro Devices", hasUpdate: true },
+        { device: "Realtek PCIe GbE Family Controller", group: "Connectivity", version: "10.38.1128.2019", date: "2019-11-28", provider: "Realtek", hasUpdate: true },
+        { device: "Intel(R) UHD Graphics 620", group: "Graphics", version: "31.0.101.2125", date: "2023-05-10", provider: "Intel Corporation", hasUpdate: false }],
+      devices: [{ name: "Unknown USB Device (Device Descriptor Request Failed)", class: "USB", code: 43, problem: "Windows stopped this device because it reported problems." }],
+      links: [{ key: "intel", name: "Intel Driver & Support Assistant" }, { key: "amd", name: "AMD drivers and support" }, { key: "realtek", name: "Realtek downloads" }, { key: "lenovo", name: "Lenovo drivers and downloads" }] }),
+    cpcInstallDrivers: async (ids, rp) => { if (rp) emit("drvProgress", { stage: "restore" }); ids.forEach((id, i) => setTimeout(() => { emit("drvProgress", { stage: "installing", id, index: i, total: ids.length }); emit("drvProgress", { stage: "done", id, ok: i !== 1, text: i !== 1 ? "Installed" : "Windows Update couldn't install it", reboot: i === 0 }); if (i === ids.length - 1) emit("drvFinished", { installed: ids.length - 1, failed: 1, reboot: true, restore: "Restore point created." }); }, 60 * (i + 1))); return null; },
+    cpcIgnoreDriver: async () => later(null),
+    cpcOpenMakerSite: async () => null,
     cpcOpenSettings: async () => null,
     cpcUpdates: async () => later({ available: true, updates: [
       { name: "Google Chrome", id: "Google.Chrome", version: "130.0.6723.70", available: "131.0.6778.86" },
