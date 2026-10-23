@@ -73,6 +73,11 @@ function Texts($root) {
     $c = New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, [System.Windows.Automation.ControlType]::Text)
     return ($root.FindAll($TS::Descendants, $c) | ForEach-Object { $_.Current.Name }) -join " | "
 }
+function NameLike($root, $regex) {
+    $all = $root.FindAll($TS::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
+    foreach ($el in $all) { if ($el.Current.Name -match $regex) { return $el.Current.Name } }
+    return $null
+}
 function Click($root, $name) {
     $el = Wait-For { Find-Name $root $name } 20
     if (-not $el) { Fail "could not find '$name'"; return $false }
@@ -185,7 +190,8 @@ if (Expect $win "(drivers? to update|has no driver updates|Couldn't check Window
     Shot "6e-drivers"
     $t = Texts $win
     Write-Host "Drivers: $($t.Substring(0, [Math]::Min(1500, $t.Length)))"
-    Expect $win "Installed drivers \(\d+\)" "installed driver list loaded" 10 | Out-Null
+    $tab = Wait-For { NameLike $win "^Installed drivers \(\d+\)$" } 10
+    if ($tab -and $tab -notmatch "\(0\)") { Pass "installed driver list loaded: $tab" } else { Fail "installed driver list empty or missing: $tab" }
     Click $win "Fix a problem" | Out-Null
     Expect $win "(has a problem|have a problem|No hardware problems found)" "Fix a problem shows device status" 20 | Out-Null
     Click $win "Close" | Out-Null
