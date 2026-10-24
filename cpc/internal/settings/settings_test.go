@@ -45,3 +45,25 @@ func TestLogPrune(t *testing.T) {
 	nilLog.Printf("no panic")
 	nilLog.Close()
 }
+
+func TestDirMigratesOldFolder(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("LOCALAPPDATA", base)
+	old := filepath.Join(base, "CredencePCCleaner")
+	os.MkdirAll(old, 0o755)
+	os.WriteFile(filepath.Join(old, "settings.json"), []byte(`{"selected":{"x":true}}`), 0o644)
+	d := Dir()
+	if filepath.Base(d) != "ClearPCCleaner" {
+		t.Fatalf("dir = %s", d)
+	}
+	if !Load(d).IsSelected("x", false) {
+		t.Fatal("old settings were not carried over")
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Fatal("old folder should have been moved")
+	}
+	// Second call must not touch anything.
+	if Dir() != d {
+		t.Fatal("dir changed on second call")
+	}
+}

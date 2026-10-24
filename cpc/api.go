@@ -19,13 +19,17 @@ import (
 	"github.com/credence29-2/jocai/cpc/internal/sysutil"
 )
 
-const appName = "Credence PC Cleaner"
+const appName = "Clear PC Cleaner"
 
 // version is set at build time with -ldflags "-X main.version=...".
 var version = "1.3.0"
 
-// scheduleName is the Task Scheduler entry CPC manages.
-const scheduleName = "Credence PC Cleaner weekly clean"
+// scheduleName is the Task Scheduler entry CPC manages. oldScheduleName is
+// what earlier versions created; it is replaced when the schedule changes.
+const (
+	scheduleName    = "Clear PC Cleaner weekly clean"
+	oldScheduleName = "Credence PC Cleaner weekly clean"
+)
 
 // api is everything the window's JavaScript can call. Each exported method
 // is bound as a global function named "cpc" + method name, e.g. cpcTargets().
@@ -496,6 +500,9 @@ type scheduleDTO struct {
 
 func (a *api) Schedule() scheduleDTO {
 	ok, next := sysutil.ScheduleStatus(scheduleName)
+	if !ok {
+		ok, next = sysutil.ScheduleStatus(oldScheduleName)
+	}
 	return scheduleDTO{Enabled: ok, NextRun: next}
 }
 
@@ -505,6 +512,7 @@ var validDays = map[string]bool{"MON": true, "TUE": true, "WED": true, "THU": tr
 // at is HH:MM in 24 hour time.
 func (a *api) SetSchedule(enabled bool, day, at string) (scheduleDTO, error) {
 	if !enabled {
+		_ = sysutil.ScheduleDelete(oldScheduleName)
 		err := sysutil.ScheduleDelete(scheduleName)
 		return a.Schedule(), err
 	}
@@ -518,6 +526,7 @@ func (a *api) SetSchedule(enabled bool, day, at string) (scheduleDTO, error) {
 	if _, err := time.Parse("15:04", at); err != nil {
 		return a.Schedule(), errors.New("Pick a time.")
 	}
+	_ = sysutil.ScheduleDelete(oldScheduleName)
 	err := sysutil.ScheduleWeekly(scheduleName, a.exe, "/auto", day, at)
 	return a.Schedule(), err
 }

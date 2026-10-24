@@ -1,5 +1,5 @@
 // Package settings stores CPC's preferences and cleaning logs under
-// %LOCALAPPDATA%\CredencePCCleaner.
+// %LOCALAPPDATA%\ClearPCCleaner.
 package settings
 
 import (
@@ -27,7 +27,15 @@ func Dir() string {
 	if base == "" {
 		base, _ = os.UserConfigDir()
 	}
-	d := filepath.Join(base, "CredencePCCleaner")
+	d := filepath.Join(base, "ClearPCCleaner")
+	// Earlier versions used the old product name. Carry the folder over so
+	// saved choices, logs and registry backups are kept.
+	if _, err := os.Stat(d); os.IsNotExist(err) {
+		old := filepath.Join(base, "CredencePCCleaner")
+		if fi, err := os.Stat(old); err == nil && fi.IsDir() {
+			_ = os.Rename(old, d)
+		}
+	}
 	_ = os.MkdirAll(d, 0o755)
 	return d
 }

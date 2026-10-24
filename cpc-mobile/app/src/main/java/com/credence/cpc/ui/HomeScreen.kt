@@ -14,7 +14,7 @@ class HomeScreen(act: MainActivity) : Screen(act) {
         val d = DeviceInfo.read(act)
         body.removeAllViews()
         body.addView(ui.title("CPC Mobile"))
-        body.addView(ui.caption("Credence PC Cleaner for your phone"), ui.spaced(2))
+        body.addView(ui.caption("Clear PC Cleaner for your phone"), ui.spaced(2))
         body.addView(View(act), ui.spaced(8))
 
         val storageFrac = if (d.storageTotal > 0) d.storageUsed.toDouble() / d.storageTotal else 0.0

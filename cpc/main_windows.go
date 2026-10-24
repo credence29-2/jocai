@@ -1,4 +1,4 @@
-// Command cpc is Credence PC Cleaner, a CCleaner replacement for Windows.
+// Command cpc is Clear PC Cleaner, a CCleaner replacement for Windows.
 //
 // The window is a WebView2 page (web/index.html, embedded in the exe). The
 // page calls Go through bound functions named cpc<Method>, see api.go.

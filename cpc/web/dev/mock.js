@@ -34,7 +34,7 @@
     setTimeout(step, 10);
   }
   Object.assign(window, {
-    cpcInfo: async () => ({ app: "Credence PC Cleaner", version: "1.1.0", elevated: !!window.__mockAdmin, logsDir: "C:\\logs", diskTotal: 511e9, diskFree: 96e9, drive: "C:" }),
+    cpcInfo: async () => ({ app: "Clear PC Cleaner", version: "1.1.0", elevated: !!window.__mockAdmin, logsDir: "C:\\logs", diskTotal: 511e9, diskFree: 96e9, drive: "C:" }),
     cpcTargets: async () => targets,
     cpcSetSelected: async () => null,
     cpcScan: async ids => run(ids, false),

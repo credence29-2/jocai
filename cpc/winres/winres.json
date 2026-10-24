@@ -11,10 +11,10 @@
     "#1": {
       "0409": {
         "identity": {
-          "name": "Credence.PCCleaner",
+          "name": "Clear.PCCleaner",
           "version": "1.3.0.0"
         },
-        "description": "Credence PC Cleaner",
+        "description": "Clear PC Cleaner",
         "minimum-os": "win7",
         "execution-level": "highest",
         "dpi-awareness": "per monitor v2",
@@ -33,12 +33,12 @@
         "info": {
           "0409": {
             "CompanyName": "Credence",
-            "FileDescription": "Credence PC Cleaner",
+            "FileDescription": "Clear PC Cleaner",
             "FileVersion": "1.3.0",
             "InternalName": "CPC",
             "LegalCopyright": "Credence",
             "OriginalFilename": "CPC.exe",
-            "ProductName": "Credence PC Cleaner",
+            "ProductName": "Clear PC Cleaner",
             "ProductVersion": "1.3.0"
           }
         }

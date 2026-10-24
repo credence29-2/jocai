@@ -1,6 +1,6 @@
 # CPC Mobile
 
-The Android side of Credence PC Cleaner. A small cleaner that only does things that actually work on modern Android, and says so when something isn't possible.
+The Android side of Clear PC Cleaner. A small cleaner that only does things that actually work on modern Android, and says so when something isn't possible.
 
 ## What it does
 

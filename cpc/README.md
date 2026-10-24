@@ -1,4 +1,4 @@
-# Credence PC Cleaner (CPC)
+# Clear PC Cleaner (CPC)
 
 A CCleaner replacement for Windows. One portable `CPC.exe`, no installer, no ads, no upsells, nothing phoning home.
 
@@ -17,7 +17,7 @@ A CCleaner replacement for Windows. One portable `CPC.exe`, no installer, no ads
 | Driver Check | Hardware with Device Manager errors, explained in plain words, plus the age of your key drivers and a shortcut to Windows Update's driver updates. |
 | Settings | Weekly automatic cleaning through Task Scheduler, folders to never clean, logs. |
 
-Nothing is deleted until you confirm. Every clean writes a log of each deleted file to `%LOCALAPPDATA%\CredencePCCleaner\logs`. Registry backups go to `%LOCALAPPDATA%\CredencePCCleaner\backups`.
+Nothing is deleted until you confirm. Every clean writes a log of each deleted file to `%LOCALAPPDATA%\ClearPCCleaner\logs`. Registry backups go to `%LOCALAPPDATA%\ClearPCCleaner\backups`.
 
 ## Safety rules built in
 

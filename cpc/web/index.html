@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Credence PC Cleaner</title>
+<title>Clear PC Cleaner</title>
 <style>
 :root {
   --bg: #0a0d12; --side: #0d1117; --panel: #0f131a; --card: #141a22; --card2: #1a212b; --hover: rgba(255,255,255,.055);
@@ -231,7 +231,7 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
 <aside class="sidebar">
   <div class="brand">
     <div class="mark" aria-hidden="true">C</div>
-    <div><b>Credence</b><span>PC Cleaner</span></div>
+    <div><b>Clear</b><span>PC Cleaner</span></div>
   </div>
   <div class="nav-label">Clean</div>
   <nav class="nav" id="nav">
@@ -1302,7 +1302,7 @@ function renderHelp() {
     ["Not included", "Cloud Drive Cleaner needs sign-in to your cloud accounts, so it isn't included. Duplicate Finder does search your local OneDrive folder. Wiping free space and driver downloads from third-party sites are left out on purpose."],
   ];
   $("#helpBody").innerHTML = items.map(([h, p]) => `<div class="card"><h3>${esc(h)}</h3><p>${esc(p)}</p></div>`).join("") +
-    `<div class="card"><div class="row"><div class="grow"><h3>Logs and backups</h3><p>Cleaning logs and registry backups are kept in your AppData folder under CredencePCCleaner.</p></div>
+    `<div class="card"><div class="row"><div class="grow"><h3>Logs and backups</h3><p>Cleaning logs and registry backups are kept in your AppData folder under ClearPCCleaner.</p></div>
       <button class="btn small" id="helpLogs">Open logs</button><button class="btn small" id="helpBk">Open registry backups</button></div></div>`;
   $("#helpLogs").onclick = () => api.OpenLogs().catch(() => toast("No logs yet. Run a clean first.", true));
   $("#helpBk").onclick = () => api.OpenBackups().catch(e => toast(errText(e), true));

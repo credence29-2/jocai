@@ -152,7 +152,7 @@ func (a *api) InstallDrivers(ids []string, restorePoint bool) error {
 		fin := map[string]any{"installed": 0, "failed": 0, "reboot": false}
 		if restorePoint {
 			a.emit("drvProgress", map[string]any{"stage": "restore"})
-			note, err := systools.RestorePoint("Before Credence PC Cleaner driver update")
+			note, err := systools.RestorePoint("Before Clear PC Cleaner driver update")
 			if err != nil {
 				fin["error"] = err.Error() + ". No drivers were installed. Untick the restore point option to install anyway."
 				a.emit("drvFinished", fin)
