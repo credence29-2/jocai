@@ -6,4 +6,4 @@ Personal tools and utilities.
 | --- | --- |
 | [cpc](cpc/) | Clear PC Cleaner, a portable CCleaner replacement for Windows |
 | [cpc-mobile](cpc-mobile/) | CPC Mobile, the Android companion app |
-| [kempt](kempt/) | Project Victor Charlie, a self-hosted Discord alternative with voice, video and screen sharing |
+| [victorcharlie](victorcharlie/) | Project Victor Charlie, a self-hosted Discord alternative with voice, video and screen sharing |

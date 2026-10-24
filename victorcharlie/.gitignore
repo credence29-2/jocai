@@ -1,0 +1,6 @@
+/victorcharlie
+/victorcharlie.exe
+/dist/
+/victorcharlie-data/
+internal/webui/dist/*
+!internal/webui/dist/.keep

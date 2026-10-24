@@ -1,0 +1,37 @@
+name: Victor Charlie desktop app
+
+on:
+  push:
+    paths:
+      - "victorcharlie/desktop/**"
+      - ".github/workflows/victorcharlie-desktop.yml"
+  pull_request:
+    paths:
+      - "victorcharlie/desktop/**"
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: victorcharlie/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: victorcharlie/desktop/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Check the global key hook loads
+        run: node -e "require('uiohook-napi'); console.log(JSON.stringify(require('./keys').parse('Backquote')))"
+      - name: Build installer and portable exe
+        run: |
+          npm version "0.1.${{ github.run_number }}" --no-git-tag-version --allow-same-version
+          npx electron-builder --win --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VictorCharlie-Windows
+          path: |
+            victorcharlie/desktop/dist/*.exe
