@@ -264,6 +264,7 @@ class MainActivity : Activity() {
     inner class Bridge {
         @JavascriptInterface
         fun notify(title: String, body: String, tag: String) {
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
             val nm = getSystemService(NotificationManager::class.java)
             if (nm.getNotificationChannel(MESSAGES) == null) {
                 nm.createNotificationChannel(NotificationChannel(MESSAGES, "Messages", NotificationManager.IMPORTANCE_HIGH))
