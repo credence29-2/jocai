@@ -84,7 +84,7 @@ class MainActivity : Activity() {
             textSize = 24f
             setTextColor(Color.WHITE)
         }
-        val hint = TextView(this).apply {
+        val note = TextView(this).apply {
             text = "Enter the address you use in the browser, like https://chat.example.com, or paste an invite link."
             setTextColor(Color.parseColor("#949BA4"))
             setPadding(0, pad / 3, 0, pad)
@@ -119,7 +119,7 @@ class MainActivity : Activity() {
         go.setOnClickListener { submit() }
         input.setOnEditorActionListener { _, _, _ -> submit(); true }
         box.addView(title)
-        box.addView(hint)
+        box.addView(note)
         box.addView(input, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         box.addView(err)
         box.addView(go)
