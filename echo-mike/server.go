@@ -1,0 +1,785 @@
+package main
+
+import (
+	"context"
+	"crypto/rand"
+	_ "embed"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"mime"
+	"net"
+	"net/http"
+	"net/url"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/credence29-2/jocai/echo-mike/internal/demo"
+	"github.com/credence29-2/jocai/echo-mike/internal/mail"
+	"github.com/credence29-2/jocai/echo-mike/internal/oauth"
+	"github.com/credence29-2/jocai/echo-mike/internal/store"
+)
+
+const appName = "Project Echo Mike"
+
+// version is set at build time with -ldflags "-X main.version=...".
+var version = "1.0.0"
+
+//go:embed web/index.html
+var indexHTML []byte
+
+// pageSize is how many messages each account returns per page.
+const pageSize = 30
+
+// maxSend caps a send request, attachments included.
+const maxSend = 40 << 20
+
+// app is the local HTTP server the window talks to. It listens on 127.0.0.1
+// only, and every API call must carry the random token handed to the window,
+// so other programs and web pages can't read mail through it.
+type app struct {
+	st    *store.Store
+	token string
+	// openURL opens a link in the system browser.
+	openURL func(string) error
+	demo    bool
+
+	mu        sync.Mutex
+	providers map[string]mail.Provider
+	flow      *oauth.Flow
+}
+
+func newApp(st *store.Store, demoMode bool, openURL func(string) error) *app {
+	b := make([]byte, 24)
+	rand.Read(b)
+	a := &app{st: st, token: hex.EncodeToString(b), openURL: openURL, demo: demoMode, providers: map[string]mail.Provider{}}
+	if demoMode {
+		a.addDemoAccounts()
+	}
+	return a
+}
+
+// addDemoAccounts puts two sample accounts in memory. Nothing is saved.
+func (a *app) addDemoAccounts() {
+	g, o := demo.Boxes(time.Now())
+	a.providers["demo-g"] = g
+	a.providers["demo-o"] = o
+	a.st.Update(func(d *store.Data) error {
+		d.Accounts = []store.Account{
+			{ID: "demo-g", Provider: "gmail", Email: g.Email, Name: "Personal Gmail", Color: "#d93025"},
+			{ID: "demo-o", Provider: "outlook", Email: o.Email, Name: "Outlook", Color: "#0a64d6"},
+		}
+		d.Identities = nil
+		return nil
+	})
+	for _, id := range []string{"demo-g", "demo-o"} {
+		a.importAliases(context.Background(), id)
+	}
+	a.st.Update(func(d *store.Data) error {
+		for i := range d.Identities {
+			d.Identities[i].SignatureOnReplies = true
+		}
+		return nil
+	})
+}
+
+// listen starts serving on a random loopback port and returns the window URL.
+func (a *app) listen() (string, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", err
+	}
+	srv := &http.Server{Handler: a.routes(), ReadHeaderTimeout: 10 * time.Second}
+	go srv.Serve(ln)
+	return fmt.Sprintf("http://%s/#%s", ln.Addr(), a.token), nil
+}
+
+func (a *app) routes() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write(indexHTML)
+	})
+	api := func(pattern string, h func(w http.ResponseWriter, r *http.Request) (any, error)) {
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+			if !a.authorized(r) {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			out, err := h(w, r)
+			if out == nil && err == nil {
+				return // the handler wrote its own response
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if err != nil {
+				code := http.StatusInternalServerError
+				if errors.Is(err, mail.ErrAuth) {
+					code = http.StatusUnauthorized
+				}
+				w.WriteHeader(code)
+				json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+				return
+			}
+			json.NewEncoder(w).Encode(out)
+		})
+	}
+	api("GET /api/state", a.handleState)
+	api("POST /api/list", a.handleList)
+	api("GET /api/message", a.handleMessage)
+	api("POST /api/apply", a.handleApply)
+	api("GET /api/attachment", a.handleAttachment)
+	api("POST /api/draft", a.handleDraft)
+	api("POST /api/send", a.handleSend)
+	api("POST /api/identity", a.handleIdentity)
+	api("POST /api/identity/delete", a.handleIdentityDelete)
+	api("POST /api/aliases/import", a.handleImport)
+	api("POST /api/settings", a.handleSettings)
+	api("POST /api/connect", a.handleConnect)
+	api("POST /api/connect/cancel", a.handleConnectCancel)
+	api("POST /api/account/update", a.handleAccountUpdate)
+	api("POST /api/account/remove", a.handleAccountRemove)
+	api("GET /api/unread", a.handleUnread)
+	api("GET /open", a.handleOpen)
+	return a.guardHost(mux)
+}
+
+// guardHost refuses requests whose Host isn't the loopback address, which
+// stops DNS rebinding tricks from a web page.
+func (a *app) guardHost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host, _, err := net.SplitHostPort(r.Host)
+		if err != nil || (host != "127.0.0.1" && host != "localhost") {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// authorized checks the token. API calls send it as a header, which a web
+// page on another origin can't add without a CORS preflight we never allow.
+// Links that open downloads or the browser carry it in the query instead.
+func (a *app) authorized(r *http.Request) bool {
+	t := r.Header.Get("X-Echo-Token")
+	if t == "" && r.Method == http.MethodGet {
+		t = r.URL.Query().Get("t")
+	}
+	return len(t) == len(a.token) && t == a.token
+}
+
+func decode(r *http.Request, v any) error {
+	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, maxSend)).Decode(v); err != nil {
+		return fmt.Errorf("bad request: %w", err)
+	}
+	return nil
+}
+
+// provider returns the live connection for an account, opening it if needed.
+func (a *app) provider(accountID string) (mail.Provider, store.Account, error) {
+	var acct store.Account
+	found := false
+	for _, ac := range a.st.Get().Accounts {
+		if ac.ID == accountID {
+			acct, found = ac, true
+		}
+	}
+	if !found {
+		return nil, acct, fmt.Errorf("account not found")
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if p := a.providers[accountID]; p != nil {
+		return p, acct, nil
+	}
+	p, err := a.openProvider(acct)
+	if err != nil {
+		return nil, acct, err
+	}
+	a.providers[accountID] = p
+	return p, acct, nil
+}
+
+// noteErr flags an account for reconnecting when its sign-in stopped working.
+func (a *app) noteErr(accountID string, err error) {
+	if !errors.Is(err, mail.ErrAuth) {
+		return
+	}
+	a.st.Update(func(d *store.Data) error {
+		for i := range d.Accounts {
+			if d.Accounts[i].ID == accountID {
+				d.Accounts[i].NeedsReconnect = true
+			}
+		}
+		return nil
+	})
+	a.mu.Lock()
+	delete(a.providers, accountID)
+	a.mu.Unlock()
+}
+
+type stateOut struct {
+	Version    string          `json:"version"`
+	Demo       bool            `json:"demo"`
+	Accounts   []store.Account `json:"accounts"`
+	Identities []mail.Identity `json:"identities"`
+	Settings   store.Settings  `json:"settings"`
+	Folders    []mail.Folder   `json:"folders"`
+}
+
+func (a *app) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
+	d := a.st.Get()
+	if d.Settings.GoogleClientSecret != "" {
+		d.Settings.GoogleClientSecret = "saved"
+	}
+	if d.Accounts == nil {
+		d.Accounts = []store.Account{}
+	}
+	if d.Identities == nil {
+		d.Identities = []mail.Identity{}
+	}
+	return stateOut{Version: version, Demo: a.demo, Accounts: d.Accounts, Identities: d.Identities, Settings: d.Settings, Folders: mail.Folders}, nil
+}
+
+type listIn struct {
+	Folder    mail.Folder `json:"folder"`
+	Query     string      `json:"query"`
+	AccountID string      `json:"accountId"` // empty for every account
+	// Cursors holds each account's next-page cursor. When it's set, only
+	// accounts with a cursor are asked, for "load more".
+	Cursors map[string]string `json:"cursors"`
+}
+
+type listOut struct {
+	Messages []mail.Summary    `json:"messages"`
+	Cursors  map[string]string `json:"cursors"`
+	Errors   map[string]string `json:"errors"`
+}
+
+func (a *app) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in listIn
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	var ids []string
+	for _, ac := range a.st.Get().Accounts {
+		if in.AccountID != "" && ac.ID != in.AccountID {
+			continue
+		}
+		if in.Cursors != nil && in.Cursors[ac.ID] == "" {
+			continue
+		}
+		ids = append(ids, ac.ID)
+	}
+	out := listOut{Messages: []mail.Summary{}, Cursors: map[string]string{}, Errors: map[string]string{}}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+	defer cancel()
+	for _, id := range ids {
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			p, _, err := a.provider(id)
+			var page mail.Page
+			if err == nil {
+				page, err = p.List(ctx, in.Folder, in.Query, in.Cursors[id], pageSize)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				a.noteErr(id, err)
+				out.Errors[id] = err.Error()
+				return
+			}
+			for i := range page.Messages {
+				page.Messages[i].AccountID = id
+			}
+			out.Messages = append(out.Messages, page.Messages...)
+			if page.Next != "" {
+				out.Cursors[id] = page.Next
+			}
+		}(id)
+	}
+	wg.Wait()
+	sort.SliceStable(out.Messages, func(i, j int) bool { return out.Messages[i].Date.After(out.Messages[j].Date) })
+	return out, nil
+}
+
+func (a *app) handleMessage(w http.ResponseWriter, r *http.Request) (any, error) {
+	acct, id := r.URL.Query().Get("a"), r.URL.Query().Get("id")
+	p, _, err := a.provider(acct)
+	if err != nil {
+		return nil, err
+	}
+	m, err := p.Get(r.Context(), id)
+	if err != nil {
+		a.noteErr(acct, err)
+		return nil, err
+	}
+	m.AccountID = acct
+	return m, nil
+}
+
+func (a *app) handleApply(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		AccountID string      `json:"accountId"`
+		IDs       []string    `json:"ids"`
+		Change    mail.Change `json:"change"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	p, _, err := a.provider(in.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range in.IDs {
+		if err := p.Apply(r.Context(), id, in.Change); err != nil {
+			a.noteErr(in.AccountID, err)
+			return nil, err
+		}
+	}
+	return map[string]bool{"ok": true}, nil
+}
+
+func (a *app) handleAttachment(w http.ResponseWriter, r *http.Request) (any, error) {
+	q := r.URL.Query()
+	p, _, err := a.provider(q.Get("a"))
+	if err != nil {
+		return nil, err
+	}
+	data, err := p.Attachment(r.Context(), q.Get("m"), q.Get("att"))
+	if err != nil {
+		return nil, err
+	}
+	typ := q.Get("type")
+	disp := "attachment"
+	// Inline images are shown in the message; everything else downloads.
+	if q.Get("inline") == "1" && strings.HasPrefix(typ, "image/") && typ != "image/svg+xml" {
+		disp = "inline"
+	} else {
+		typ = "application/octet-stream"
+	}
+	w.Header().Set("Content-Type", typ)
+	w.Header().Set("Content-Disposition", mime.FormatMediaType(disp, map[string]string{"filename": q.Get("name")}))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	w.Write(data)
+	return nil, nil
+}
+
+func (a *app) handleDraft(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		AccountID string         `json:"accountId"`
+		ID        string         `json:"id"`
+		Kind      mail.ReplyKind `json:"kind"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	p, _, err := a.provider(in.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	m, err := p.Get(r.Context(), in.ID)
+	if err != nil {
+		return nil, err
+	}
+	return mail.MakeDraft(in.Kind, a.st.Get().Identities, in.AccountID, m), nil
+}
+
+type sendIn struct {
+	IdentityID string         `json:"identityId"`
+	To         string         `json:"to"`
+	Cc         string         `json:"cc"`
+	Bcc        string         `json:"bcc"`
+	Subject    string         `json:"subject"`
+	HTML       string         `json:"html"`
+	Files      []mail.OutFile `json:"files"`
+	// Forward lists attachments to copy from the original message.
+	Forward []struct {
+		AccountID string `json:"accountId"`
+		MsgID     string `json:"msgId"`
+		mail.Attachment
+	} `json:"forward"`
+	InReplyTo  string `json:"inReplyTo"`
+	References string `json:"references"`
+	ThreadID   string `json:"threadId"`
+	// ReplyAccountID is the account the original arrived in. A Gmail thread
+	// ID only means something in that account.
+	ReplyAccountID string `json:"replyAccountId"`
+}
+
+func (a *app) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in sendIn
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	var id *mail.Identity
+	for _, x := range a.st.Get().Identities {
+		if x.ID == in.IdentityID {
+			x := x
+			id = &x
+		}
+	}
+	if id == nil {
+		return nil, fmt.Errorf("pick a From address")
+	}
+	o := &mail.Outgoing{
+		From: mail.Address{Name: id.Name, Email: id.Email}, ReplyTo: id.ReplyTo,
+		Subject: in.Subject, HTML: in.HTML, Files: in.Files,
+		InReplyTo: in.InReplyTo, References: in.References,
+	}
+	if in.ReplyAccountID == id.AccountID {
+		o.ThreadID = in.ThreadID
+	}
+	var err error
+	for _, f := range []struct {
+		dst *[]mail.Address
+		src string
+		lbl string
+	}{{&o.To, in.To, "To"}, {&o.Cc, in.Cc, "Cc"}, {&o.Bcc, in.Bcc, "Bcc"}} {
+		if *f.dst, err = mail.ParseAddresses(f.src); err != nil {
+			return nil, fmt.Errorf("%s: %w", f.lbl, err)
+		}
+	}
+	for _, fw := range in.Forward {
+		src, _, err := a.provider(fw.AccountID)
+		if err != nil {
+			return nil, err
+		}
+		data, err := src.Attachment(r.Context(), fw.MsgID, fw.ID)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't copy %s from the original: %w", fw.Name, err)
+		}
+		o.Files = append(o.Files, mail.OutFile{Name: fw.Name, MIMEType: fw.MIMEType, Data: data})
+	}
+	p, _, err := a.provider(id.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
+	defer cancel()
+	if err := p.Send(ctx, o); err != nil {
+		a.noteErr(id.AccountID, err)
+		return nil, err
+	}
+	return map[string]bool{"ok": true}, nil
+}
+
+func (a *app) handleIdentity(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in mail.Identity
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	in.Email = strings.TrimSpace(in.Email)
+	if _, err := mail.ParseAddresses(in.Email); err != nil || !strings.Contains(in.Email, "@") {
+		return nil, fmt.Errorf("%q isn't a valid email address", in.Email)
+	}
+	err := a.st.Update(func(d *store.Data) error {
+		ok := false
+		for _, ac := range d.Accounts {
+			ok = ok || ac.ID == in.AccountID
+		}
+		if !ok {
+			return fmt.Errorf("account not found")
+		}
+		if in.ID == "" {
+			in.ID = store.NewID()
+			d.Identities = append(d.Identities, in)
+		} else {
+			found := false
+			for i := range d.Identities {
+				if d.Identities[i].ID == in.ID {
+					in.Imported = d.Identities[i].Imported
+					d.Identities[i] = in
+					found = true
+				}
+			}
+			if !found {
+				return fmt.Errorf("identity not found")
+			}
+		}
+		// Only one default per account.
+		hasDefault := false
+		for i := range d.Identities {
+			x := &d.Identities[i]
+			if x.AccountID != in.AccountID {
+				continue
+			}
+			if in.Default && x.ID != in.ID {
+				x.Default = false
+			}
+			hasDefault = hasDefault || x.Default
+		}
+		if !hasDefault {
+			for i := range d.Identities {
+				if d.Identities[i].AccountID == in.AccountID {
+					d.Identities[i].Default = true
+					break
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return in, nil
+}
+
+func (a *app) handleIdentityDelete(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		ID string `json:"id"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	err := a.st.Update(func(d *store.Data) error {
+		var acct string
+		kept := d.Identities[:0]
+		for _, x := range d.Identities {
+			if x.ID == in.ID {
+				acct = x.AccountID
+				continue
+			}
+			kept = append(kept, x)
+		}
+		left := 0
+		for _, x := range kept {
+			if x.AccountID == acct {
+				left++
+			}
+		}
+		if acct != "" && left == 0 {
+			return fmt.Errorf("each account needs at least one From address")
+		}
+		d.Identities = kept
+		if d.Settings.DefaultIdentity == in.ID {
+			d.Settings.DefaultIdentity = ""
+		}
+		return nil
+	})
+	return map[string]bool{"ok": err == nil}, err
+}
+
+func (a *app) handleImport(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		AccountID string `json:"accountId"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	n, err := a.importAliases(r.Context(), in.AccountID)
+	return map[string]int{"added": n}, err
+}
+
+// importAliases adds the provider's send-as addresses as identities. Ones
+// already there keep the person's edits; only blank fields are filled in.
+func (a *app) importAliases(ctx context.Context, accountID string) (int, error) {
+	p, acct, err := a.provider(accountID)
+	if err != nil {
+		return 0, err
+	}
+	aliases, err := p.Aliases(ctx)
+	if err != nil {
+		a.noteErr(accountID, err)
+		return 0, err
+	}
+	added := 0
+	err = a.st.Update(func(d *store.Data) error {
+		for _, al := range aliases {
+			var have *mail.Identity
+			for i := range d.Identities {
+				x := &d.Identities[i]
+				if x.AccountID == accountID && strings.EqualFold(x.Email, al.Email) {
+					have = x
+				}
+			}
+			if have != nil {
+				have.Imported = true
+				if have.Name == "" {
+					have.Name = al.Name
+				}
+				if have.SignatureHTML == "" {
+					have.SignatureHTML = al.SignatureHTML
+				}
+				if have.ReplyTo == "" {
+					have.ReplyTo = al.ReplyTo
+				}
+				continue
+			}
+			name := al.Name
+			if name == "" {
+				name = acct.Name
+			}
+			d.Identities = append(d.Identities, mail.Identity{
+				ID: store.NewID(), AccountID: accountID, Email: al.Email, Name: name,
+				ReplyTo: al.ReplyTo, SignatureHTML: al.SignatureHTML, Default: al.Default, Imported: true,
+			})
+			added++
+		}
+		// Make sure the account has exactly one default.
+		def := -1
+		for i := range d.Identities {
+			if d.Identities[i].AccountID == accountID && d.Identities[i].Default {
+				if def >= 0 {
+					d.Identities[i].Default = false
+				} else {
+					def = i
+				}
+			}
+		}
+		if def < 0 {
+			for i := range d.Identities {
+				if d.Identities[i].AccountID == accountID {
+					d.Identities[i].Default = true
+					break
+				}
+			}
+		}
+		return nil
+	})
+	return added, err
+}
+
+func (a *app) handleSettings(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in store.Settings
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	err := a.st.Update(func(d *store.Data) error {
+		if in.GoogleClientSecret == "saved" {
+			in.GoogleClientSecret = d.Settings.GoogleClientSecret
+		}
+		in.GoogleClientID = strings.TrimSpace(in.GoogleClientID)
+		in.GoogleClientSecret = strings.TrimSpace(in.GoogleClientSecret)
+		in.MicrosoftClientID = strings.TrimSpace(in.MicrosoftClientID)
+		d.Settings = in
+		return nil
+	})
+	return map[string]bool{"ok": err == nil}, err
+}
+
+func (a *app) handleConnect(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		Provider string `json:"provider"`
+		// AccountID reconnects an existing account.
+		AccountID string `json:"accountId"`
+		// Started, when true, only returns the URL so the window can show it.
+		Started bool `json:"started"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	if a.demo {
+		return nil, fmt.Errorf("demo mode can't connect real accounts; start Project Echo Mike without -demo")
+	}
+	return a.connect(r.Context(), in.Provider, in.AccountID)
+}
+
+func (a *app) handleConnectCancel(w http.ResponseWriter, r *http.Request) (any, error) {
+	a.mu.Lock()
+	f := a.flow
+	a.mu.Unlock()
+	if f != nil {
+		f.Cancel()
+	}
+	return map[string]bool{"ok": true}, nil
+}
+
+func (a *app) handleAccountUpdate(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in store.Account
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	err := a.st.Update(func(d *store.Data) error {
+		for i := range d.Accounts {
+			if d.Accounts[i].ID == in.ID {
+				d.Accounts[i].Name = strings.TrimSpace(in.Name)
+				d.Accounts[i].Color = in.Color
+				return nil
+			}
+		}
+		return fmt.Errorf("account not found")
+	})
+	return map[string]bool{"ok": err == nil}, err
+}
+
+func (a *app) handleAccountRemove(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		ID string `json:"id"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	err := a.st.Update(func(d *store.Data) error {
+		accts := d.Accounts[:0]
+		for _, ac := range d.Accounts {
+			if ac.ID != in.ID {
+				accts = append(accts, ac)
+			}
+		}
+		d.Accounts = accts
+		ids := d.Identities[:0]
+		for _, x := range d.Identities {
+			if x.AccountID != in.ID {
+				ids = append(ids, x)
+			} else if d.Settings.DefaultIdentity == x.ID {
+				d.Settings.DefaultIdentity = ""
+			}
+		}
+		d.Identities = ids
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	a.mu.Lock()
+	delete(a.providers, in.ID)
+	a.mu.Unlock()
+	return map[string]bool{"ok": true}, a.st.SetSecret(in.ID, "")
+}
+
+func (a *app) handleUnread(w http.ResponseWriter, r *http.Request) (any, error) {
+	out := map[string]int{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	for _, ac := range a.st.Get().Accounts {
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			p, _, err := a.provider(id)
+			if err != nil {
+				return
+			}
+			n, err := p.Unread(ctx)
+			if err != nil {
+				a.noteErr(id, err)
+				return
+			}
+			mu.Lock()
+			out[id] = n
+			mu.Unlock()
+		}(ac.ID)
+	}
+	wg.Wait()
+	return out, nil
+}
+
+// handleOpen opens a link from a message in the system browser. Links in the
+// message frame point here; the 204 leaves the frame where it was.
+func (a *app) handleOpen(w http.ResponseWriter, r *http.Request) (any, error) {
+	u, err := url.Parse(r.URL.Query().Get("u"))
+	if err == nil && (u.Scheme == "http" || u.Scheme == "https" || u.Scheme == "mailto") {
+		a.openURL(u.String())
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil, nil
+}

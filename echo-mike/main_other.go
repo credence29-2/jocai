@@ -1,0 +1,47 @@
+//go:build !windows
+
+// Command echo-mike is Project Echo Mike. On Windows it opens its own window. Here it
+// serves the same interface to your browser, for development.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
+
+	"github.com/credence29-2/jocai/echo-mike/internal/store"
+)
+
+func main() {
+	demoMode := flag.Bool("demo", false, "use sample accounts instead of real ones")
+	dataDir := flag.String("data", store.Dir(), "folder for settings and sign-ins")
+	noBrowser := flag.Bool("no-browser", false, "print the address instead of opening a browser")
+	flag.Parse()
+
+	st, err := openStore(*dataDir, *demoMode)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	a := newApp(st, *demoMode, openBrowser)
+	u, err := a.listen()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	fmt.Println(u)
+	if !*noBrowser {
+		openBrowser(u)
+	}
+	select {}
+}
+
+func openBrowser(u string) error {
+	cmd := "xdg-open"
+	if runtime.GOOS == "darwin" {
+		cmd = "open"
+	}
+	return exec.Command(cmd, u).Start()
+}

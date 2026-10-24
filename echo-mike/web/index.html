@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Echo Mike</title>
+<style>
+:root {
+  --bg: #20232b; --side: #1b1e25; --panel: #2a2e37; --card: #323742; --card2: #3a404c; --hover: #444b58;
+  --line: #3f4551; --text: #f1f3f6; --sub: #b4bbc6; --dim: #858d99;
+  --accent: #2f7cf6; --accent-hi: #4b8ff8; --good: #34c77b; --warn: #f2a93b; --bad: #ef5d5a; --star: #f5c542;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px; color: var(--text); background: var(--bg);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body { display: flex; background: var(--side); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+input, select, textarea { font: inherit; color: inherit; }
+svg { flex: none; }
+[hidden] { display: none !important; }
+.muted { color: var(--sub); }
+.dim { color: var(--dim); }
+
+/* ---------- sidebar ---------- */
+.sidebar { width: 232px; flex: none; display: flex; flex-direction: column; padding: 16px 8px 12px; user-select: none; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 18px; }
+.brand b { display: block; font-size: 15px; }
+.brand span { display: block; font-size: 12px; color: var(--sub); }
+.compose-btn { margin: 0 4px 16px; height: 42px; border-radius: 10px; border: 0; background: var(--accent); color: #fff; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.compose-btn:hover { background: var(--accent-hi); }
+.nav { display: flex; flex-direction: column; gap: 1px; }
+.nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: none; color: #d9dde3; font-weight: 600; text-align: left; }
+.nav button:hover { background: #262a33; color: #fff; }
+.nav button.active { background: #2d3442; color: #fff; }
+.nav button.active svg { color: var(--accent-hi); }
+.nav .count { margin-left: auto; font-size: 12px; color: var(--sub); font-weight: 600; }
+.side-label { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--dim); padding: 18px 12px 6px; }
+.acct-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.nav .acct-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.nav .warn-badge { margin-left: auto; color: var(--warn); font-size: 12px; }
+.side-spacer { flex: 1; }
+.side-foot { border-top: 1px solid #2a2e37; padding-top: 8px; }
+
+/* ---------- main layout ---------- */
+main { flex: 1; min-width: 0; display: flex; background: var(--panel); margin: 10px 10px 10px 0; border-radius: 10px; overflow: hidden; }
+.list-pane { width: 400px; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--bg); }
+.read-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.searchbar { padding: 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
+.search { flex: 1; display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; height: 36px; }
+.search:focus-within { border-color: var(--accent); }
+.search input { flex: 1; border: 0; background: none; outline: none; min-width: 0; }
+.list-head { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 8px; }
+.list-head h2 { margin: 0; font-size: 17px; }
+.list-head .grow { flex: 1; }
+.list { flex: 1; overflow: auto; }
+.row { display: flex; gap: 10px; padding: 10px 14px 10px 12px; border-bottom: 1px solid #2c3039; cursor: pointer; position: relative; user-select: none; }
+.row:hover { background: #282c35; }
+.row.sel { background: #2d3442; }
+.row .bar { width: 3px; border-radius: 2px; flex: none; align-self: stretch; }
+.row .body { flex: 1; min-width: 0; }
+.row .top { display: flex; align-items: baseline; gap: 8px; }
+.row .from { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sub); }
+.row .date { font-size: 12px; color: var(--dim); flex: none; }
+.row .subj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sub); margin-top: 1px; }
+.row .snip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-size: 13px; margin-top: 1px; }
+.row.unread .from, .row.unread .subj { color: #fff; font-weight: 600; }
+.row.unread::before { content: ""; position: absolute; left: 4px; top: 16px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-hi); }
+.row .icons { display: flex; gap: 4px; color: var(--dim); align-items: center; }
+.row .icons .on { color: var(--star); }
+.list-more { padding: 14px; text-align: center; }
+.list-msg { padding: 30px 20px; text-align: center; color: var(--sub); line-height: 1.5; }
+.acct-errors { margin: 10px 12px 0; padding: 10px 12px; border-radius: 8px; background: #3a2f22; color: #f6d4a1; font-size: 13px; line-height: 1.45; }
+
+/* ---------- reading pane ---------- */
+.toolbar { display: flex; align-items: center; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--line); min-height: 57px; flex-wrap: wrap; }
+.toolbar .grow { flex: 1; }
+.tb { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid transparent; background: none; color: #dfe3e8; font-weight: 600; }
+.tb:hover:not(:disabled) { background: var(--card2); }
+.tb.on svg { color: var(--star); fill: var(--star); }
+.reader { flex: 1; overflow: auto; padding: 20px 24px 30px; }
+.reader h1 { font-size: 20px; margin: 0 0 14px; font-weight: 600; line-height: 1.3; word-break: break-word; }
+.hdr { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+.avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; flex: none; }
+.hdr .who { flex: 1; min-width: 0; line-height: 1.45; }
+.hdr .who b { font-weight: 600; }
+.hdr .who .addr { color: var(--sub); }
+.hdr .who .small { font-size: 13px; color: var(--sub); word-break: break-word; }
+.hdr .when { font-size: 13px; color: var(--sub); text-align: right; flex: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--card2); color: var(--sub); }
+.banner { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: var(--card); color: var(--sub); margin-bottom: 12px; font-size: 13px; }
+.paper { background: #fff; color: #222; border-radius: 8px; overflow: hidden; }
+.paper iframe { width: 100%; border: 0; display: block; min-height: 120px; background: #fff; }
+.atts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.att { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); color: var(--text); text-decoration: none; max-width: 280px; }
+.att:hover { background: var(--card2); }
+.att span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att small { color: var(--dim); flex: none; }
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; color: var(--sub); }
+.empty h2 { color: var(--text); font-size: 18px; margin: 14px 0 6px; }
+.empty p { margin: 0 0 16px; max-width: 420px; line-height: 1.5; }
+
+/* ---------- buttons, inputs ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--card2); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--accent-hi); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: #ffb4b2; }
+.btn.small { height: 30px; padding: 0 12px; font-size: 13px; }
+.link { background: none; border: 0; padding: 0; color: var(--accent-hi); font-weight: 600; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field > span { font-size: 13px; color: var(--sub); font-weight: 600; }
+.input { height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); padding: 0 10px; outline: none; width: 100%; }
+.input:focus { border-color: var(--accent); }
+select.input { padding-right: 6px; }
+.check { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+/* ---------- compose ---------- */
+.overlay { position: fixed; inset: 0; background: rgba(10, 12, 16, .55); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 20px; }
+.dialog { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.5); display: flex; flex-direction: column; max-height: 100%; width: 100%; }
+.dialog.compose { max-width: 860px; height: 88vh; }
+.dialog.small { max-width: 520px; }
+.dialog.wide { max-width: 980px; height: 88vh; }
+.dlg-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.dlg-head h3 { margin: 0; font-size: 16px; flex: 1; }
+.dlg-body { padding: 16px 18px; overflow: auto; flex: 1; min-height: 0; }
+.dlg-foot { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--line); }
+.dlg-foot .grow { flex: 1; }
+.x { width: 32px; height: 32px; border-radius: 8px; border: 0; background: none; color: var(--sub); display: grid; place-items: center; }
+.x:hover { background: var(--card2); color: #fff; }
+.cfield { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding: 4px 18px; min-height: 42px; }
+.cfield label { width: 56px; color: var(--sub); flex: none; font-size: 13px; }
+.cfield input, .cfield select { flex: 1; min-width: 0; border: 0; background: none; outline: none; height: 34px; }
+.cfield select { background: var(--panel); }
+.cfield .extra { display: flex; gap: 10px; flex: none; }
+.fmt { display: flex; gap: 2px; padding: 6px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.fmt button { width: 32px; height: 30px; border: 0; border-radius: 6px; background: none; color: #d4d9df; font-weight: 700; display: grid; place-items: center; }
+.fmt button:hover { background: var(--card2); }
+.editor-wrap { flex: 1; min-height: 0; overflow: auto; background: #fff; }
+.editor { min-height: 100%; padding: 16px 20px; color: #222; background: #fff; outline: none; font: 14px/1.5 "Segoe UI", system-ui, sans-serif; color-scheme: light; }
+.editor blockquote { margin: 0 0 0 .8ex; border-left: 1px solid #ccc; padding-left: 1ex; }
+.editor .cm-signature { color: #444; }
+.editor .cm-quote { color: #555; }
+.sig-editor { min-height: 120px; max-height: 260px; overflow: auto; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+.sig-box { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.sig-box .fmt { background: var(--card); }
+.files { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 18px 0; }
+.file-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 14px; background: var(--card2); font-size: 13px; max-width: 280px; }
+.file-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-chip button { border: 0; background: none; color: var(--sub); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; }
+.file-chip button:hover { background: var(--hover); color: #fff; }
+.err { color: #ffb4b2; font-size: 13px; }
+
+/* ---------- settings ---------- */
+.tabs { display: flex; gap: 4px; padding: 0 18px; border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: none; padding: 12px 14px; color: var(--sub); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button.active { color: #fff; border-bottom-color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+.card-row { display: flex; align-items: center; gap: 12px; }
+.card-row .grow { flex: 1; min-width: 0; }
+.card h4 { margin: 0 0 2px; font-size: 15px; }
+.ident { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.ident:first-of-type { border-top: 0; }
+.ident .grow { flex: 1; min-width: 0; }
+.ident .sig-preview { font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #1f3a63; color: #a9c8ff; }
+.badge.warn { background: #3a2f22; color: var(--warn); }
+.steps { line-height: 1.6; color: var(--sub); padding-left: 20px; margin: 6px 0 14px; }
+.steps code, .code { background: var(--bg); padding: 1px 6px; border-radius: 4px; color: #dfe3e8; font-family: Consolas, monospace; font-size: 12.5px; user-select: all; }
+.color-pick { display: flex; gap: 6px; }
+.color-pick button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; }
+.color-pick button.on { border-color: #fff; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #11141a; color: #fff; padding: 10px 16px; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.4); z-index: 30; display: flex; gap: 14px; align-items: center; }
+.spin { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent-hi); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.demo-flag { margin: 0 12px 10px; padding: 8px 10px; border-radius: 8px; background: #3a2f22; color: #f6d4a1; font-size: 12px; line-height: 1.4; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#2f7cf6"/><path d="M7 10.5h18v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 7 21.5z" fill="#fff"/><path d="M7.4 11 16 17.4 24.6 11" fill="none" stroke="#2f7cf6" stroke-width="2" stroke-linejoin="round"/></svg>
+    <div><b>Project Echo Mike</b><span id="brandSub">All your mail</span></div>
+  </div>
+  <div id="demoFlag" class="demo-flag" hidden>Demo mode. These are sample accounts and nothing is really sent.</div>
+  <button class="compose-btn" id="composeBtn" title="New message (C)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>New message</button>
+  <nav class="nav" id="folders"></nav>
+  <div class="side-label">Accounts</div>
+  <nav class="nav" id="accounts"></nav>
+  <div class="side-spacer"></div>
+  <nav class="nav side-foot">
+    <button id="settingsBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+  </nav>
+</aside>
+
+<main>
+  <section class="list-pane">
+    <div class="searchbar">
+      <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dim"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" placeholder="Search all mail" autocomplete="off"></label>
+      <button class="btn small ghost" id="refreshBtn" title="Refresh"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg></button>
+    </div>
+    <div id="acctErrors"></div>
+    <div class="list-head"><h2 id="listTitle">Inbox</h2><span class="dim" id="listSub"></span></div>
+    <div class="list" id="list"></div>
+  </section>
+  <section class="read-pane" id="readPane"></section>
+</main>
+
+<div id="modal"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+"use strict";
+const TOKEN = location.hash.slice(1);
+const ORIGIN = location.origin;
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function api(path, body) {
+  const opt = { headers: { "X-Echo-Token": TOKEN } };
+  if (body !== undefined) {
+    opt.method = "POST";
+    opt.headers["Content-Type"] = "application/json";
+    opt.body = JSON.stringify(body);
+  }
+  const r = await fetch(path, opt);
+  let data = null;
+  try { data = await r.json(); } catch {}
+  if (!r.ok) throw new Error((data && data.error) || r.statusText);
+  return data;
+}
+const dl = (path, params) => path + "?" + new URLSearchParams({ ...params, t: TOKEN });
+
+const ICON = {
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
+  starred: '<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>',
+  sent: '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',
+  archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+  spam: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  reply: '<path d="M9 17 4 12l5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
+  replyAll: '<path d="m7 17-5-5 5-5"/><path d="m12 17-5-5 5-5"/><path d="M22 18v-2a4 4 0 0 0-4-4H7"/>',
+  forward: '<path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>',
+  unread: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
+  clip: '<path d="m21.4 11-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+};
+const icon = (n, size = 18, extra = "") => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${ICON[n]}</svg>`;
+const FOLDER_NAMES = { inbox: "Inbox", starred: "Starred", sent: "Sent", archive: "Archive", spam: "Spam", trash: "Trash" };
+const COLORS = ["#d93025", "#0a64d6", "#188038", "#e37400", "#9334e6", "#00897b", "#c2185b", "#5f6368"];
+
+const S = {
+  accounts: [], identities: [], settings: {}, demo: false,
+  folder: "inbox", account: "", query: "",
+  messages: [], cursors: {}, errors: {}, loading: false,
+  sel: null, msg: null, showImages: false, unread: {},
+};
+const acctById = id => S.accounts.find(a => a.id === id);
+const identById = id => S.identities.find(i => i.id === id);
+
+function toast(text, ms = 3500, action) {
+  const t = $("#toast");
+  t.innerHTML = `<span>${esc(text)}</span>`;
+  if (action) {
+    const b = document.createElement("button");
+    b.className = "link"; b.textContent = action.label; b.onclick = () => { t.hidden = true; action.run(); };
+    t.append(b);
+  }
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => (t.hidden = true), ms);
+}
+
+function fmtDate(iso, long) {
+  const d = new Date(iso), now = new Date();
+  if (long) return d.toLocaleString([], { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const days = (now - d) / 864e5;
+  if (days < 6) return d.toLocaleDateString([], { weekday: "short" });
+  if (d.getFullYear() === now.getFullYear()) return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return d.toLocaleDateString();
+}
+const fmtSize = n => n < 1024 ? n + " B" : n < 1048576 ? Math.round(n / 1024) + " KB" : (n / 1048576).toFixed(1) + " MB";
+const addrText = a => a ? (a.name ? `${a.name} <${a.email}>` : a.email) : "";
+const addrList = l => (l || []).map(addrText).join(", ");
+const initials = a => ((a.name || a.email || "?").replace(/[^A-Za-z0-9 ]/g, "").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("") || "?").toUpperCase();
+function hue(s) { let h = 0; for (const c of s || "") h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 45% 42%)`; }
+
+/* ---------- sidebar ---------- */
+function renderSidebar() {
+  const inboxUnread = Object.entries(S.unread).filter(([id]) => !S.account || id === S.account).reduce((n, [, v]) => n + v, 0);
+  $("#folders").innerHTML = Object.keys(FOLDER_NAMES).map(f => `
+    <button data-folder="${f}" class="${S.folder === f && !S.query ? "active" : ""}">${icon(f)}${FOLDER_NAMES[f]}
+      ${f === "inbox" && inboxUnread ? `<span class="count">${inboxUnread}</span>` : ""}</button>`).join("");
+  $("#accounts").innerHTML = `<button data-acct="" class="${S.account ? "" : "active"}">${icon("all", 16)}<span class="acct-name">All accounts</span></button>` +
+    S.accounts.map(a => `<button data-acct="${esc(a.id)}" class="${S.account === a.id ? "active" : ""}" title="${esc(a.email)}">
+      <span class="acct-dot" style="background:${esc(a.color)}"></span><span class="acct-name">${esc(a.name || a.email)}</span>
+      ${a.needsReconnect ? '<span class="warn-badge" title="Sign-in expired">!</span>' : S.unread[a.id] ? `<span class="count">${S.unread[a.id]}</span>` : ""}</button>`).join("");
+  document.title = inboxUnread ? `(${inboxUnread}) Project Echo Mike` : "Project Echo Mike";
+}
+$("#folders").onclick = e => {
+  const b = e.target.closest("[data-folder]"); if (!b) return;
+  S.folder = b.dataset.folder; S.query = ""; $("#search").value = "";
+  loadList();
+};
+$("#accounts").onclick = e => {
+  const b = e.target.closest("[data-acct]"); if (!b) return;
+  S.account = b.dataset.acct; loadList();
+};
+
+/* ---------- list ---------- */
+async function loadList(more) {
+  const req = { folder: S.query ? "all" : S.folder, query: S.query, accountId: S.account };
+  if (more) req.cursors = S.cursors;
+  const ticket = loadList.ticket = (loadList.ticket || 0) + 1;
+  S.loading = true;
+  if (!more) { S.messages = []; S.errors = {}; }
+  renderSidebar(); renderList();
+  try {
+    const r = await api("/api/list", req);
+    if (ticket !== loadList.ticket) return;
+    const seen = new Set(S.messages.map(m => m.accountId + "/" + m.id));
+    S.messages = S.messages.concat(r.messages.filter(m => !seen.has(m.accountId + "/" + m.id)));
+    S.messages.sort((a, b) => new Date(b.date) - new Date(a.date));
+    S.cursors = r.cursors; S.errors = r.errors;
+  } catch (e) {
+    if (ticket !== loadList.ticket) return;
+    S.errors = { "": e.message };
+  }
+  S.loading = false;
+  if (Object.keys(S.errors).length) refreshState();
+  renderList();
+}
+
+function renderList() {
+  $("#listTitle").textContent = S.query ? "Search results" : FOLDER_NAMES[S.folder];
+  const acct = acctById(S.account);
+  $("#listSub").textContent = acct ? acct.name || acct.email : S.accounts.length > 1 ? "All accounts" : "";
+  const errs = Object.entries(S.errors);
+  $("#acctErrors").innerHTML = errs.length ? `<div class="acct-errors">${errs.map(([id, e]) => {
+    const a = acctById(id);
+    return `<div><b>${esc(a ? a.name || a.email : "Error")}:</b> ${esc(e)}</div>`;
+  }).join("")}${errs.some(([id]) => acctById(id)?.needsReconnect) ? '<div style="margin-top:6px"><button class="link" data-go="accounts">Reconnect in Settings</button></div>' : ""}</div>` : "";
+
+  const list = $("#list");
+  if (!S.accounts.length) {
+    list.innerHTML = `<div class="list-msg">No accounts yet.<br><button class="btn primary" style="margin-top:14px" data-go="accounts">Add an account</button></div>`;
+    return;
+  }
+  if (!S.messages.length) {
+    list.innerHTML = S.loading ? `<div class="list-msg"><div class="spin" style="margin:0 auto"></div></div>` :
+      `<div class="list-msg">${S.query ? "Nothing matched your search." : "Nothing in " + FOLDER_NAMES[S.folder] + "."}</div>`;
+    return;
+  }
+  const multi = S.accounts.length > 1;
+  list.innerHTML = S.messages.map((m, i) => {
+    const a = acctById(m.accountId) || {};
+    const who = S.folder === "sent" && !S.query ? "To: " + ((m.to || []).map(t => t.name || t.email).join(", ") || "(no recipients)") : (m.from.name || m.from.email);
+    const sel = S.sel && S.sel.accountId === m.accountId && S.sel.id === m.id;
+    return `<div class="row ${m.unread ? "unread" : ""} ${sel ? "sel" : ""}" data-i="${i}">
+      ${multi ? `<span class="bar" style="background:${esc(a.color)}" title="${esc(a.email)}"></span>` : ""}
+      <div class="body">
+        <div class="top"><span class="from">${esc(who)}</span>
+          <span class="icons">${m.hasAttachments ? icon("clip", 13) : ""}${m.starred ? icon("starred", 13, 'class="on" fill="currentColor"') : ""}</span>
+          <span class="date">${esc(fmtDate(m.date))}</span></div>
+        <div class="subj">${esc(m.subject || "(no subject)")}</div>
+        <div class="snip">${esc(m.snippet)}</div>
+      </div></div>`;
+  }).join("") + (Object.keys(S.cursors || {}).length ? `<div class="list-more"><button class="btn small" id="moreBtn" ${S.loading ? "disabled" : ""}>${S.loading ? "Loading..." : "Load more"}</button></div>` : "");
+}
+$("#list").onclick = e => {
+  if (e.target.id === "moreBtn") return loadList(true);
+  const row = e.target.closest(".row");
+  if (row) openMessage(S.messages[+row.dataset.i]);
+};
+document.addEventListener("click", e => {
+  const go = e.target.closest("[data-go]");
+  if (go) openSettings(go.dataset.go);
+});
+
+let searchTimer;
+$("#search").addEventListener("keydown", e => {
+  if (e.key === "Enter") { clearTimeout(searchTimer); S.query = e.target.value.trim(); loadList(); }
+  if (e.key === "Escape") { e.target.value = ""; if (S.query) { S.query = ""; loadList(); } e.target.blur(); }
+});
+$("#search").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { const q = e.target.value.trim(); if (q !== S.query) { S.query = q; loadList(); } }, 600);
+});
+$("#refreshBtn").onclick = () => { loadList(); pollUnread(); };
+
+/* ---------- reading pane ---------- */
+function renderEmptyReader() {
+  $("#readPane").innerHTML = S.accounts.length ? `<div class="empty">${icon("unread", 48, 'class="dim"')}<h2>No message selected</h2><p>Pick a message on the left. Press C to write a new one.</p></div>` :
+    `<div class="empty">${icon("inbox", 48, 'class="dim"')}<h2>Welcome to Project Echo Mike</h2>
+     <p>Connect your Gmail and Outlook accounts to see all of your mail in one place and send from any of your aliases.</p>
+     <button class="btn primary" data-go="accounts">Add an account</button></div>`;
+}
+
+async function openMessage(m) {
+  if (!m) return;
+  S.sel = { accountId: m.accountId, id: m.id };
+  S.showImages = !!S.settings.loadImages;
+  renderList();
+  $("#readPane").innerHTML = `<div class="empty"><div class="spin"></div></div>`;
+  try {
+    const full = await api(dl("/api/message", { a: m.accountId, id: m.id }));
+    if (!S.sel || S.sel.id !== m.id || S.sel.accountId !== m.accountId) return;
+    S.msg = full;
+    renderReader();
+    if (m.unread) {
+      m.unread = false; renderList();
+      api("/api/apply", { accountId: m.accountId, ids: [m.id], change: "read" }).then(pollUnread).catch(() => {});
+    }
+  } catch (e) {
+    $("#readPane").innerHTML = `<div class="empty"><h2>Couldn't open that message</h2><p>${esc(e.message)}</p></div>`;
+  }
+}
+
+function renderReader() {
+  const m = S.msg, a = acctById(m.accountId) || {};
+  const inTrash = S.folder === "trash" && !S.query, inSpam = S.folder === "spam" && !S.query;
+  const files = (m.attachments || []).filter(x => !x.inline || !(m.html || "").includes("cid:" + x.contentId));
+  $("#readPane").innerHTML = `
+    <div class="toolbar">
+      <button class="tb" data-act="reply" title="Reply (R)">${icon("reply")}Reply</button>
+      <button class="tb" data-act="replyAll" title="Reply all (A)">${icon("replyAll")}Reply all</button>
+      <button class="tb" data-act="forward" title="Forward (F)">${icon("forward")}Forward</button>
+      <span class="grow"></span>
+      ${inTrash || inSpam ? `<button class="tb" data-act="inbox" title="Move to Inbox">${icon("inbox")}Not ${inSpam ? "spam" : "deleted"}</button>` :
+        `<button class="tb" data-act="archive" title="Archive (E)">${icon("archive")}Archive</button>`}
+      ${inSpam ? "" : `<button class="tb" data-act="spam" title="Report spam">${icon("spam")}</button>`}
+      ${inTrash ? "" : `<button class="tb" data-act="trash" title="Delete (Del)">${icon("trash")}</button>`}
+      <button class="tb" data-act="unread" title="Mark unread (U)">${icon("unread")}</button>
+      <button class="tb ${m.starred ? "on" : ""}" data-act="star" title="${m.starred ? "Unstar" : "Star"} (S)">${icon("starred")}</button>
+    </div>
+    <div class="reader">
+      <h1>${esc(m.subject || "(no subject)")}</h1>
+      <div class="hdr">
+        <div class="avatar" style="background:${hue(m.from.email)}">${esc(initials(m.from))}</div>
+        <div class="who">
+          <div><b>${esc(m.from.name || m.from.email)}</b> ${m.from.name ? `<span class="addr">&lt;${esc(m.from.email)}&gt;</span>` : ""}</div>
+          <div class="small">To: ${esc(addrList(m.to)) || "(undisclosed)"}${m.cc && m.cc.length ? "<br>Cc: " + esc(addrList(m.cc)) : ""}</div>
+        </div>
+        <div class="when">${esc(fmtDate(m.date, true))}<br><span class="chip"><span class="acct-dot" style="background:${esc(a.color)};width:8px;height:8px"></span>${esc(a.name || a.email || "")}</span></div>
+      </div>
+      <div id="imgBanner"></div>
+      <div class="paper"><iframe id="msgFrame" sandbox="allow-same-origin" referrerpolicy="no-referrer" title="Message"></iframe></div>
+      ${files.length ? `<div class="atts">${files.map(f => `<a class="att" href="${esc(dl("/api/attachment", { a: m.accountId, m: m.id, att: f.id, name: f.name, type: f.mimeType }))}" title="Download ${esc(f.name)}">${icon("clip", 15)}<span>${esc(f.name)}</span><small>${fmtSize(f.size)}</small></a>`).join("")}</div>` : ""}
+    </div>`;
+  renderBody();
+}
+
+// renderBody writes the message into a sandboxed frame. Scripts never run
+// there. Links go to /open so they open in your browser, cid: images come
+// from the attachment endpoint, and remote images stay blocked until you ask,
+// so tracking pixels can't report that you read it.
+function renderBody() {
+  const m = S.msg;
+  const doc = new DOMParser().parseFromString(m.html || `<div style="white-space:pre-wrap;font-family:inherit">${esc(m.text || "")}</div>`, "text/html");
+  doc.querySelectorAll("script,iframe,frame,frameset,object,embed,base,meta,link[rel=import],form button[type=submit]").forEach(n => n.remove());
+  doc.querySelectorAll("a[href],area[href]").forEach(n => {
+    const href = n.getAttribute("href").trim();
+    n.removeAttribute("target");
+    if (/^(https?:|mailto:)/i.test(href)) { n.setAttribute("href", dl(ORIGIN + "/open", { u: href })); n.setAttribute("title", href); }
+    else if (!href.startsWith("#")) n.removeAttribute("href");
+  });
+  const byCid = {};
+  (m.attachments || []).forEach(x => { if (x.contentId) byCid[x.contentId.replace(/^<|>$/g, "")] = x; });
+  let remote = 0;
+  doc.querySelectorAll("img").forEach(img => {
+    const src = (img.getAttribute("src") || "").trim();
+    if (/^cid:/i.test(src)) {
+      const x = byCid[decodeURIComponent(src.slice(4))];
+      if (x) img.setAttribute("src", dl(ORIGIN + "/api/attachment", { a: m.accountId, m: m.id, att: x.id, name: x.name, type: x.mimeType, inline: "1" }));
+    } else if (/^(https?:)?\/\//i.test(src)) remote++;
+  });
+  if (/url\(\s*['"]?(https?:)?\/\//i.test(m.html || "")) remote++;
+  const imgSrc = S.showImages ? "img-src data: https: http: " + ORIGIN : "img-src data: " + ORIGIN;
+  const csp = `default-src 'none'; style-src 'unsafe-inline'; font-src data:${S.showImages ? " https:" : ""}; ${imgSrc}`;
+  const head = doc.head || doc.documentElement.insertBefore(doc.createElement("head"), doc.body);
+  head.insertAdjacentHTML("afterbegin", `<meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_self">
+    <style>html,body{margin:0}body{padding:18px 20px;font:14px/1.5 "Segoe UI",system-ui,sans-serif;color:#222;word-wrap:break-word;color-scheme:light}img{max-width:100%;height:auto}blockquote{margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex}pre{white-space:pre-wrap}</style>`);
+  const f = $("#msgFrame");
+  f.onload = () => {
+    const d = f.contentDocument;
+    if (!d) return;
+    const fit = () => { f.style.height = Math.max(120, d.documentElement.scrollHeight) + "px"; };
+    fit();
+    new ResizeObserver(fit).observe(d.body);
+    d.querySelectorAll("img").forEach(i => i.addEventListener("load", fit));
+  };
+  f.srcdoc = "<!doctype html>" + doc.documentElement.outerHTML;
+  $("#imgBanner").innerHTML = remote && !S.showImages ? `<div class="banner">${icon("spam", 16)}<span>Remote images are hidden so the sender can't tell you opened this.</span><button class="link" id="showImgs">Show images</button></div>` : "";
+}
+$("#readPane").addEventListener("click", e => {
+  if (e.target.id === "showImgs") { S.showImages = true; renderBody(); return; }
+  const b = e.target.closest("[data-act]");
+  if (b) act(b.dataset.act);
+});
+
+async function act(kind) {
+  const m = S.msg;
+  if (!m) return;
+  if (kind === "reply" || kind === "replyAll" || kind === "forward") return replyTo(m, kind);
+  const summary = S.messages.find(x => x.accountId === m.accountId && x.id === m.id);
+  let change = kind;
+  if (kind === "star") change = m.starred ? "unstar" : "star";
+  try {
+    await api("/api/apply", { accountId: m.accountId, ids: [m.id], change });
+  } catch (e) { return toast(e.message, 6000); }
+  if (change === "star" || change === "unstar") {
+    m.starred = change === "star";
+    if (summary) summary.starred = m.starred;
+    if (S.folder === "starred" && !m.starred) removeFromList(m); else { renderList(); renderReader(); }
+    return;
+  }
+  if (change === "unread") {
+    if (summary) summary.unread = true;
+    S.sel = null; S.msg = null; renderList(); renderEmptyReader(); pollUnread();
+    return;
+  }
+  const label = { archive: "Archived", trash: "Moved to Trash", spam: "Reported as spam", inbox: "Moved to Inbox" }[change];
+  removeFromList(m);
+  pollUnread();
+  const undo = { archive: "inbox", trash: "inbox", spam: "inbox" }[change];
+  toast(label, 5000, undo && {
+    label: "Undo", run: async () => {
+      try { await api("/api/apply", { accountId: m.accountId, ids: [m.id], change: undo }); loadList(); pollUnread(); } catch (e) { toast(e.message); }
+    }
+  });
+}
+
+function removeFromList(m) {
+  const i = S.messages.findIndex(x => x.accountId === m.accountId && x.id === m.id);
+  if (i >= 0) S.messages.splice(i, 1);
+  const next = S.messages[Math.min(i, S.messages.length - 1)];
+  S.sel = null; S.msg = null;
+  renderList();
+  if (next && i >= 0) openMessage(next); else renderEmptyReader();
+}
+
+/* ---------- compose ---------- */
+const FMT = [
+  ["bold", "<b>B</b>", "Bold (Ctrl+B)"], ["italic", "<i>I</i>", "Italic (Ctrl+I)"], ["underline", "<u>U</u>", "Underline (Ctrl+U)"],
+  ["insertUnorderedList", '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>', "Bullets"],
+  ["insertOrderedList", '<span style="font-size:12px">1.</span>', "Numbered list"],
+  ["createLink", '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>', "Link"],
+  ["removeFormat", '<span style="font-size:12px;text-decoration:line-through">T</span>', "Clear formatting"],
+];
+const fmtBar = () => `<div class="fmt">${FMT.map(([c, h, t]) => `<button type="button" data-cmd="${c}" title="${t}">${h}</button>`).join("")}</div>`;
+function wireFmt(root, editor) {
+  root.querySelector(".fmt").addEventListener("mousedown", e => {
+    const b = e.target.closest("[data-cmd]"); if (!b) return;
+    e.preventDefault();
+    editor.focus();
+    if (b.dataset.cmd === "createLink") {
+      const u = prompt("Link address", "https://");
+      if (u && u !== "https://") document.execCommand("createLink", false, u);
+    } else document.execCommand(b.dataset.cmd);
+  });
+}
+
+function sigHTML(ident, isReply) {
+  if (!ident || !ident.signatureHtml || (isReply && !ident.signatureOnReplies)) return "";
+  return ident.signatureHtml;
+}
+
+function defaultIdentity() {
+  return identById(S.settings.defaultIdentity) ||
+    (S.account && S.identities.find(i => i.accountId === S.account && i.default)) ||
+    S.identities.find(i => i.default) || S.identities[0];
+}
+
+async function replyTo(m, kind) {
+  try {
+    const d = await api("/api/draft", { accountId: m.accountId, id: m.id, kind });
+    compose({ ...d, kind, replyAccountId: m.accountId, forwardFrom: { accountId: m.accountId, msgId: m.id } });
+  } catch (e) { toast(e.message, 6000); }
+}
+
+function compose(d = {}) {
+  if (!S.identities.length) { toast("Add an account first."); return openSettings("accounts"); }
+  const isReply = !!d.kind;
+  let ident = identById(d.identityId) || defaultIdentity();
+  const files = [];
+  const fwd = (d.attachments || []).map(a => ({ ...a, accountId: d.forwardFrom.accountId, msgId: d.forwardFrom.msgId }));
+  const byAcct = {};
+  S.identities.forEach(i => (byAcct[i.accountId] = byAcct[i.accountId] || []).push(i));
+  const fromOpts = S.accounts.filter(a => byAcct[a.id]).map(a => `<optgroup label="${esc(a.name || a.email)}">${byAcct[a.id].map(i =>
+    `<option value="${esc(i.id)}" ${i.id === ident.id ? "selected" : ""}>${esc(i.name ? `${i.name} <${i.email}>` : i.email)}</option>`).join("")}</optgroup>`).join("");
+  const title = d.kind === "forward" ? "Forward" : isReply ? "Reply" : "New message";
+  const hasCc = (d.cc || []).length > 0;
+  $("#modal").innerHTML = `<div class="overlay"><div class="dialog compose">
+    <div class="dlg-head"><h3>${title}</h3><button class="x" data-close title="Close">${icon("x")}</button></div>
+    <div class="cfield"><label>From</label><select id="cFrom">${fromOpts}</select></div>
+    <div class="cfield"><label>To</label><input id="cTo" value="${esc(addrList(d.to))}" autocomplete="off" spellcheck="false">
+      <span class="extra"><button class="link" id="cShowCc" ${hasCc ? "hidden" : ""}>Cc</button><button class="link" id="cShowBcc">Bcc</button></span></div>
+    <div class="cfield" id="cCcRow" ${hasCc ? "" : "hidden"}><label>Cc</label><input id="cCc" value="${esc(addrList(d.cc))}" autocomplete="off" spellcheck="false"></div>
+    <div class="cfield" id="cBccRow" hidden><label>Bcc</label><input id="cBcc" autocomplete="off" spellcheck="false"></div>
+    <div class="cfield"><label>Subject</label><input id="cSubject" value="${esc(d.subject || "")}"></div>
+    ${fmtBar()}
+    <div class="editor-wrap"><div class="editor" id="cBody" contenteditable="true"></div></div>
+    <div class="files" id="cFiles"></div>
+    <div class="dlg-foot">
+      <button class="btn primary" id="cSend" title="Send (Ctrl+Enter)">${icon("sent", 16)}Send</button>
+      <label class="btn ghost" title="Attach files">${icon("clip", 16)}Attach<input type="file" id="cAttach" multiple hidden></label>
+      <span class="err" id="cErr"></span><span class="grow"></span>
+      <span class="dim" id="cVia"></span>
+      <button class="btn ghost" data-close>Discard</button>
+    </div></div></div>`;
+  const root = $("#modal");
+  const body = $("#cBody");
+  body.innerHTML = `<div><br></div><div><br></div><div class="cm-signature">${sigHTML(ident, isReply)}</div>${d.quoteHtml ? "<br>" + d.quoteHtml : ""}`;
+  wireFmt(root, body);
+  // A click in the blank space under a short message would land after the
+  // signature. Put the caret on the first line instead, where you write.
+  root.querySelector(".editor-wrap").addEventListener("mousedown", e => {
+    if ((e.target === body || e.target.classList.contains("editor-wrap")) && body.querySelector(".cm-signature") && !body.textContent.replace(sigText(body.querySelector(".cm-signature").innerHTML), "").trim()) {
+      e.preventDefault();
+      body.focus();
+      const r = document.createRange(); r.setStart(body.firstChild, 0); r.collapse(true);
+      getSelection().removeAllRanges(); getSelection().addRange(r);
+    }
+  });
+
+  const via = () => {
+    const a = acctById(ident.accountId) || {};
+    $("#cVia").textContent = "Sends through " + (a.name || a.email || "");
+  };
+  via();
+  $("#cFrom").onchange = e => {
+    ident = identById(e.target.value);
+    let sig = body.querySelector(".cm-signature");
+    if (!sig) { sig = document.createElement("div"); sig.className = "cm-signature"; body.insertBefore(sig, body.querySelector(".cm-quote")?.previousSibling || null); }
+    sig.innerHTML = sigHTML(ident, isReply);
+    via();
+  };
+  $("#cShowCc").onclick = () => { $("#cCcRow").hidden = false; $("#cShowCc").hidden = true; $("#cCc").focus(); };
+  $("#cShowBcc").onclick = () => { $("#cBccRow").hidden = false; $("#cShowBcc").hidden = true; $("#cBcc").focus(); };
+
+  const renderFiles = () => {
+    $("#cFiles").innerHTML = fwd.map((f, i) => `<span class="file-chip" title="From the original message">${icon("clip", 13)}<span>${esc(f.name)}</span><small class="dim">${fmtSize(f.size)}</small><button data-fwd="${i}" title="Remove">${icon("x", 12)}</button></span>`).join("") +
+      files.map((f, i) => `<span class="file-chip">${icon("clip", 13)}<span>${esc(f.name)}</span><small class="dim">${fmtSize(f.size)}</small><button data-file="${i}" title="Remove">${icon("x", 12)}</button></span>`).join("");
+  };
+  renderFiles();
+  $("#cFiles").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.fwd) fwd.splice(+b.dataset.fwd, 1); else files.splice(+b.dataset.file, 1);
+    renderFiles();
+  };
+  const addFiles = list => { for (const f of list) files.push(f); renderFiles(); };
+  $("#cAttach").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+  root.querySelector(".dialog").addEventListener("dragover", e => e.preventDefault());
+  root.querySelector(".dialog").addEventListener("drop", e => { if (e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } });
+
+  let dirty = false;
+  root.addEventListener("input", () => (dirty = true));
+  const close = () => {
+    if (dirty && !confirm("Discard this message?")) return;
+    root.innerHTML = "";
+  };
+  root.querySelectorAll("[data-close]").forEach(b => (b.onclick = close));
+
+  const send = async () => {
+    const btn = $("#cSend");
+    $("#cErr").textContent = "";
+    if (!$("#cTo").value.trim() && !$("#cCc").value.trim() && !$("#cBcc").value.trim()) { $("#cErr").textContent = "Add at least one recipient."; return $("#cTo").focus(); }
+    if (!$("#cSubject").value.trim() && !confirm("Send without a subject?")) return;
+    const total = files.reduce((n, f) => n + f.size, 0) + fwd.reduce((n, f) => n + f.size, 0);
+    if (total > 25 * 1048576) { $("#cErr").textContent = "Attachments are over 25 MB. Most mail servers won't accept that."; return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Sending';
+    try {
+      const clone = body.cloneNode(true);
+      clone.querySelectorAll(".cm-signature").forEach(s => { if (!s.textContent.trim() && !s.querySelector("img")) s.remove(); });
+      const out = [];
+      for (const f of files) out.push({ name: f.name, mimeType: f.type || "application/octet-stream", data: await b64(f) });
+      await api("/api/send", {
+        identityId: ident.id, to: $("#cTo").value, cc: $("#cCc").value, bcc: $("#cBcc").value,
+        subject: $("#cSubject").value, html: clone.innerHTML, files: out,
+        forward: fwd.map(f => ({ accountId: f.accountId, msgId: f.msgId, id: f.id, name: f.name, mimeType: f.mimeType, size: f.size })),
+        inReplyTo: d.inReplyTo || "", references: d.references || "", threadId: d.threadId || "", replyAccountId: d.replyAccountId || "",
+      });
+      root.innerHTML = "";
+      toast("Sent from " + ident.email);
+      if (S.folder === "sent") loadList();
+    } catch (e) {
+      $("#cErr").textContent = e.message;
+      btn.disabled = false; btn.innerHTML = icon("sent", 16) + "Send";
+    }
+  };
+  $("#cSend").onclick = send;
+  root.querySelector(".dialog").addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
+  });
+  (isReply && d.kind !== "forward" ? body : $("#cTo")).focus();
+  if (isReply && d.kind !== "forward") { const r = document.createRange(); r.setStart(body.firstChild, 0); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); }
+}
+const b64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = () => bad(r.error); r.readAsDataURL(f); });
+$("#composeBtn").onclick = () => compose();
+
+/* ---------- settings ---------- */
+let settingsTab = "accounts";
+function openSettings(tab) {
+  if (tab) settingsTab = tab;
+  $("#modal").innerHTML = `<div class="overlay"><div class="dialog wide">
+    <div class="dlg-head"><h3>Settings</h3><button class="x" data-close title="Close">${icon("x")}</button></div>
+    <div class="tabs">${[["accounts", "Accounts"], ["identities", "From addresses and signatures"], ["setup", "Sign-in setup"], ["general", "General"]].map(([k, l]) =>
+      `<button data-tab="${k}" class="${settingsTab === k ? "active" : ""}">${l}</button>`).join("")}</div>
+    <div class="dlg-body" id="setBody"></div></div></div>`;
+  const root = $("#modal");
+  root.querySelector("[data-close]").onclick = () => { root.innerHTML = ""; };
+  root.querySelector(".tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if (b) openSettings(b.dataset.tab); };
+  ({ accounts: renderAccounts, identities: renderIdentities, setup: renderSetup, general: renderGeneral })[settingsTab]();
+}
+
+function renderAccounts() {
+  const st = S.settings;
+  const gReady = st.googleClientId && st.googleClientSecret, mReady = st.microsoftClientId;
+  $("#setBody").innerHTML = `
+    ${S.accounts.map(a => `<div class="card"><div class="card-row">
+      <span class="acct-dot" style="background:${esc(a.color)};width:14px;height:14px"></span>
+      <div class="grow"><h4>${esc(a.name || a.email)} ${a.needsReconnect ? '<span class="badge warn">Sign-in expired</span>' : ""}</h4>
+        <div class="muted">${esc(a.email)} · ${a.provider === "gmail" ? "Gmail" : "Outlook"}</div></div>
+      ${a.needsReconnect ? `<button class="btn small primary" data-reconnect="${esc(a.id)}">Reconnect</button>` : ""}
+      <button class="btn small" data-edit-acct="${esc(a.id)}">Edit</button>
+      <button class="btn small ghost danger" data-remove="${esc(a.id)}">Remove</button></div></div>`).join("") ||
+      '<p class="muted">No accounts yet.</p>'}
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn primary" data-connect="gmail">Add Gmail account</button>
+      <button class="btn primary" data-connect="outlook">Add Outlook account</button>
+    </div>
+    ${!gReady || !mReady ? `<p class="muted" style="margin-top:14px;line-height:1.5">Before your first ${!gReady && !mReady ? "Gmail or Outlook" : !gReady ? "Gmail" : "Outlook"} account, fill in <button class="link" data-tab-go="setup">Sign-in setup</button>. It's a one-time step.</p>` : ""}`;
+  const body = $("#setBody");
+  body.onclick = async e => {
+    const t = e.target;
+    if (t.dataset.tabGo) return openSettings(t.dataset.tabGo);
+    if (t.dataset.connect) return connect(t.dataset.connect);
+    if (t.dataset.reconnect) { const a = acctById(t.dataset.reconnect); return connect(a.provider, a.id); }
+    if (t.dataset.remove) {
+      const a = acctById(t.dataset.remove);
+      if (!confirm(`Remove ${a.email} from Project Echo Mike? Its mail stays on ${a.provider === "gmail" ? "Gmail" : "Outlook"}. Its aliases and signatures here are deleted.`)) return;
+      try { await api("/api/account/remove", { id: a.id }); } catch (err) { return toast(err.message); }
+      if (S.account === a.id) S.account = "";
+      await refreshState(); renderAccounts(); loadList();
+    }
+    if (t.dataset.editAcct) editAccount(acctById(t.dataset.editAcct));
+  };
+}
+
+function editAccount(a) {
+  let color = a.color;
+  const box = document.createElement("div");
+  box.innerHTML = `<div class="overlay"><div class="dialog small">
+    <div class="dlg-head"><h3>Edit account</h3><button class="x" data-x>${icon("x")}</button></div>
+    <div class="dlg-body">
+      <label class="field"><span>Name shown in the sidebar</span><input class="input" id="aName" value="${esc(a.name)}"></label>
+      <div class="field"><span>Color</span><div class="color-pick">${COLORS.map(c => `<button style="background:${c}" data-c="${c}" class="${c === color ? "on" : ""}"></button>`).join("")}</div></div>
+    </div>
+    <div class="dlg-foot"><span class="grow"></span><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="aSave">Save</button></div></div></div>`;
+  $("#modal").append(box);
+  box.querySelectorAll("[data-x]").forEach(b => (b.onclick = () => box.remove()));
+  box.querySelector(".color-pick").onclick = e => {
+    if (!e.target.dataset.c) return;
+    color = e.target.dataset.c;
+    box.querySelectorAll(".color-pick button").forEach(b => b.classList.toggle("on", b.dataset.c === color));
+  };
+  box.querySelector("#aSave").onclick = async () => {
+    try { await api("/api/account/update", { id: a.id, name: box.querySelector("#aName").value, color }); } catch (e) { return toast(e.message); }
+    box.remove(); await refreshState(); renderAccounts(); renderList();
+  };
+}
+
+async function connect(provider, accountId) {
+  const st = S.settings;
+  if (provider === "gmail" && !(st.googleClientId && st.googleClientSecret) || provider === "outlook" && !st.microsoftClientId) {
+    toast("Fill in Sign-in setup first.", 4000);
+    return openSettings("setup");
+  }
+  const box = document.createElement("div");
+  box.innerHTML = `<div class="overlay"><div class="dialog small">
+    <div class="dlg-head"><h3>Sign in to ${provider === "gmail" ? "Google" : "Microsoft"}</h3></div>
+    <div class="dlg-body" style="display:flex;gap:14px;align-items:flex-start"><div class="spin" style="margin-top:2px"></div>
+      <div style="line-height:1.5">Your browser opened the sign-in page. Finish there, then come back here.<br>
+      <span class="muted">If Google says the app isn't verified, click Advanced, then Go to Project Echo Mike. It's your own app.</span></div></div>
+    <div class="dlg-foot"><span class="grow"></span><button class="btn ghost" id="cxl">Cancel</button></div></div></div>`;
+  $("#modal").append(box);
+  box.querySelector("#cxl").onclick = () => api("/api/connect/cancel", {}).catch(() => {});
+  try {
+    const r = await api("/api/connect", { provider, accountId: accountId || "" });
+    box.remove();
+    await refreshState();
+    toast(`Connected ${r.email}` + (r.aliases ? `, with ${r.aliases} send-as address${r.aliases === 1 ? "" : "es"}` : ""));
+    renderAccounts(); loadList(); pollUnread();
+  } catch (e) {
+    box.remove();
+    if (!/cancel/i.test(e.message)) toast(e.message, 8000);
+  }
+}
+
+function renderIdentities() {
+  const opts = S.identities.map(i => `<option value="${esc(i.id)}" ${S.settings.defaultIdentity === i.id ? "selected" : ""}>${esc(i.name ? `${i.name} <${i.email}>` : i.email)}</option>`).join("");
+  $("#setBody").innerHTML = `
+    <label class="field" style="max-width:520px"><span>From address for new messages</span>
+      <select class="input" id="defIdent"><option value="">The default address of the account I'm viewing</option>${opts}</select></label>
+    <p class="muted" style="margin:-4px 0 16px;line-height:1.5">Replies go out from the address the message was sent to, with that address's signature. You can always change it in the From box.</p>
+    ${S.accounts.map(a => {
+      const list = S.identities.filter(i => i.accountId === a.id);
+      return `<div class="card">
+        <div class="card-row" style="margin-bottom:6px"><span class="acct-dot" style="background:${esc(a.color)}"></span>
+          <div class="grow"><h4>${esc(a.name || a.email)}</h4><div class="muted">${esc(a.email)}</div></div>
+          ${a.provider === "gmail" ? `<button class="btn small" data-import="${esc(a.id)}" title="Pull send-as addresses and signatures from Gmail settings">Sync from Gmail</button>` :
+            `<button class="btn small" data-import="${esc(a.id)}" title="Look up aliases on your Microsoft account">Find aliases</button>`}
+          <button class="btn small primary" data-add="${esc(a.id)}">Add alias</button></div>
+        ${list.map(i => `<div class="ident"><div class="grow">
+            <div><b>${esc(i.name || "(no name)")}</b> <span class="muted">&lt;${esc(i.email)}&gt;</span> ${i.default ? '<span class="badge">Default</span>' : ""}</div>
+            <div class="sig-preview">${i.signatureHtml ? esc(sigText(i.signatureHtml)) : "No signature"}${i.replyTo ? " · Replies go to " + esc(i.replyTo) : ""}</div></div>
+          <button class="btn small" data-edit="${esc(i.id)}">Edit</button></div>`).join("")}
+      </div>`;
+    }).join("") || '<p class="muted">Add an account first.</p>'}`;
+  $("#defIdent").onchange = async e => {
+    try { await api("/api/settings", { ...S.settings, defaultIdentity: e.target.value }); await refreshState(); } catch (err) { toast(err.message); }
+  };
+  $("#setBody").onclick = async e => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.add) editIdentity({ accountId: t.dataset.add, email: "", name: acctById(t.dataset.add).name || "", signatureHtml: "", signatureOnReplies: true });
+    if (t.dataset.edit) editIdentity(identById(t.dataset.edit));
+    if (t.dataset.import) {
+      t.disabled = true;
+      try {
+        const r = await api("/api/aliases/import", { accountId: t.dataset.import });
+        toast(r.added ? `Added ${r.added} address${r.added === 1 ? "" : "es"}` : "No new addresses found");
+        await refreshState(); renderIdentities();
+      } catch (err) { toast(err.message, 6000); t.disabled = false; }
+    }
+  };
+}
+const sigText = h => { const d = document.createElement("div"); d.innerHTML = h.replace(/<br\s*\/?>|<\/(div|p|li)>/gi, "$& "); return d.textContent.replace(/\s+/g, " ").trim(); };
+
+function editIdentity(i) {
+  const a = acctById(i.accountId);
+  const isNew = !i.id;
+  const box = document.createElement("div");
+  box.innerHTML = `<div class="overlay"><div class="dialog" style="max-width:680px">
+    <div class="dlg-head"><h3>${isNew ? "Add alias" : "Edit " + esc(i.email)}</h3><button class="x" data-x>${icon("x")}</button></div>
+    <div class="dlg-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+        <label class="field"><span>Email address</span><input class="input" id="iEmail" value="${esc(i.email)}" ${i.imported ? "readonly" : ""} spellcheck="false"></label>
+        <label class="field"><span>Name people see</span><input class="input" id="iName" value="${esc(i.name)}"></label>
+      </div>
+      <label class="field"><span>Replies go to (optional)</span><input class="input" id="iReply" value="${esc(i.replyTo || "")}" placeholder="Leave blank to use the address above" spellcheck="false"></label>
+      <div class="field"><span>Signature</span><div class="sig-box">${fmtBar()}<div class="editor sig-editor" id="iSig" contenteditable="true"></div></div></div>
+      <label class="check"><input type="checkbox" id="iOnReplies" ${i.signatureOnReplies ? "checked" : ""}>Add the signature to replies and forwards</label>
+      <label class="check"><input type="checkbox" id="iDefault" ${i.default ? "checked" : ""}>Default From address for ${esc(a.name || a.email)}</label>
+      ${isNew ? `<p class="muted" style="line-height:1.5;margin:6px 0 0">${a.provider === "gmail" ?
+        "Gmail only sends from addresses verified in Gmail under Settings, Accounts, Send mail as. Add it there first, then use Sync from Gmail, or Gmail will swap in your main address." :
+        "Outlook only sends from aliases set up on this Microsoft account (account.microsoft.com, Your info, Edit account info). Work accounts need the admin to allow sending from aliases."}</p>` : ""}
+      <div class="err" id="iErr"></div>
+    </div>
+    <div class="dlg-foot">${isNew ? "" : '<button class="btn ghost danger" id="iDel">Delete</button>'}<span class="grow"></span>
+      <button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="iSave">Save</button></div></div></div>`;
+  $("#modal").append(box);
+  const sig = box.querySelector("#iSig");
+  sig.innerHTML = i.signatureHtml || "";
+  wireFmt(box, sig);
+  box.querySelectorAll("[data-x]").forEach(b => (b.onclick = () => box.remove()));
+  box.querySelector("#iSave").onclick = async () => {
+    const out = { ...i, email: box.querySelector("#iEmail").value.trim(), name: box.querySelector("#iName").value.trim(),
+      replyTo: box.querySelector("#iReply").value.trim(), signatureHtml: sig.textContent.trim() || sig.querySelector("img") ? sig.innerHTML : "",
+      signatureOnReplies: box.querySelector("#iOnReplies").checked, default: box.querySelector("#iDefault").checked };
+    try { await api("/api/identity", out); } catch (e) { box.querySelector("#iErr").textContent = e.message; return; }
+    box.remove(); await refreshState(); renderIdentities();
+  };
+  const del = box.querySelector("#iDel");
+  if (del) del.onclick = async () => {
+    if (!confirm(`Delete ${i.email} and its signature from Project Echo Mike?`)) return;
+    try { await api("/api/identity/delete", { id: i.id }); } catch (e) { box.querySelector("#iErr").textContent = e.message; return; }
+    box.remove(); await refreshState(); renderIdentities();
+  };
+}
+
+function renderSetup() {
+  const st = S.settings;
+  $("#setBody").innerHTML = `
+    <p class="muted" style="line-height:1.55;margin-top:0;max-width:760px">Google and Microsoft only let an app read mail after it's registered with them. You register Project Echo Mike once under your own Google and Microsoft accounts, then paste the IDs here. It's free and takes about 10 minutes each. Your mail goes straight from Google and Microsoft to this PC. It never passes through anyone else's server.</p>
+    <div class="card"><h4>Google (Gmail)</h4>
+      <ol class="steps">
+        <li>Go to <button class="link" data-open="https://console.cloud.google.com/projectcreate">console.cloud.google.com</button> and create a project named Project Echo Mike.</li>
+        <li>In <b>APIs and Services, Library</b>, turn on the <b>Gmail API</b>.</li>
+        <li>In <b>Google Auth Platform</b> (OAuth consent screen), choose <b>External</b>, fill in the app name and your email. Under <b>Data access</b>, add the scope <code>https://www.googleapis.com/auth/gmail.modify</code>.</li>
+        <li>Under <b>Audience</b>, click <b>Publish app</b>. If you leave it in Testing, Google signs you out every 7 days.</li>
+        <li>Under <b>Clients</b>, create an OAuth client of type <b>Desktop app</b>. Copy its Client ID and Client secret below.</li>
+      </ol>
+      <label class="field"><span>Client ID</span><input class="input" id="gId" value="${esc(st.googleClientId)}" spellcheck="false" placeholder="1234-abc.apps.googleusercontent.com"></label>
+      <label class="field"><span>Client secret</span><input class="input" id="gSecret" type="password" value="${esc(st.googleClientSecret)}" spellcheck="false" placeholder="GOCSPX-..."></label>
+    </div>
+    <div class="card"><h4>Microsoft (Outlook.com, Hotmail, Microsoft 365)</h4>
+      <ol class="steps">
+        <li>Go to <button class="link" data-open="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade">entra.microsoft.com, App registrations</button> and click <b>New registration</b>. A free personal Microsoft account works.</li>
+        <li>Name it Project Echo Mike. For account types, pick <b>Any Entra ID tenant and personal Microsoft accounts</b>.</li>
+        <li>For Redirect URI, pick <b>Public client/native (mobile and desktop)</b> and enter <code>http://localhost</code>.</li>
+        <li>Open <b>API permissions</b>, add Microsoft Graph delegated permissions <code>Mail.ReadWrite</code>, <code>Mail.Send</code>, <code>User.Read</code>, <code>offline_access</code>, and <code>SMTP.Send</code>.</li>
+        <li>Copy the <b>Application (client) ID</b> from Overview below. No secret is needed.</li>
+      </ol>
+      <label class="field"><span>Application (client) ID</span><input class="input" id="mId" value="${esc(st.microsoftClientId)}" spellcheck="false" placeholder="00000000-0000-0000-0000-000000000000"></label>
+    </div>
+    <button class="btn primary" id="setupSave">Save</button> <span class="muted" id="setupMsg"></span>`;
+  $("#setBody").onclick = e => { if (e.target.dataset.open) api(dl("/open", { u: e.target.dataset.open })).catch(() => {}); };
+  $("#setupSave").onclick = async () => {
+    try {
+      await api("/api/settings", { ...S.settings, googleClientId: $("#gId").value, googleClientSecret: $("#gSecret").value, microsoftClientId: $("#mId").value });
+      await refreshState();
+      $("#setupMsg").textContent = "Saved. Add your accounts on the Accounts tab.";
+    } catch (e) { $("#setupMsg").textContent = e.message; }
+  };
+}
+
+function renderGeneral() {
+  $("#setBody").innerHTML = `
+    <label class="check"><input type="checkbox" id="gImages" ${S.settings.loadImages ? "checked" : ""}>Show remote images automatically</label>
+    <p class="muted" style="margin:-4px 0 18px 26px;line-height:1.5;max-width:640px">Off is safer. Senders use hidden images to see when and where you opened their email.</p>
+    <h4 style="margin:20px 0 8px">Keyboard shortcuts</h4>
+    <div class="muted" style="line-height:1.9">
+      <span class="code">C</span> new message &nbsp; <span class="code">R</span> reply &nbsp; <span class="code">A</span> reply all &nbsp; <span class="code">F</span> forward<br>
+      <span class="code">E</span> archive &nbsp; <span class="code">Del</span> delete &nbsp; <span class="code">S</span> star &nbsp; <span class="code">U</span> mark unread<br>
+      <span class="code">J</span> / <span class="code">K</span> next and previous &nbsp; <span class="code">/</span> search &nbsp; <span class="code">Ctrl+Enter</span> send
+    </div>
+    <p class="dim" style="margin-top:24px">Project Echo Mike ${esc(S.version)}</p>`;
+  $("#gImages").onchange = async e => {
+    try { await api("/api/settings", { ...S.settings, loadImages: e.target.checked }); await refreshState(); } catch (err) { toast(err.message); }
+  };
+}
+
+$("#settingsBtn").onclick = () => openSettings();
+
+/* ---------- keyboard ---------- */
+// Escape closes only the topmost window.
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  const top = [...document.querySelectorAll("#modal .overlay")].pop();
+  const btn = top && (top.querySelector("[data-x]") || top.querySelector("[data-close]"));
+  if (btn) { e.preventDefault(); e.stopImmediatePropagation(); btn.click(); }
+}, true);
+document.addEventListener("keydown", e => {
+  if ($("#modal").innerHTML || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.activeElement.isContentEditable) return;
+  const k = e.key.toLowerCase();
+  const idx = S.sel ? S.messages.findIndex(m => m.accountId === S.sel.accountId && m.id === S.sel.id) : -1;
+  const map = { c: () => compose(), r: () => act("reply"), a: () => act("replyAll"), f: () => act("forward"), e: () => act("archive"),
+    delete: () => act("trash"), "#": () => act("trash"), s: () => act("star"), u: () => act("unread"),
+    j: () => openMessage(S.messages[idx + 1]), k: () => idx > 0 && openMessage(S.messages[idx - 1]),
+    "/": () => $("#search").focus() };
+  if (map[k]) { e.preventDefault(); map[k](); }
+});
+
+/* ---------- startup ---------- */
+async function refreshState() {
+  const st = await api("/api/state");
+  Object.assign(S, { accounts: st.accounts, identities: st.identities, settings: st.settings, demo: st.demo, version: st.version });
+  $("#demoFlag").hidden = !S.demo;
+  renderSidebar();
+}
+async function pollUnread() {
+  try { S.unread = await api("/api/unread"); renderSidebar(); } catch {}
+}
+(async () => {
+  try { await refreshState(); } catch (e) {
+    document.body.innerHTML = `<div class="empty"><h2>Project Echo Mike couldn't start</h2><p>${esc(e.message)}</p></div>`;
+    return;
+  }
+  renderEmptyReader();
+  if (S.accounts.length) { loadList(); pollUnread(); } else renderList();
+  setInterval(() => {
+    pollUnread();
+    if (S.folder === "inbox" && !S.query && !S.loading && !$("#list").scrollTop) loadList.quiet();
+  }, 120000);
+})();
+// quiet reloads the list without clearing it first, for the background check.
+loadList.quiet = async () => {
+  try {
+    const r = await api("/api/list", { folder: "inbox", query: "", accountId: S.account });
+    if (S.folder !== "inbox" || S.query) return;
+    S.messages = r.messages; S.cursors = r.cursors; S.errors = r.errors;
+    renderList();
+  } catch {}
+};
+</script>
+</body>
+</html>
