@@ -22,7 +22,7 @@ import (
 const appName = "Clear PC Cleaner"
 
 // version is set at build time with -ldflags "-X main.version=...".
-var version = "1.3.0"
+var version = "1.3.2"
 
 // scheduleName is the Task Scheduler entry CPC manages. oldScheduleName is
 // what earlier versions created; it is replaced when the schedule changes.
