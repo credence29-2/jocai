@@ -27,7 +27,9 @@ jobs:
       - name: Check the global key hook loads
         run: node -e "require('uiohook-napi'); console.log(JSON.stringify(require('./keys').parse('Backquote')))"
       - name: Build installer and portable exe
-        run: npx electron-builder --win --x64 --publish never -c.extraMetadata.version=0.1.${{ github.run_number }}
+        run: |
+          npm version "0.1.${{ github.run_number }}" --no-git-tag-version --allow-same-version
+          npx electron-builder --win --x64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: VictorCharlie-Windows
