@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plain http is allowed so a server on the home network can be reached by
+     its local address. Voice still needs HTTPS: Android's WebView only gives
+     the mic and camera to secure pages. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

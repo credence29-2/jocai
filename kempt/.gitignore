@@ -1,0 +1,6 @@
+/kempt
+/kempt.exe
+/dist/
+/kempt-data/
+internal/webui/dist/*
+!internal/webui/dist/.keep
