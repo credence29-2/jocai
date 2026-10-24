@@ -23,7 +23,7 @@ func TestParseWinget(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("got %d: %+v", len(got), got)
 	}
-	if got[0] != (Update{"Google Chrome", "Google.Chrome", "130.0.6723.70", "131.0.6778.86"}) {
+	if got[0] != (Update{Name: "Google Chrome", ID: "Google.Chrome", Version: "130.0.6723.70", Available: "131.0.6778.86"}) {
 		t.Errorf("row 0 = %+v", got[0])
 	}
 	if got[2].ID != "Example.Cafe" || got[2].Name != "Café Notes ünïcode" || got[2].Available != "1.1" {
@@ -100,5 +100,32 @@ func TestMakerLinks(t *testing.T) {
 func TestValidUpdateID(t *testing.T) {
 	if !ValidUpdateID("3f1c3a2e-1d2b-4c5d-9e8f-0a1b2c3d4e5f") || ValidUpdateID("x' or 1=1") || ValidUpdateID("") {
 		t.Fatal("ValidUpdateID wrong")
+	}
+}
+
+func TestWingetErrorText(t *testing.T) {
+	cases := map[string]string{
+		"Found Microsoft Edge [Microsoft.Edge]\nInstaller failed with exit code: 1603":                      "The app's installer failed (1603). Close the app and try again, or update it from inside the app.",
+		"Installer hash does not match; this cannot be overridden when running as admin":                    "The downloaded installer didn't match what winget expected. Try again later; the package may be mid-update.",
+		"No available upgrade found.\nNo newer package versions are available from the configured sources.": "Already up to date according to winget.",
+		"   - \r   \\ \r\nSomething odd happened\nInstaller failed with exit code: 2":                       "Installer failed with exit code: 2",
+		"":      "winget reported a failure without details.",
+		"-\\|/": "winget reported a failure without details.",
+	}
+	for in, want := range cases {
+		if got := WingetErrorText(in); got != want {
+			t.Errorf("WingetErrorText(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestSelfUpdating(t *testing.T) {
+	list := []Update{{ID: "Microsoft.Edge"}, {ID: "Google.Chrome"}, {ID: "Microsoft.EdgeWebView2Runtime"}}
+	MarkSelfUpdating(list)
+	if !list[0].SelfUpdate || list[1].SelfUpdate || !list[2].SelfUpdate {
+		t.Fatalf("flags wrong: %+v", list)
+	}
+	if SelfUpdater("microsoft.edge") != "edge" || SelfUpdater("7zip.7zip") != "" {
+		t.Fatal("SelfUpdater wrong")
 	}
 }

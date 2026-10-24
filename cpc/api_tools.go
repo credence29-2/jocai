@@ -238,6 +238,16 @@ func (a *api) Updates() int {
 	})
 }
 
+// OpenSelfUpdater opens an app's own update screen, for apps winget can't
+// update reliably.
+func (a *api) OpenSelfUpdater(id string) error {
+	w := systools.SelfUpdater(id)
+	if w == "" {
+		return errors.New("this app updates through winget")
+	}
+	return systools.OpenSelfUpdater(w)
+}
+
 // UpdateApps updates apps one at a time, reporting each with "updProgress"
 // and finishing with "updFinished".
 func (a *api) UpdateApps(ids []string) error {
@@ -254,6 +264,11 @@ func (a *api) UpdateApps(ids []string) error {
 	go func() {
 		ok, failed := 0, 0
 		for i, id := range ids {
+			if systools.SelfUpdater(id) != "" {
+				failed++
+				a.emit("updProgress", map[string]any{"id": id, "index": i, "total": len(ids), "status": "failed", "error": "This app updates itself. Use its own update screen."})
+				continue
+			}
 			a.emit("updProgress", map[string]any{"id": id, "index": i, "total": len(ids), "status": "updating"})
 			if err := systools.UpdateApp(id); err != nil {
 				failed++

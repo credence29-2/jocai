@@ -1070,7 +1070,7 @@ const U = { status: {}, busy: false, picked: new Set() };
 async function loadUpdates() {
   $("#updBody").innerHTML = '<div class="loading">Checking for updates. This can take a minute...</div>';
   try { S.updates = await slow(api.Updates()); } catch (e) { S.updates = { available: true, updates: [], error: errText(e) }; }
-  U.status = {}; U.picked = new Set((S.updates.updates || []).map(u => u.id));
+  U.status = {}; U.picked = new Set((S.updates.updates || []).filter(u => !u.selfUpdate).map(u => u.id));
   renderUpdates();
 }
 function renderUpdates() {
@@ -1085,17 +1085,25 @@ function renderUpdates() {
       <div class="grow"><h2>${d.error ? "Couldn't check for updates" : "Everything is up to date"}</h2><p>${esc(d.error || "Every app winget knows about is on its latest version. Apps from the Microsoft Store update themselves.")}</p></div></div>`;
     return;
   }
+  const viaWinget = list.filter(u => !u.selfUpdate), selfOnes = list.filter(u => u.selfUpdate);
   el.innerHTML = `<div class="toolbar"><b>${list.length} update${list.length === 1 ? "" : "s"} available</b><span class="grow"></span>
       <button class="btn primary" id="updGo" ${U.busy || !U.picked.size ? "disabled" : ""}>Update selected (${U.picked.size})</button></div>
     <div class="list">${list.map(u => {
       const st = U.status[u.id] || {};
-      const badge = st.status === "updating" ? '<span class="chip">Updating...</span>' : st.status === "updated" ? '<span class="chip status-good">Updated</span>' : st.status === "failed" ? `<span class="chip" style="color:var(--bad)" title="${esc(st.error)}">Failed</span>` : "";
+      const badge = st.status === "updating" ? '<span class="chip">Updating...</span>' : st.status === "updated" ? '<span class="chip status-good">Updated</span>' : st.status === "failed" ? '<span class="chip" style="color:var(--bad)">Failed</span>' : "";
+      const reason = st.status === "failed" && st.error ? `<small style="color:var(--bad);white-space:normal">${esc(st.error)}</small>` : "";
+      if (u.selfUpdate) return `<div class="lrow"><span style="width:18px"></span>
+        <div class="avatar" style="background:${avatarColor(u.name)}">${esc((u.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
+        <div class="main"><b>${esc(u.name)}</b><small>Updates itself. winget's installer for this app is unreliable, so CPC opens the app's own update screen.</small>${reason}</div>
+        <span class="meta">${esc(u.version)}</span><span class="meta" style="color:var(--text)">${esc(u.available)}</span>
+        <button class="btn small" data-self="${esc(u.id)}">Open updater</button></div>`;
       return `<label class="lrow" style="cursor:pointer"><input type="checkbox" class="cb" data-upd="${esc(u.id)}" ${U.picked.has(u.id) ? "checked" : ""} ${U.busy || st.status === "updated" ? "disabled" : ""}>
         <div class="avatar" style="background:${avatarColor(u.name)}">${esc((u.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
-        <div class="main"><b>${esc(u.name)}</b><small>${esc(u.id)}</small></div>
+        <div class="main"><b>${esc(u.name)}</b><small>${esc(u.id)}</small>${reason}</div>
         <span class="meta">${esc(u.version)}</span><span class="meta" style="color:var(--text)">${esc(u.available)}</span>${badge}</label>`;
     }).join("")}</div>
-    <p class="dim" style="font-size:12px;margin-top:10px">Updates install silently. A few apps may still show their own installer or need to be closed first.</p>`;
+    <p class="dim" style="font-size:12px;margin-top:10px">Updates install silently through winget. A few apps may still show their own installer or need to be closed first.${selfOnes.length ? " Apps marked \"Updates itself\" are updated from inside the app." : ""}</p>`;
+  el.querySelectorAll("[data-self]").forEach(b => b.onclick = () => api.OpenSelfUpdater(b.dataset.self).then(() => toast("Opened the app's update screen. It checks for updates on its own.")).catch(e => toast(errText(e), true)));
   el.querySelectorAll("[data-upd]").forEach(cb => cb.onchange = () => { cb.checked ? U.picked.add(cb.dataset.upd) : U.picked.delete(cb.dataset.upd); renderUpdates(); });
   $("#updGo").onclick = async () => {
     try { U.busy = true; renderUpdates(); await api.UpdateApps([...U.picked]); } catch (e) { U.busy = false; renderUpdates(); toast(errText(e), true); }

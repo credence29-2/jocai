@@ -30,6 +30,7 @@ type DriverInstallResult struct {
 	HResult int64  `json:"hresult"`
 }
 
-func WingetAvailable() bool      { return false }
-func Updates() ([]Update, error) { return nil, errNotWindows }
-func UpdateApp(string) error     { return errNotWindows }
+func WingetAvailable() bool        { return false }
+func Updates() ([]Update, error)   { return nil, errNotWindows }
+func UpdateApp(string) error       { return errNotWindows }
+func OpenSelfUpdater(string) error { return errNotWindows }

@@ -273,6 +273,7 @@ func WingetAvailable() bool {
 func Updates() ([]Update, error) {
 	out, err := hidden("winget.exe", "upgrade", "--source", "winget", "--accept-source-agreements", "--disable-interactivity")
 	list := ParseWinget(out)
+	MarkSelfUpdating(list)
 	if err != nil && len(list) == 0 && !strings.Contains(strings.ToLower(out), "no installed package") {
 		// winget exits non-zero when nothing needs updating on some versions.
 		if strings.Contains(out, "---") {
@@ -293,8 +294,23 @@ func UpdateApp(id string) error {
 	out, err := hidden("winget.exe", "upgrade", "--id", id, "--exact", "--source", "winget", "--silent",
 		"--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity")
 	if err != nil {
-		lines := strings.Split(strings.TrimSpace(out), "\n")
-		return errors.New(strings.TrimSpace(lines[len(lines)-1]))
+		return errors.New(WingetErrorText(out))
 	}
 	return nil
+}
+
+// OpenSelfUpdater opens an app's own update screen.
+func OpenSelfUpdater(which string) error {
+	switch which {
+	case "edge":
+		// Edge checks for updates as soon as its About page opens.
+		return sysutil.ShellOpenWith("msedge.exe", "edge://settings/help")
+	case "teams":
+		return sysutil.ShellOpen("ms-teams:")
+	case "onedrive":
+		return sysutil.ShellOpen("ms-settings:windowsupdate")
+	case "vs":
+		return sysutil.ShellOpenWith("devenv.exe", "")
+	}
+	return errors.New("unknown updater")
 }

@@ -100,8 +100,10 @@
     cpcUpdates: async () => later({ available: true, updates: [
       { name: "Google Chrome", id: "Google.Chrome", version: "130.0.6723.70", available: "131.0.6778.86" },
       { name: "Zoom Workplace", id: "Zoom.Zoom", version: "6.2.5.4567", available: "6.3.0.5527" },
-      { name: "7-Zip 23.01 (x64)", id: "7zip.7zip", version: "23.01", available: "24.08" }] }),
-    cpcUpdateApps: async ids => { ids.forEach((id, i) => setTimeout(() => { emit("updProgress", { id, index: i, total: ids.length, status: i === 1 ? "failed" : "updated", error: "Installer failed" }); if (i === ids.length - 1) emit("updFinished", { updated: ids.length - 1, failed: 1 }); }, 50 * (i + 1))); return null; },
+      { name: "7-Zip 23.01 (x64)", id: "7zip.7zip", version: "23.01", available: "24.08" },
+      { name: "Microsoft Edge", id: "Microsoft.Edge", version: "154.0.4258.62", available: "155.0.4283.62", selfUpdate: true }] }),
+    cpcOpenSelfUpdater: async () => null,
+    cpcUpdateApps: async ids => { ids.forEach((id, i) => setTimeout(() => { emit("updProgress", { id, index: i, total: ids.length, status: i === 1 ? "failed" : "updated", error: "The app's installer failed (1603). Close the app and try again, or update it from inside the app." }); if (i === ids.length - 1) emit("updFinished", { updated: ids.length - 1, failed: 1 }); }, 50 * (i + 1))); return null; },
     cpcDupeDefaults: async () => ["C:\\Users\\Jacob\\Documents", "C:\\Users\\Jacob\\Downloads", "C:\\Users\\Jacob\\Pictures", "C:\\Users\\Jacob\\OneDrive"],
     cpcPickFolder: async () => "D:\\Photos",
     cpcDupeScan: async () => { setTimeout(() => emit("dupeFinished", { wasted: 1.3e9, groups: [

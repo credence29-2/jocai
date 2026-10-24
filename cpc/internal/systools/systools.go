@@ -216,6 +216,78 @@ type Update struct {
 	ID        string `json:"id"`
 	Version   string `json:"version"`
 	Available string `json:"available"`
+	// SelfUpdate marks apps that update through their own built-in updater,
+	// where winget's installer is unreliable. The UI sends these to the
+	// app's own update screen instead.
+	SelfUpdate bool `json:"selfUpdate"`
+}
+
+// selfUpdating lists winget IDs whose winget installer usually fails
+// because the app keeps itself current through its own update service.
+var selfUpdating = map[string]string{
+	"microsoft.edge":                      "edge",
+	"microsoft.edgewebview2runtime":       "edge",
+	"microsoft.edge.beta":                 "edge",
+	"microsoft.edge.dev":                  "edge",
+	"microsoft.teams":                     "teams",
+	"microsoft.onedrive":                  "onedrive",
+	"microsoft.visualstudio.enterprise":   "vs",
+	"microsoft.visualstudio.professional": "vs",
+	"microsoft.visualstudio.community":    "vs",
+}
+
+// SelfUpdater returns which built-in updater handles an app, or "".
+func SelfUpdater(id string) string { return selfUpdating[strings.ToLower(id)] }
+
+// MarkSelfUpdating flags the updates that should not go through winget.
+func MarkSelfUpdating(list []Update) {
+	for i := range list {
+		list[i].SelfUpdate = SelfUpdater(list[i].ID) != ""
+	}
+}
+
+// WingetErrorText turns winget's output for a failed upgrade into one plain
+// sentence. It looks for the known error codes first, then falls back to
+// the last line that mentions an error.
+func WingetErrorText(out string) string {
+	lower := strings.ToLower(out)
+	switch {
+	case strings.Contains(lower, "0x8a15002b"), strings.Contains(lower, "no available upgrade"):
+		return "Already up to date according to winget."
+	case strings.Contains(lower, "0x8a150011"), strings.Contains(lower, "hash does not match"), strings.Contains(lower, "hash mismatch"):
+		return "The downloaded installer didn't match what winget expected. Try again later; the package may be mid-update."
+	case strings.Contains(lower, "0x8a150010"), strings.Contains(lower, "no applicable installer"):
+		return "winget has no installer for this PC's Windows version or architecture."
+	case strings.Contains(lower, "1618"), strings.Contains(lower, "another installation is already in progress"):
+		return "Another installer is running. Wait for it to finish, then try again."
+	case strings.Contains(lower, "1603"), strings.Contains(lower, "0x80070643"):
+		return "The app's installer failed (1603). Close the app and try again, or update it from inside the app."
+	case strings.Contains(lower, "0x8a150014"), strings.Contains(lower, "installed version not available"), strings.Contains(lower, "install technology"):
+		return "This app was installed a different way than winget expects. Update it from inside the app."
+	case strings.Contains(lower, "0x80070005"), strings.Contains(lower, "access is denied"):
+		return "Access was denied. Restart CPC as administrator and try again."
+	case strings.Contains(lower, "0x8a150019"), strings.Contains(lower, "in use"):
+		return "The app is open. Close it and try again."
+	case strings.Contains(lower, "cancelled"), strings.Contains(lower, "canceled"):
+		return "The installer was cancelled."
+	}
+	// Fall back to the most useful line.
+	var last string
+	for _, l := range strings.Split(strings.ReplaceAll(out, "\r", "\n"), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.Trim(l, "-|\\/ ") == "" {
+			continue
+		}
+		ll := strings.ToLower(l)
+		if strings.Contains(ll, "error") || strings.Contains(ll, "fail") || strings.Contains(ll, "0x8") || strings.Contains(ll, "exit code") {
+			return l
+		}
+		last = l
+	}
+	if last == "" {
+		return "winget reported a failure without details."
+	}
+	return last
 }
 
 // ProblemText explains a Device Manager error code in plain words.

@@ -16,6 +16,7 @@ func EmptyRecycleBin() error                { return errNotWindows }
 func FlushDNS() error                       { return errNotWindows }
 func ShowInExplorer(string) error           { return errNotWindows }
 func ShellOpen(string) error                { return errNotWindows }
+func ShellOpenWith(string, string) error    { return errNotWindows }
 func RunCommandLine(string) error           { return errNotWindows }
 func ShellRunAs(string) error               { return errNotWindows }
 

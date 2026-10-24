@@ -102,6 +102,10 @@ func ShellOpen(target string) error {
 	return shellExecute("open", target, "")
 }
 
+// ShellOpenWith opens a program by name with arguments. Windows finds the
+// program through its App Paths entry, so "msedge.exe" works without a path.
+func ShellOpenWith(file, params string) error { return shellExecute("open", file, params) }
+
 func shellExecute(verb, file, params string) error {
 	v, _ := windows.UTF16PtrFromString(verb)
 	f, _ := windows.UTF16PtrFromString(file)
