@@ -1340,7 +1340,7 @@ async function renderSettings() {
     <div class="card"><h3>What Kempt never touches</h3>
       <p>Your documents, photos and bookmarks. Firefox history, because Firefox keeps it in the same file as bookmarks. Anything newer than 24 hours in temp folders. Windows' own scheduled tasks and services, and COM and ActiveX registry entries. Cookies, history and saved passwords are only cleaned if you tick them, and every registry fix is backed up first so it can be undone.</p></div>
     <div class="card"><div class="row"><div class="grow"><h3>About</h3>
-      <p>${esc(S.info.app)} ${esc(S.info.version)}. ${admin ? "Running as administrator." : "Not running as administrator, so system items are locked."}</p></div>
+      <p>${esc(S.info.app)} ${esc(S.info.version)} by ${esc(S.info.company || "")}. ${admin ? "Running as administrator." : "Not running as administrator, so system items are locked."}</p></div>
       ${admin ? "" : '<button class="btn small" id="setAdmin">Restart as administrator</button>'}</div></div>`;
   const drawExcl = list => {
     $("#exclList").innerHTML = list.length ? list.map((f, i) => `<div class="lrow"><div class="main"><b style="font-weight:400">${esc(f)}</b></div><button class="btn small ghost" data-rmx="${i}">Remove</button></div>`).join("")
@@ -1372,7 +1372,7 @@ async function refreshInfo() {
   $("#adminDot").className = "dot" + (S.info.elevated ? "" : " warn");
   $("#adminText").textContent = S.info.elevated ? "Running as administrator" : "Limited mode, not administrator";
   $("#sideAdminBtn").style.display = S.info.elevated ? "none" : "";
-  $("#versionText").textContent = "Version " + S.info.version;
+  $("#versionText").textContent = "Version " + S.info.version + (S.info.company ? " · " + S.info.company : "");
   renderHealth();
 }
 

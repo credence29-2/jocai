@@ -1,6 +1,6 @@
-# Kempt (Kempt)
+# Kempt
 
-A CCleaner replacement for Windows. One portable `Kempt.exe`, no installer, no ads, no upsells, nothing phoning home.
+A CCleaner replacement for Windows by 804 Industries. One portable `Kempt.exe`, no installer, no ads, no upsells, nothing phoning home.
 
 ## What's in it
 

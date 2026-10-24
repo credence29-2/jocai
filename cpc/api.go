@@ -19,10 +19,13 @@ import (
 	"github.com/credence29-2/jocai/cpc/internal/sysutil"
 )
 
-const appName = "Kempt"
+const (
+	appName     = "Kempt"
+	companyName = "804 Industries"
+)
 
 // version is set at build time with -ldflags "-X main.version=...".
-var version = "1.4.1"
+var version = "1.4.2"
 
 // scheduleName is the Task Scheduler entry Kempt manages. oldScheduleName is
 // what earlier versions created; it is replaced when the schedule changes.
@@ -140,6 +143,7 @@ func (a *api) RemoveExclusion(folder string) ([]string, error) {
 
 type infoDTO struct {
 	App       string   `json:"app"`
+	Company   string   `json:"company"`
 	Version   string   `json:"version"`
 	Elevated  bool     `json:"elevated"`
 	LogsDir   string   `json:"logsDir"`
@@ -155,7 +159,7 @@ func (a *api) Info() infoDTO {
 		drive = "C:"
 	}
 	total, free, _ := sysutil.DiskSpace(drive + `\`)
-	return infoDTO{App: appName, Version: version, Elevated: a.elevated,
+	return infoDTO{App: appName, Company: companyName, Version: version, Elevated: a.elevated,
 		LogsDir: filepath.Join(a.dataDir, "logs"), DiskTotal: total, DiskFree: free, Drive: drive, Groups: clean.GroupOrder}
 }
 
