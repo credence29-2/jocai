@@ -1,5 +1,5 @@
-// Package settings stores CPC's preferences and cleaning logs under
-// %LOCALAPPDATA%\ClearPCCleaner.
+// Package settings stores Kempt's preferences and cleaning logs under
+// %LOCALAPPDATA%\Kempt.
 package settings
 
 import (
@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Settings is what CPC remembers between runs.
+// Settings is what Kempt remembers between runs.
 type Settings struct {
 	// Selected maps target IDs to whether they are ticked. Targets not in the
 	// map fall back to their default.
@@ -21,19 +21,22 @@ type Settings struct {
 	Exclude []string `json:"exclude,omitempty"`
 }
 
-// Dir returns CPC's data folder, creating it if needed.
+// Dir returns Kempt's data folder, creating it if needed.
 func Dir() string {
 	base := os.Getenv("LOCALAPPDATA")
 	if base == "" {
 		base, _ = os.UserConfigDir()
 	}
-	d := filepath.Join(base, "ClearPCCleaner")
-	// Earlier versions used the old product name. Carry the folder over so
+	d := filepath.Join(base, "Kempt")
+	// Earlier versions used older product names. Carry the folder over so
 	// saved choices, logs and registry backups are kept.
 	if _, err := os.Stat(d); os.IsNotExist(err) {
-		old := filepath.Join(base, "CredencePCCleaner")
-		if fi, err := os.Stat(old); err == nil && fi.IsDir() {
-			_ = os.Rename(old, d)
+		for _, name := range []string{"ClearPCCleaner", "CredencePCCleaner"} {
+			old := filepath.Join(base, name)
+			if fi, err := os.Stat(old); err == nil && fi.IsDir() {
+				_ = os.Rename(old, d)
+				break
+			}
 		}
 	}
 	_ = os.MkdirAll(d, 0o755)

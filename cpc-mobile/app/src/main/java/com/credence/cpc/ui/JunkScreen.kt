@@ -53,7 +53,7 @@ class JunkScreen(act: MainActivity) : Screen(act) {
             body.addView(
                 ui.card(
                     ui.heading("Allow file access"),
-                    ui.body("To find junk files, CPC needs \"All files access\". It only looks at shared storage like Download and DCIM, never inside other apps, and nothing leaves your phone."),
+                    ui.body("To find junk files, Kempt needs \"All files access\". It only looks at shared storage like Download and DCIM, never inside other apps, and nothing leaves your phone."),
                     ui.primary("Allow access") { pendingScan = true; act.requestFileAccess() },
                 ),
             )

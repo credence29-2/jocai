@@ -1,4 +1,4 @@
-name: CPC Mobile emulator test
+name: Kempt Mobile emulator test
 
 on:
   push:

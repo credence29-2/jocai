@@ -102,7 +102,7 @@ class AppsScreen(act: MainActivity) : Screen(act) {
             header.addView(
                 ui.card(
                     ui.heading("Allow usage access"),
-                    ui.body("To show how much space each app uses and when you last opened it, Android needs you to turn on \"Usage access\" for CPC. Nothing leaves your phone."),
+                    ui.body("To show how much space each app uses and when you last opened it, Android needs you to turn on \"Usage access\" for Kempt. Nothing leaves your phone."),
                     ui.primary("Allow usage access") { act.requestUsageAccess() },
                 ),
             )

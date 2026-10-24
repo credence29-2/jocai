@@ -53,7 +53,7 @@ func TestDirMigratesOldFolder(t *testing.T) {
 	os.MkdirAll(old, 0o755)
 	os.WriteFile(filepath.Join(old, "settings.json"), []byte(`{"selected":{"x":true}}`), 0o644)
 	d := Dir()
-	if filepath.Base(d) != "ClearPCCleaner" {
+	if filepath.Base(d) != "Kempt" {
 		t.Fatalf("dir = %s", d)
 	}
 	if !Load(d).IsSelected("x", false) {

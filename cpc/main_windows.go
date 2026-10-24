@@ -1,4 +1,4 @@
-// Command cpc is Clear PC Cleaner, a CCleaner replacement for Windows.
+// Command cpc is Kempt, a CCleaner replacement for Windows.
 //
 // The window is a WebView2 page (web/index.html, embedded in the exe). The
 // page calls Go through bound functions named cpc<Method>, see api.go.
@@ -42,8 +42,8 @@ func main() {
 		},
 	})
 	if w == nil {
-		sysutil.MessageBox(appName, "CPC needs the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and updated Windows 10.\n\n"+
-			"It wasn't found on this PC. Your browser will open the download page. Install it, then start CPC again.", true)
+		sysutil.MessageBox(appName, "Kempt needs the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and updated Windows 10.\n\n"+
+			"It wasn't found on this PC. Your browser will open the download page. Install it, then start Kempt again.", true)
 		_ = sysutil.ShellOpen(webview2Download)
 		os.Exit(1)
 	}

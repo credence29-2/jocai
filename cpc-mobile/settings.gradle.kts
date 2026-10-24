@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "CPC Mobile"
+rootProject.name = "Kempt Mobile"
 include(":app")

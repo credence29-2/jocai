@@ -187,7 +187,7 @@ class MainActivity : Activity() {
     /** Ask for file access the right way for this Android version. */
     fun requestFileAccess() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            toast("Turn on \"Allow access to manage all files\" for CPC, then come back.")
+            toast("Turn on \"Allow access to manage all files\" for Kempt, then come back.")
             open(Access.filesSettingsIntent(this), Access.filesSettingsFallback())
         } else {
             requestPermissions(Access.legacyStoragePermissions, REQ_STORAGE)
@@ -195,7 +195,7 @@ class MainActivity : Activity() {
     }
 
     fun requestUsageAccess() {
-        toast("Find CPC Mobile in the list and turn on usage access, then come back.")
+        toast("Find Kempt Mobile in the list and turn on usage access, then come back.")
         open(Access.usageSettingsIntent())
     }
 
@@ -206,7 +206,7 @@ class MainActivity : Activity() {
 
     /**
      * Android 11+ has a system dialog that clears the cache of every app at
-     * once. It needs All files access, which CPC already uses for junk files.
+     * once. It needs All files access, which Kempt already uses for junk files.
      */
     fun clearAllAppCaches() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -221,7 +221,7 @@ class MainActivity : Activity() {
         if (!Access.hasFiles(this)) {
             AlertDialog.Builder(this)
                 .setTitle("One permission first")
-                .setMessage("Android only lets apps with \"All files access\" clear every app's cache. CPC uses the same permission to find junk files. Nothing leaves your phone.")
+                .setMessage("Android only lets apps with \"All files access\" clear every app's cache. Kempt uses the same permission to find junk files. Nothing leaves your phone.")
                 .setPositiveButton("Allow") { _, _ -> requestFileAccess() }
                 .setNegativeButton("Not now", null)
                 .show()

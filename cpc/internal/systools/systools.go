@@ -1,4 +1,4 @@
-// Package systools covers the Windows tools behind CPC's Startup Manager
+// Package systools covers the Windows tools behind Kempt's Startup Manager
 // tabs, Driver Check and Software Updater.
 package systools
 
@@ -265,7 +265,7 @@ func WingetErrorText(out string) string {
 	case strings.Contains(lower, "0x8a150014"), strings.Contains(lower, "installed version not available"), strings.Contains(lower, "install technology"):
 		return "This app was installed a different way than winget expects. Update it from inside the app."
 	case strings.Contains(lower, "0x80070005"), strings.Contains(lower, "access is denied"):
-		return "Access was denied. Restart CPC as administrator and try again."
+		return "Access was denied. Restart Kempt as administrator and try again."
 	case strings.Contains(lower, "0x8a150019"), strings.Contains(lower, "in use"):
 		return "The app is open. Close it and try again."
 	case strings.Contains(lower, "cancelled"), strings.Contains(lower, "canceled"):

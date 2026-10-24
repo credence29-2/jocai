@@ -49,7 +49,7 @@ func (a *api) Tasks() int { return a.async(func() (any, error) { return systools
 func (a *api) SetTask(fullPath string, enabled bool) int {
 	return a.async(func() (any, error) {
 		if !a.elevated {
-			return nil, errors.New("Restart CPC as administrator to change scheduled tasks.")
+			return nil, errors.New("Restart Kempt as administrator to change scheduled tasks.")
 		}
 		if err := systools.SetTask(fullPath, enabled); err != nil {
 			return nil, err
@@ -63,7 +63,7 @@ func (a *api) Services() int { return a.async(func() (any, error) { return systo
 func (a *api) SetService(name, mode string) int {
 	return a.async(func() (any, error) {
 		if !a.elevated {
-			return nil, errors.New("Restart CPC as administrator to change services.")
+			return nil, errors.New("Restart Kempt as administrator to change services.")
 		}
 		if err := systools.SetService(name, mode); err != nil {
 			return nil, err
@@ -130,7 +130,7 @@ func (a *api) Drivers() int {
 // "drvProgress" and the end as "drvFinished".
 func (a *api) InstallDrivers(ids []string, restorePoint bool) error {
 	if !a.elevated {
-		return errors.New("Restart CPC as administrator to install drivers.")
+		return errors.New("Restart Kempt as administrator to install drivers.")
 	}
 	if len(ids) == 0 {
 		return errors.New("Tick at least one driver first.")
@@ -152,7 +152,7 @@ func (a *api) InstallDrivers(ids []string, restorePoint bool) error {
 		fin := map[string]any{"installed": 0, "failed": 0, "reboot": false}
 		if restorePoint {
 			a.emit("drvProgress", map[string]any{"stage": "restore"})
-			note, err := systools.RestorePoint("Before Clear PC Cleaner driver update")
+			note, err := systools.RestorePoint("Before Kempt driver update")
 			if err != nil {
 				fin["error"] = err.Error() + ". No drivers were installed. Untick the restore point option to install anyway."
 				a.emit("drvFinished", fin)
@@ -186,7 +186,7 @@ func (a *api) InstallDrivers(ids []string, restorePoint bool) error {
 func (a *api) IgnoreDriver(id string, ignore bool) int {
 	return a.async(func() (any, error) {
 		if !a.elevated {
-			return nil, errors.New("Restart CPC as administrator to change ignored drivers.")
+			return nil, errors.New("Restart Kempt as administrator to change ignored drivers.")
 		}
 		return nil, systools.SetDriverUpdateHidden(id, ignore)
 	})

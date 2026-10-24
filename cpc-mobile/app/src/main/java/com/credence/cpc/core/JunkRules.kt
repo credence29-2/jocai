@@ -1,7 +1,7 @@
 package com.credence.cpc.core
 
 /**
- * The kinds of junk CPC looks for in shared storage. Items that are safe for
+ * The kinds of junk Kempt looks for in shared storage. Items that are safe for
  * anyone start ticked. Anything that might be wanted starts unticked so the
  * person reviews it first.
  */

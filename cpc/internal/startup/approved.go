@@ -1,6 +1,6 @@
 // Package startup lists and toggles programs that start with Windows.
 //
-// CPC uses the same "StartupApproved" registry flags as Task Manager, so an
+// Kempt uses the same "StartupApproved" registry flags as Task Manager, so an
 // item disabled here shows as disabled in Task Manager and the other way
 // round. Nothing is ever deleted, so every change can be undone.
 package startup

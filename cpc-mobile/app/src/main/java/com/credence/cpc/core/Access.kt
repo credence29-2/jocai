@@ -11,7 +11,7 @@ import android.os.Environment
 import android.os.Process
 import android.provider.Settings
 
-/** Checks and settings screens for the two special permissions CPC uses. */
+/** Checks and settings screens for the two special permissions Kempt uses. */
 object Access {
 
     /** "All files access" on Android 11+, storage permission before that. */

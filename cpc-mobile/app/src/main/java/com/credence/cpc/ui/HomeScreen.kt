@@ -13,8 +13,8 @@ class HomeScreen(act: MainActivity) : Screen(act) {
     override fun onShow() {
         val d = DeviceInfo.read(act)
         body.removeAllViews()
-        body.addView(ui.title("CPC Mobile"))
-        body.addView(ui.caption("Clear PC Cleaner for your phone"), ui.spaced(2))
+        body.addView(ui.title("Kempt Mobile"))
+        body.addView(ui.caption("Kempt for your phone"), ui.spaced(2))
         body.addView(View(act), ui.spaced(8))
 
         val storageFrac = if (d.storageTotal > 0) d.storageUsed.toDouble() / d.storageTotal else 0.0
@@ -35,7 +35,7 @@ class HomeScreen(act: MainActivity) : Screen(act) {
                 ui.bar(memFrac),
                 ui.caption(
                     "Android manages memory on its own and keeps recent apps ready to reopen. " +
-                        "Closing them doesn't speed the phone up, so CPC doesn't pretend to \"boost\" RAM.",
+                        "Closing them doesn't speed the phone up, so Kempt doesn't pretend to \"boost\" RAM.",
                 ),
             ),
         )

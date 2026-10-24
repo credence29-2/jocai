@@ -22,7 +22,7 @@
     <!-- Opens the system uninstall prompt. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
-    <!-- Lets CPC see apps that have a launcher icon. -->
+    <!-- Lets Kempt see apps that have a launcher icon. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -34,10 +34,10 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="CPC Mobile"
+        android:label="Kempt Mobile"
         android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
-        android:theme="@style/Theme.CPC">
+        android:theme="@style/Theme.Kempt">
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"

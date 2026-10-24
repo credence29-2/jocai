@@ -50,7 +50,7 @@ func approvedData(s source, name string) []byte {
 	return b
 }
 
-// List returns every startup entry CPC knows about.
+// List returns every startup entry Kempt knows about.
 func List() []Entry {
 	var out []Entry
 	for _, s := range sources() {

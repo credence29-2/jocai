@@ -1,4 +1,4 @@
-name: CPC Mobile build
+name: Kempt Mobile build
 
 on:
   push:
@@ -26,11 +26,11 @@ jobs:
       - name: Test and build APK
         run: ./gradlew --no-daemon testReleaseUnitTest assembleRelease lintRelease
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release.apk "CPC-Mobile-1.0.${{ github.run_number }}.apk"
+        run: cp app/build/outputs/apk/release/app-release.apk "Kempt-Mobile-1.0.${{ github.run_number }}.apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: CPC-Mobile
-          path: cpc-mobile/CPC-Mobile-*.apk
+          name: Kempt-Mobile
+          path: cpc-mobile/Kempt-Mobile-*.apk
       - uses: actions/upload-artifact@v4
         if: always()
         with:

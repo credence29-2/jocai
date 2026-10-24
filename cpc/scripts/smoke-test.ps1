@@ -1,8 +1,8 @@
-# Real-Windows smoke test for CPC. Runs on a GitHub Windows runner.
+# Real-Windows smoke test for Kempt. Runs on a GitHub Windows runner.
 # 1. /auto clean against planted junk, checking what was deleted and kept.
 # 2. Opens the window and drives it through UI Automation like a person would.
 $ErrorActionPreference = "Stop"
-$exe = (Resolve-Path "dist\CPC.exe").Path
+$exe = (Resolve-Path "dist\Kempt.exe").Path
 $shots = New-Item -ItemType Directory -Force -Path "smoke"
 $failed = $false
 $failures = New-Object System.Collections.Generic.List[string]
@@ -40,7 +40,7 @@ $p = Seed
 $proc = Start-Process $exe -ArgumentList "/auto" -PassThru -Wait
 if ($proc.ExitCode -eq 0) { Pass "/auto exit code 0" } else { Fail "/auto exit code $($proc.ExitCode)" }
 Check-Cleaned $p "/auto"
-$log = Get-ChildItem "$env:LOCALAPPDATA\ClearPCCleaner\logs\*.log" | Sort-Object LastWriteTime | Select-Object -Last 1
+$log = Get-ChildItem "$env:LOCALAPPDATA\Kempt\logs\*.log" | Sort-Object LastWriteTime | Select-Object -Last 1
 Write-Host "----- /auto log (summary lines) -----"; Get-Content $log.FullName | Where-Object { $_ -notmatch '^deleted ' } | Select-Object -First 80; Write-Host "---------------------"
 
 # ---------------------------------------------------------------- GUI
@@ -94,11 +94,11 @@ function Expect($root, $regex, $label, $seconds = 60) {
 
 $p = Seed
 $gui = Start-Process $exe -PassThru
-$win = Wait-For { $c = New-Object System.Windows.Automation.PropertyCondition($AE::NameProperty, "Clear PC Cleaner"); $AE::RootElement.FindFirst($TS::Children, $c) } 40
+$win = Wait-For { $c = New-Object System.Windows.Automation.PropertyCondition($AE::NameProperty, "Kempt"); $AE::RootElement.FindFirst($TS::Children, $c) } 40
 if (-not $win) { Shot "no-window"; Fail "window never appeared"; if ($gui.HasExited) { Fail "process exited with $($gui.ExitCode)" }; exit 1 }
 Pass "window opened"
 Start-Sleep 3
-if ($gui.HasExited) { Fail "CPC closed by itself"; exit 1 }
+if ($gui.HasExited) { Fail "Kempt closed by itself"; exit 1 }
 
 if (Expect $win "Run a health check" "Health Check page rendered") { Shot "1-health" }
 Write-Host "Sidebar admin text: " (Texts $win | Select-String -Pattern "administrator" -AllMatches | ForEach-Object { $_.Matches.Value } | Select-Object -First 1)
@@ -139,7 +139,7 @@ if (Expect $win "Fix issues in the Windows Registry" "Registry tab rendered") {
             Click $win "Fix issues" | Out-Null
             if (Expect $win "Fixed \d+ issue" "registry fix finished with a backup" 120) {
                 if ((Get-ItemProperty $runKey -Name "CPCTestBroken" -ErrorAction SilentlyContinue)) { Fail "broken entry still present after fix" } else { Pass "broken entry removed" }
-                $bk = Get-ChildItem "$env:LOCALAPPDATA\ClearPCCleaner\backups" -Directory | Sort-Object Name | Select-Object -Last 1
+                $bk = Get-ChildItem "$env:LOCALAPPDATA\Kempt\backups" -Directory | Sort-Object Name | Select-Object -Last 1
                 $regs = @(Get-ChildItem "$($bk.FullName)\*.reg")
                 if ($regs.Count -gt 0) { Pass "registry backup written ($($regs.Count) files)" } else { Fail "no registry backup files" }
                 Click $win "Undo these changes" | Out-Null
@@ -198,7 +198,7 @@ if (Expect $win "(drivers? to update|has no driver updates|Couldn't check Window
 }
 
 Click $win "Help" | Out-Null
-Expect $win "What CPC never touches" "Help rendered" | Out-Null
+Expect $win "What Kempt never touches" "Help rendered" | Out-Null
 
 Click $win "Uninstaller" | Out-Null
 if (Expect $win "programs" "Uninstaller rendered") { Shot "7-uninstaller" }
@@ -206,14 +206,14 @@ if (Expect $win "programs" "Uninstaller rendered") { Shot "7-uninstaller" }
 Click $win "Settings" | Out-Null
 if (Expect $win "Automatic cleaning" "Settings rendered") { Shot "8-settings" }
 Click $win "Turn automatic cleaning on or off" | Out-Null
-$task = Wait-For { schtasks /query /tn "Clear PC Cleaner weekly clean" 2>$null } 15
+$task = Wait-For { schtasks /query /tn "Kempt weekly clean" 2>$null } 15
 if ($task) { Pass "weekly scheduled task created" } else { Fail "scheduled task not created. Screen: $(Texts $win)" }
 Click $win "Turn automatic cleaning on or off" | Out-Null
 Start-Sleep 2
-schtasks /query /tn "Clear PC Cleaner weekly clean" 2>$null | Out-Null
+schtasks /query /tn "Kempt weekly clean" 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) { Pass "weekly scheduled task removed" } else { Fail "scheduled task still there after turning off" }
 
-if ($gui.HasExited) { Fail "CPC crashed during the test" } else { Pass "CPC still running at the end"; Stop-Process -Id $gui.Id }
+if ($gui.HasExited) { Fail "Kempt crashed during the test" } else { Pass "Kempt still running at the end"; Stop-Process -Id $gui.Id }
 
 if ($failed) { Write-Host "SMOKE TEST FAILED:"; $failures | ForEach-Object { Write-Host " - $_" }; exit 1 }
 Write-Host "SMOKE TEST PASSED"

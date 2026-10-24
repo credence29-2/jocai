@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Clear PC Cleaner</title>
+<title>Kempt</title>
 <style>
 :root {
   --bg: #0a0d12; --side: #0d1117; --panel: #0f131a; --card: #141a22; --card2: #1a212b; --hover: rgba(255,255,255,.055);
@@ -231,8 +231,8 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
 
 <aside class="sidebar">
   <div class="brand">
-    <div class="mark" aria-hidden="true">C</div>
-    <div><b>Clear</b><span>PC Cleaner</span></div>
+    <div class="mark" aria-hidden="true">K</div>
+    <div><b>Kempt</b><span>PC Cleaner</span></div>
   </div>
   <div class="nav-label">Clean</div>
   <nav class="nav" id="nav">
@@ -332,7 +332,7 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
 
   <!-- Duplicate Finder -->
   <section class="page" id="page-dupes">
-    <div class="page-head"><div class="grow"><h1>Duplicate Finder</h1><p>Find identical copies of files. CPC compares the actual content, not just names, and moves extras to the Recycle Bin.</p></div></div>
+    <div class="page-head"><div class="grow"><h1>Duplicate Finder</h1><p>Find identical copies of files. Kempt compares the actual content, not just names, and moves extras to the Recycle Bin.</p></div></div>
     <div class="page-body" id="dupeBody"></div>
   </section>
 
@@ -363,13 +363,13 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
 
   <!-- Help -->
   <section class="page" id="page-help">
-    <div class="page-head"><div class="grow"><h1>Help</h1><p>What each part of CPC does, and what it never touches.</p></div></div>
+    <div class="page-head"><div class="grow"><h1>Help</h1><p>What each part of Kempt does, and what it never touches.</p></div></div>
     <div class="page-body stack" id="helpBody"></div>
   </section>
 
   <!-- Settings -->
   <section class="page" id="page-settings">
-    <div class="page-head"><div class="grow"><h1>Settings</h1><p>Automatic cleaning, logs and information about CPC.</p></div></div>
+    <div class="page-head"><div class="grow"><h1>Settings</h1><p>Automatic cleaning, logs and information about Kempt.</p></div></div>
     <div class="page-body stack" id="settingsBody"></div>
   </section>
 </main>
@@ -389,7 +389,7 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
 const api = new Proxy({}, {
   get: (_, name) => (...args) => {
     const fn = window["cpc" + name];
-    if (typeof fn !== "function") return Promise.reject(new Error("CPC backend not available"));
+    if (typeof fn !== "function") return Promise.reject(new Error("Kempt backend not available"));
     return fn(...args);
   }
 });
@@ -499,7 +499,7 @@ function renderPicker() {
         <label class="item ${t.selectable ? "" : "locked"}" title="${esc(t.description)}">
           <input type="checkbox" class="cb icb" data-id="${t.id}" aria-label="${esc(t.name)}" ${S.checked.has(t.id) ? "checked" : ""} ${!t.selectable || busy ? "disabled" : ""}>
           <span class="label">${esc(t.label)}<small>${esc(t.description)}</small></span>
-          ${t.selectable ? "" : '<span class="pill" title="Restart CPC as administrator to use this">Admin</span>'}
+          ${t.selectable ? "" : '<span class="pill" title="Restart Kempt as administrator to use this">Admin</span>'}
         </label>`).join("")}
       </div></div>`;
   }).join("");
@@ -531,7 +531,7 @@ function renderRegPicker() {
     <label class="item ${c.selectable ? "" : "locked"}" style="padding:12px 16px;border-bottom:1px solid var(--line)" title="${esc(c.description)}">
       <input type="checkbox" class="cb rcb" data-id="${c.id}" aria-label="${esc(c.name)}" ${S.reg.checked.has(c.id) ? "checked" : ""} ${!c.selectable || busy ? "disabled" : ""}>
       <span class="label">${esc(c.name)}<small>${esc(c.description)}</small></span>
-      ${c.selectable ? "" : '<span class="pill" title="Restart CPC as administrator to use this">Admin</span>'}
+      ${c.selectable ? "" : '<span class="pill" title="Restart Kempt as administrator to use this">Admin</span>'}
     </label>`).join("");
   const sel = S.reg.cats.filter(c => c.selectable), on = sel.filter(c => S.reg.checked.has(c.id)).length;
   const all = $("#selAll");
@@ -597,7 +597,7 @@ const emptyStates = {
     text: "Websites leave behind caches, cookies and history. Caches are ticked by default. Cookies sign you out of sites and history is your list of visited pages, so those start unticked.",
     icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 9h18"/><path d="m13 13 7 3-3 1-1 3z" stroke="#f2c94c"/></svg>' },
   registry: { title: "Fix issues in the Windows Registry", lead: "Remove leftovers from programs you uninstalled.",
-    text: "CPC only flags entries that point to files which are definitely gone. Every fix is backed up first and can be restored with one click. Registry cleaning rarely makes a PC faster, so think of it as tidying up.",
+    text: "Kempt only flags entries that point to files which are definitely gone. Every fix is backed up first and can be restored with one click. Registry cleaning rarely makes a PC faster, so think of it as tidying up.",
     icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="m17.5 2.5 4 4-4 4-4-4z" stroke="#f2c94c"/></svg>' }
 };
 function renderResults() {
@@ -695,7 +695,7 @@ async function regScan() {
 async function regFix() {
   const n = S.reg.picked.size;
   if (!n) return;
-  if (!await confirmBox("Fix " + n + " registry issue" + (n === 1 ? "" : "s") + "?", "CPC saves a backup of every key it changes first. You can undo this from the Registry tab at any time.", "Fix issues")) return;
+  if (!await confirmBox("Fix " + n + " registry issue" + (n === 1 ? "" : "s") + "?", "Kempt saves a backup of every key it changes first. You can undo this from the Registry tab at any time.", "Fix issues")) return;
   S.reg.busy = true; renderPicker(); renderResults();
   try { await api.RegFix([...S.reg.picked]); } catch (e) { S.reg.busy = false; renderPicker(); renderResults(); toast(errText(e), true); }
 }
@@ -708,7 +708,7 @@ async function showBackups() {
   try { list = await api.RegBackups(); } catch (e) {}
   if (!list.length) { toast("No registry backups yet."); return; }
   const html = list.slice(0, 8).map(b => `<div class="row" style="margin:6px 0"><span class="grow">${esc(b.when)} <span class="dim">(${b.count} key${b.count === 1 ? "" : "s"})</span></span><button class="btn small" data-restore="${esc(b.name)}">Restore</button></div>`).join("");
-  confirmBox("Registry backups", html + '<p class="dim" style="margin-top:10px;font-size:12px">Newest first. CPC keeps every backup in its backups folder.</p>', "Close");
+  confirmBox("Registry backups", html + '<p class="dim" style="margin-top:10px;font-size:12px">Newest first. Kempt keeps every backup in its backups folder.</p>', "Close");
   document.querySelectorAll("[data-restore]").forEach(b => b.onclick = async () => {
     $("#modalBack").classList.remove("show");
     try { await api.RegRestore(b.dataset.restore); toast("Backup restored."); } catch (e) { toast(errText(e), true); }
@@ -724,7 +724,7 @@ async function startRun(owner, mode, ids) {
     let open = [];
     try { open = (await api.OpenApps(ids)) || []; } catch (e) { open = []; }
     const warn = open.length ? `<div class="warnbox">${esc(open.join(", "))} ${open.length === 1 ? "is" : "are"} open. Close ${open.length === 1 ? "it" : "them"} first for a full clean, or files in use will be skipped.</div>` : "";
-    const ok = await confirmBox("Clean selected items?", `CPC will permanently delete files from ${ids.length} item${ids.length === 1 ? "" : "s"}. This can't be undone.${warn}`, "Clean", true);
+    const ok = await confirmBox("Clean selected items?", `Kempt will permanently delete files from ${ids.length} item${ids.length === 1 ? "" : "s"}. This can't be undone.${warn}`, "Clean", true);
     if (!ok) return;
   }
   S.run = { owner, mode, total: ids.length, index: 0, name: "", path: "", results: {} };
@@ -833,7 +833,7 @@ function renderHealth() {
   } else {
     hero = `<div class="card hero">${gauge(used, "disk used", Math.round(used * 100) + "%", used > .9 ? "#ff6b6b" : "accent")}
       <div class="grow"><h2>Run a health check</h2>
-      <p>CPC checks for junk using the Recommended items, counts your startup apps and looks at free space. Nothing is removed until you choose to fix it.</p>
+      <p>Kempt checks for junk using the Recommended items, counts your startup apps and looks at free space. Nothing is removed until you choose to fix it.</p>
       <div class="row" style="margin-top:16px"><button class="btn primary big" id="hRun">Run Health Check</button></div></div></div>`;
   }
   const st = S.startup;
@@ -1034,7 +1034,7 @@ function renderDupeResults(el) {
   let sel = 0, selBytes = 0;
   g.forEach(gr => gr.files.forEach(f => { if (D.picked.has(f.id)) { sel++; selBytes += f.size; } }));
   el.innerHTML = `<div class="card"><div class="row"><div class="grow"><h3>${g.length.toLocaleString()} sets of duplicates, ${fmtBytes(D.result.wasted)} could be freed</h3>
-      <p>${D.result.error ? esc(D.result.error) + " " : ""}Pick the copies to remove. CPC always keeps at least one copy of each file.</p></div>
+      <p>${D.result.error ? esc(D.result.error) + " " : ""}Pick the copies to remove. Kempt always keeps at least one copy of each file.</p></div>
       <button class="btn small" id="dupeBack">New search</button></div>
       <div class="row" style="margin-top:12px"><button class="btn small" id="pickOld">Keep the oldest copy</button><button class="btn small" id="pickNew">Keep the newest copy</button><button class="btn small ghost" id="pickNone">Clear selection</button>
       <span class="grow"></span><b>${sel} selected (${fmtBytes(selBytes)})</b><button class="btn primary" id="dupeDel" ${sel ? "" : "disabled"}>Move to Recycle Bin</button></div></div>
@@ -1095,7 +1095,7 @@ function renderUpdates() {
       const reason = st.status === "failed" && st.error ? `<small style="color:var(--bad);white-space:normal">${esc(st.error)}</small>` : "";
       if (u.selfUpdate) return `<div class="lrow"><span style="width:18px"></span>
         <div class="avatar" style="background:${avatarColor(u.name)}">${esc((u.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
-        <div class="main"><b>${esc(u.name)}</b><small>Updates itself. winget's installer for this app is unreliable, so CPC opens the app's own update screen.</small>${reason}</div>
+        <div class="main"><b>${esc(u.name)}</b><small>Updates itself. winget's installer for this app is unreliable, so Kempt opens the app's own update screen.</small>${reason}</div>
         <span class="meta">${esc(u.version)}</span><span class="meta" style="color:var(--text)">${esc(u.available)}</span>
         <button class="btn small" data-self="${esc(u.id)}">Open updater</button></div>`;
       return `<label class="lrow" style="cursor:pointer"><input type="checkbox" class="cb" data-upd="${esc(u.id)}" ${U.picked.has(u.id) ? "checked" : ""} ${U.busy || st.status === "updated" ? "disabled" : ""}>
@@ -1163,7 +1163,7 @@ function renderDrivers() {
   const sel = DR.picked.size;
   $("#drvSel").innerHTML = onUpdates ? `${sel ? sel + " selected" : "Nothing selected"}${DR.scannedAt ? `<br><span class="muted" style="font-weight:400;font-size:13px">Last scan: ${ago(DR.scannedAt)}</span>` : ""}` : (DR.scannedAt ? `<span class="muted" style="font-weight:400;font-size:13px">Last scan: ${ago(DR.scannedAt)}</span>` : "");
   $("#drvGo").disabled = DR.busy || !sel || !S.info.elevated;
-  $("#drvGo").title = S.info.elevated ? "" : "Restart CPC as administrator to install drivers.";
+  $("#drvGo").title = S.info.elevated ? "" : "Restart Kempt as administrator to install drivers.";
   $("#drvRefresh").disabled = DR.busy || DR.loading;
   if (DR.loading || !d) {
     el.innerHTML = `<div class="card hero"><div class="spinner"></div><div class="grow"><h2>Checking Windows Update for drivers...</h2>
@@ -1217,7 +1217,7 @@ function versionOf(u) { const m = (u.title || "").match(/(\d+(?:\.\d+){1,4})\s*$
 function makerCard(d) {
   const links = d.links || [];
   return `<div class="card" style="margin-top:16px"><h3>Not seeing a driver here?</h3>
-    <p>CPC installs drivers only from Windows Update, so they're tested and signed for Windows. Some makers post newer versions on their own sites first. Get those straight from the maker, never from third-party download sites.</p>
+    <p>Kempt installs drivers only from Windows Update, so they're tested and signed for Windows. Some makers post newer versions on their own sites first. Get those straight from the maker, never from third-party download sites.</p>
     <div class="row" style="margin-top:12px;flex-wrap:wrap">${links.map(l => `<button class="btn small" data-mk="${esc(l.key)}">${esc(l.name)}</button>`).join("")}
     <button class="btn small ghost" data-mk="__optional">Windows optional updates</button></div></div>`;
 }
@@ -1239,7 +1239,7 @@ function renderInstalledDrivers(el, d) {
   const sb = $("#drvSearch"); sb.oninput = () => { DR.q = sb.value; const pos = sb.selectionStart; renderDrivers(); const n = $("#drvSearch"); n.focus(); n.setSelectionRange(pos, pos); };
 }
 function renderIgnoredDrivers(el, d) {
-  if (!d.ignored.length) { el.innerHTML = `<div class="card"><h3>No ignored drivers</h3><p>Click Ignore next to a driver update to stop Windows Update and CPC from offering it, for example when a newer driver causes trouble.</p></div>`; return; }
+  if (!d.ignored.length) { el.innerHTML = `<div class="card"><h3>No ignored drivers</h3><p>Click Ignore next to a driver update to stop Windows Update and Kempt from offering it, for example when a newer driver causes trouble.</p></div>`; return; }
   el.innerHTML = `<p class="muted" style="margin:0 0 12px">Windows Update won't offer these until you stop ignoring them.</p><div class="list">` + d.ignored.map(u => `
     <div class="lrow"><div style="color:var(--sub)">${dicon(u.group)}</div><div class="main"><b>${esc(u.model)}</b><small>${esc(u.provider || u.manufacturer)} · ${esc(versionOf(u))} · ${esc(fmtDate(u.date))}</small></div>
       <button class="btn small" data-unign="${esc(u.id)}">Stop ignoring</button></div>`).join("") + `</div>`;
@@ -1305,13 +1305,13 @@ function renderHelp() {
     ["Duplicate Finder", "Finds byte-for-byte identical files and moves the extra copies to the Recycle Bin. One copy of every file is always kept."],
     ["Startup Manager", "Turns off startup apps, scheduled tasks from other programs and third-party background services. Nothing is deleted, so every change can be reversed."],
     ["Software Updater", "Uses winget, Microsoft's app installer, to update apps silently. Store apps update themselves."],
-    ["Driver Updater", "Checks Windows Update for newer drivers and installs the ones you pick, with a restore point first. It also lists every installed driver, lets you ignore an update, and Fix a problem shows devices with errors. Some makers post newer drivers only on their own sites, and CPC links to those pages."],
-    ["Automatic cleaning", "Settings can schedule a weekly clean with the items you ticked in Custom Clean. It skips apps that are open. You can also run CPC.exe /auto from a script or RMM tool."],
-    ["What CPC never touches", "Documents, photos, bookmarks, Windows' own scheduled tasks and services, COM and ActiveX registry entries, and anything newer than 24 hours in temp folders. Cookies, history and passwords are only cleaned if you tick them."],
+    ["Driver Updater", "Checks Windows Update for newer drivers and installs the ones you pick, with a restore point first. It also lists every installed driver, lets you ignore an update, and Fix a problem shows devices with errors. Some makers post newer drivers only on their own sites, and Kempt links to those pages."],
+    ["Automatic cleaning", "Settings can schedule a weekly clean with the items you ticked in Custom Clean. It skips apps that are open. You can also run Kempt.exe /auto from a script or RMM tool."],
+    ["What Kempt never touches", "Documents, photos, bookmarks, Windows' own scheduled tasks and services, COM and ActiveX registry entries, and anything newer than 24 hours in temp folders. Cookies, history and passwords are only cleaned if you tick them."],
     ["Not included", "Cloud Drive Cleaner needs sign-in to your cloud accounts, so it isn't included. Duplicate Finder does search your local OneDrive folder. Wiping free space and driver downloads from third-party sites are left out on purpose."],
   ];
   $("#helpBody").innerHTML = items.map(([h, p]) => `<div class="card"><h3>${esc(h)}</h3><p>${esc(p)}</p></div>`).join("") +
-    `<div class="card"><div class="row"><div class="grow"><h3>Logs and backups</h3><p>Cleaning logs and registry backups are kept in your AppData folder under ClearPCCleaner.</p></div>
+    `<div class="card"><div class="row"><div class="grow"><h3>Logs and backups</h3><p>Cleaning logs and registry backups are kept in your AppData folder under Kempt.</p></div>
       <button class="btn small" id="helpLogs">Open logs</button><button class="btn small" id="helpBk">Open registry backups</button></div></div>`;
   $("#helpLogs").onclick = () => api.OpenLogs().catch(() => toast("No logs yet. Run a clean first.", true));
   $("#helpBk").onclick = () => api.OpenBackups().catch(e => toast(errText(e), true));
@@ -1329,7 +1329,7 @@ async function renderSettings() {
       <div class="row" style="margin-top:14px">
         <select id="schedDay" aria-label="Day">${days.map(([v, n]) => `<option value="${v}" ${v === "SUN" ? "selected" : ""}>${n}</option>`).join("")}</select>
         <input type="time" id="schedAt" value="12:00" aria-label="Time">
-        <span class="muted">${sc.enabled ? "On. Next run: " + esc(sc.nextRun || "scheduled") : (admin ? "Off" : "Restart CPC as administrator to turn this on.")}</span></div>
+        <span class="muted">${sc.enabled ? "On. Next run: " + esc(sc.nextRun || "scheduled") : (admin ? "Off" : "Restart Kempt as administrator to turn this on.")}</span></div>
       <p class="dim" style="margin-top:10px;font-size:12px">The PC needs to be on at that time. Windows runs it later if it was off or asleep.</p></div>
     <div class="card"><div class="row"><div class="grow"><h3>Never clean these folders</h3>
       <p>Custom Clean, Health Check and automatic cleaning skip these folders and everything inside them.</p></div>
@@ -1337,7 +1337,7 @@ async function renderSettings() {
       <div class="list" style="margin-top:12px" id="exclList"></div></div>
     <div class="card"><div class="row"><div class="grow"><h3>Cleaning logs</h3><p>Every clean records each file it deleted. The last 30 logs are kept.</p></div>
       <button class="btn small" id="openLogs">Open logs folder</button></div></div>
-    <div class="card"><h3>What CPC never touches</h3>
+    <div class="card"><h3>What Kempt never touches</h3>
       <p>Your documents, photos and bookmarks. Firefox history, because Firefox keeps it in the same file as bookmarks. Anything newer than 24 hours in temp folders. Windows' own scheduled tasks and services, and COM and ActiveX registry entries. Cookies, history and saved passwords are only cleaned if you tick them, and every registry fix is backed up first so it can be undone.</p></div>
     <div class="card"><div class="row"><div class="grow"><h3>About</h3>
       <p>${esc(S.info.app)} ${esc(S.info.version)}. ${admin ? "Running as administrator." : "Not running as administrator, so system items are locked."}</p></div>

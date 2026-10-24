@@ -34,7 +34,7 @@
     setTimeout(step, 10);
   }
   Object.assign(window, {
-    cpcInfo: async () => ({ app: "Clear PC Cleaner", version: "1.1.0", elevated: !!window.__mockAdmin, logsDir: "C:\\logs", diskTotal: 511e9, diskFree: 96e9, drive: "C:" }),
+    cpcInfo: async () => ({ app: "Kempt", version: "1.1.0", elevated: !!window.__mockAdmin, logsDir: "C:\\logs", diskTotal: 511e9, diskFree: 96e9, drive: "C:" }),
     cpcTargets: async () => targets,
     cpcSetSelected: async () => null,
     cpcScan: async ids => run(ids, false),
@@ -75,7 +75,7 @@
     cpcTasks: async () => later([
       { name: "GoogleUpdateTaskMachineUA", path: "\\", state: "Ready", author: "Google LLC", action: "C:\\Program Files (x86)\\Google\\Update\\GoogleUpdate.exe /ua", enabled: true },
       { name: "Adobe Acrobat Update Task", path: "\\", state: "Disabled", author: "Adobe Systems", action: "C:\\Program Files (x86)\\Common Files\\Adobe\\ARM\\1.0\\AdobeARM.exe", enabled: false }]),
-    cpcSetTask: async () => later(null, "Restart CPC as administrator to change scheduled tasks."),
+    cpcSetTask: async () => later(null, "Restart Kempt as administrator to change scheduled tasks."),
     cpcServices: async () => later([
       { name: "AdobeARMservice", displayName: "Adobe Acrobat Update Service", startMode: "Automatic", state: "Running", path: "C:\\Program Files (x86)\\Common Files\\Adobe\\ARM\\1.0\\armsvc.exe", description: "Keeps Adobe Acrobat up to date." },
       { name: "TeamViewer", displayName: "TeamViewer", startMode: "Manual", state: "Stopped", path: "C:\\Program Files\\TeamViewer\\TeamViewer_Service.exe", description: "" }]),

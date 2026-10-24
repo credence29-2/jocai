@@ -1,4 +1,4 @@
-name: CPC build
+name: Kempt build
 
 on:
   push:
@@ -27,10 +27,10 @@ jobs:
           go vet ./...
           GOOS=windows go vet ./...
       - name: Test and build
-        run: ./build.sh "1.3.${{ github.run_number }}"
+        run: ./build.sh "1.4.${{ github.run_number }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: CPC
+          name: Kempt
           path: |
-            cpc/dist/CPC.exe
-            cpc/dist/CPC-arm64.exe
+            cpc/dist/Kempt.exe
+            cpc/dist/Kempt-arm64.exe

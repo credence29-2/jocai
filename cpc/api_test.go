@@ -124,7 +124,7 @@ func TestRunNeedsSelection(t *testing.T) {
 
 func TestOpenPathOnlyOwnFiles(t *testing.T) {
 	a := newAPI(t.TempDir(), false, func(string, any) {})
-	if err := a.OpenPath("/etc/passwd"); err == nil || !strings.Contains(err.Error(), "not a CPC file") {
+	if err := a.OpenPath("/etc/passwd"); err == nil || !strings.Contains(err.Error(), "not a Kempt file") {
 		t.Fatalf("expected refusal, got %v", err)
 	}
 }

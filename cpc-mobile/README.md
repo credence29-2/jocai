@@ -1,6 +1,6 @@
-# CPC Mobile
+# Kempt Mobile
 
-The Android side of Clear PC Cleaner. A small cleaner that only does things that actually work on modern Android, and says so when something isn't possible.
+The Android side of Kempt. A small cleaner that only does things that actually work on modern Android, and says so when something isn't possible.
 
 ## What it does
 
@@ -24,15 +24,15 @@ Tap a group to pick individual files. App data under `Android/` is never touched
 
 **Updates.** Android version, security patch date and age, a button to the system update screen, and a shortcut to Play Store for app updates.
 
-## What Android doesn't allow, and why CPC doesn't fake it
+## What Android doesn't allow, and why Kempt doesn't fake it
 
-- **Clearing one app's cache from another app.** Android removed this in version 6. CPC uses the system's clear-all dialog instead, or sends you to App info for a single app.
-- **"RAM boosting."** Android 14 and newer won't let an app close other apps at all. On older versions, closed apps just restart. Android manages memory well on its own, so CPC shows memory use but doesn't pretend to boost it.
-- **Installing app updates.** Only Play Store or the phone's own updater can do that. CPC takes you straight there.
+- **Clearing one app's cache from another app.** Android removed this in version 6. Kempt uses the system's clear-all dialog instead, or sends you to App info for a single app.
+- **"RAM boosting."** Android 14 and newer won't let an app close other apps at all. On older versions, closed apps just restart. Android manages memory well on its own, so Kempt shows memory use but doesn't pretend to boost it.
+- **Installing app updates.** Only Play Store or the phone's own updater can do that. Kempt takes you straight there.
 
 ## Permissions
 
-CPC asks for two special permissions, each only when you use the feature that needs it.
+Kempt asks for two special permissions, each only when you use the feature that needs it.
 
 - **All files access.** Needed to scan shared storage and for the clear-all-caches dialog.
 - **Usage access.** Needed to read app cache sizes and last used dates.
@@ -41,7 +41,7 @@ There's no internet permission at all, so nothing can leave the phone.
 
 ## Installing
 
-1. Download the APK from the latest **CPC Mobile build** run under the repo's Actions tab. It's in the **CPC-Mobile** artifact, zipped.
+1. Download the APK from the latest **Kempt Mobile build** run under the repo's Actions tab. It's in the **Kempt-Mobile** artifact, zipped.
 2. Copy it to the phone, or download it there, and open it.
 3. Allow "Install unknown apps" for your browser or file manager when Android asks.
 

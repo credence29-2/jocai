@@ -140,7 +140,7 @@ func SystemMaker() string {
 	return out[0].Maker
 }
 
-const wuSession = `$s = New-Object -ComObject Microsoft.Update.Session; $s.ClientApplicationID = 'Clear PC Cleaner'; `
+const wuSession = `$s = New-Object -ComObject Microsoft.Update.Session; $s.ClientApplicationID = 'Kempt'; `
 
 const wuShape = `ForEach-Object { [pscustomobject]@{ id=[string]$_.Identity.UpdateID; title=[string]$_.Title; model=[string]$_.DriverModel;
   provider=[string]$_.DriverProvider; manufacturer=[string]$_.DriverManufacturer; class=[string]$_.DriverClass;

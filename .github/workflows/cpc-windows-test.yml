@@ -1,4 +1,4 @@
-name: CPC Windows test
+name: Kempt Windows test
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Unit tests on Windows
         run: go test ./...
       - name: Build
-        run: go build -trimpath -ldflags "-H windowsgui -s -w" -o dist\CPC.exe .
+        run: go build -trimpath -ldflags "-H windowsgui -s -w" -o dist\Kempt.exe .
       - name: Make sure WebView2 Runtime is installed
         shell: pwsh
         run: |

@@ -19,17 +19,23 @@ import (
 	"github.com/credence29-2/jocai/cpc/internal/sysutil"
 )
 
-const appName = "Clear PC Cleaner"
+const appName = "Kempt"
 
 // version is set at build time with -ldflags "-X main.version=...".
-var version = "1.3.2"
+var version = "1.4.0"
 
-// scheduleName is the Task Scheduler entry CPC manages. oldScheduleName is
+// scheduleName is the Task Scheduler entry Kempt manages. oldScheduleName is
 // what earlier versions created; it is replaced when the schedule changes.
-const (
-	scheduleName    = "Clear PC Cleaner weekly clean"
-	oldScheduleName = "Credence PC Cleaner weekly clean"
-)
+const scheduleName = "Kempt weekly clean"
+
+// oldScheduleNames are what earlier versions created.
+var oldScheduleNames = []string{"Clear PC Cleaner weekly clean", "Credence PC Cleaner weekly clean"}
+
+func deleteOldSchedules() {
+	for _, n := range oldScheduleNames {
+		_ = sysutil.ScheduleDelete(n)
+	}
+}
 
 // api is everything the window's JavaScript can call. Each exported method
 // is bound as a global function named "cpc" + method name, e.g. cpcTargets().
@@ -43,7 +49,7 @@ type api struct {
 	// emit sends an event to the page. It must be safe to call from any
 	// goroutine.
 	emit func(name string, payload any)
-	// restartElevated relaunches CPC through UAC. Set by main.
+	// restartElevated relaunches Kempt through UAC. Set by main.
 	restartElevated func() error
 
 	mu       sync.Mutex
@@ -93,7 +99,7 @@ func (a *api) AddExclusion() ([]string, error) {
 	if a.busy() {
 		return a.Exclusions(), errors.New("Wait for the current clean to finish.")
 	}
-	f := sysutil.PickFolder(a.hwnd, "Choose a folder CPC should never clean")
+	f := sysutil.PickFolder(a.hwnd, "Choose a folder Kempt should never clean")
 	if f == "" {
 		return a.Exclusions(), nil
 	}
@@ -163,9 +169,9 @@ func (a *api) RestartAdmin() error {
 func (a *api) OpenLogs() error { return sysutil.ShellOpen(filepath.Join(a.dataDir, "logs")) }
 
 func (a *api) OpenPath(p string) error {
-	// Only open files CPC wrote itself.
+	// Only open files Kempt wrote itself.
 	if !strings.HasPrefix(strings.ToLower(filepath.Clean(p)), strings.ToLower(filepath.Clean(a.dataDir))) {
-		return errors.New("not a CPC file")
+		return errors.New("not a Kempt file")
 	}
 	return sysutil.ShellOpen(p)
 }
@@ -433,7 +439,7 @@ func (a *api) SetStartup(index int, enabled bool) ([]startupDTO, error) {
 	}
 	e := a.startupRows[index]
 	if e.NeedsAdmin && !a.elevated {
-		return a.Startup(), fmt.Errorf("%q applies to all users. Restart CPC as administrator to change it.", e.Name)
+		return a.Startup(), fmt.Errorf("%q applies to all users. Restart Kempt as administrator to change it.", e.Name)
 	}
 	if err := startup.SetEnabled(e, enabled); err != nil {
 		return a.Startup(), fmt.Errorf("Couldn't change %q: %v", e.Name, err)
@@ -500,8 +506,11 @@ type scheduleDTO struct {
 
 func (a *api) Schedule() scheduleDTO {
 	ok, next := sysutil.ScheduleStatus(scheduleName)
-	if !ok {
-		ok, next = sysutil.ScheduleStatus(oldScheduleName)
+	for _, n := range oldScheduleNames {
+		if ok {
+			break
+		}
+		ok, next = sysutil.ScheduleStatus(n)
 	}
 	return scheduleDTO{Enabled: ok, NextRun: next}
 }
@@ -512,12 +521,12 @@ var validDays = map[string]bool{"MON": true, "TUE": true, "WED": true, "THU": tr
 // at is HH:MM in 24 hour time.
 func (a *api) SetSchedule(enabled bool, day, at string) (scheduleDTO, error) {
 	if !enabled {
-		_ = sysutil.ScheduleDelete(oldScheduleName)
+		deleteOldSchedules()
 		err := sysutil.ScheduleDelete(scheduleName)
 		return a.Schedule(), err
 	}
 	if !a.elevated {
-		return a.Schedule(), errors.New("Restart CPC as administrator to set up automatic cleaning.")
+		return a.Schedule(), errors.New("Restart Kempt as administrator to set up automatic cleaning.")
 	}
 	day = strings.ToUpper(day)
 	if !validDays[day] {
@@ -526,7 +535,7 @@ func (a *api) SetSchedule(enabled bool, day, at string) (scheduleDTO, error) {
 	if _, err := time.Parse("15:04", at); err != nil {
 		return a.Schedule(), errors.New("Pick a time.")
 	}
-	_ = sysutil.ScheduleDelete(oldScheduleName)
+	deleteOldSchedules()
 	err := sysutil.ScheduleWeekly(scheduleName, a.exe, "/auto", day, at)
 	return a.Schedule(), err
 }

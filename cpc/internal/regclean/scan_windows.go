@@ -339,7 +339,7 @@ func Backups(backupRoot string) []Backup {
 // Restore imports every .reg file in a backup folder.
 func Restore(backupRoot, name string) error {
 	if strings.ContainsAny(name, `\/`) || !strings.HasPrefix(name, "registry-") {
-		return errors.New("not a CPC backup")
+		return errors.New("not a Kempt backup")
 	}
 	files, _ := filepath.Glob(filepath.Join(backupRoot, name, "*.reg"))
 	if len(files) == 0 {

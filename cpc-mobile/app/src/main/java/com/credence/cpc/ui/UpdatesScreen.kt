@@ -28,7 +28,7 @@ class UpdatesScreen(act: MainActivity) : Screen(act) {
             ui.card(
                 ui.heading("This phone"),
                 ui.body(d.model),
-                ui.caption("Android ${d.androidVersion}. CPC Mobile $cpcVersion."),
+                ui.caption("Android ${d.androidVersion}. Kempt Mobile $cpcVersion."),
             ),
         )
 

@@ -4,5 +4,5 @@ Personal tools and utilities.
 
 | Project | What it is |
 | --- | --- |
-| [cpc](cpc/) | Clear PC Cleaner, a portable CCleaner replacement for Windows |
-| [cpc-mobile](cpc-mobile/) | CPC Mobile, the Android companion app |
+| [cpc](cpc/) | Kempt, a portable CCleaner replacement for Windows |
+| [cpc-mobile](cpc-mobile/) | Kempt Mobile, the Android companion app |

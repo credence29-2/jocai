@@ -1,6 +1,6 @@
-# Clear PC Cleaner (CPC)
+# Kempt (Kempt)
 
-A CCleaner replacement for Windows. One portable `CPC.exe`, no installer, no ads, no upsells, nothing phoning home.
+A CCleaner replacement for Windows. One portable `Kempt.exe`, no installer, no ads, no upsells, nothing phoning home.
 
 ## What's in it
 
@@ -17,7 +17,7 @@ A CCleaner replacement for Windows. One portable `CPC.exe`, no installer, no ads
 | Driver Check | Hardware with Device Manager errors, explained in plain words, plus the age of your key drivers and a shortcut to Windows Update's driver updates. |
 | Settings | Weekly automatic cleaning through Task Scheduler, folders to never clean, logs. |
 
-Nothing is deleted until you confirm. Every clean writes a log of each deleted file to `%LOCALAPPDATA%\ClearPCCleaner\logs`. Registry backups go to `%LOCALAPPDATA%\ClearPCCleaner\backups`.
+Nothing is deleted until you confirm. Every clean writes a log of each deleted file to `%LOCALAPPDATA%\Kempt\logs`. Registry backups go to `%LOCALAPPDATA%\Kempt\backups`.
 
 ## Safety rules built in
 
@@ -33,20 +33,20 @@ Nothing is deleted until you confirm. Every clean writes a log of each deleted f
 ## What's deliberately left out
 
 - **Cloud Drive Cleaner.** It needs sign-in to cloud accounts. Duplicate Finder does search your local OneDrive folder.
-- **Third-party driver downloads.** That's where driver updaters cause the most trouble. CPC points you to Windows Update and the maker's site.
+- **Third-party driver downloads.** That's where driver updaters cause the most trouble. Kempt points you to Windows Update and the maker's site.
 - **Wipe free space.** It's slow, wears SSDs, and isn't cleaning.
 
 ## Running it
 
-Run `CPC.exe`. It asks for administrator rights (UAC) if your account is an admin. Standard users can still run it, and admin-only items are locked.
+Run `Kempt.exe`. It asks for administrator rights (UAC) if your account is an admin. Standard users can still run it, and admin-only items are locked.
 
-CPC needs the Microsoft Edge WebView2 Runtime. It's built into Windows 11 and updated Windows 10. If it's missing, CPC opens Microsoft's download page.
+Kempt needs the Microsoft Edge WebView2 Runtime. It's built into Windows 11 and updated Windows 10. If it's missing, Kempt opens Microsoft's download page.
 
 Windows shows a SmartScreen warning the first time because the exe isn't code-signed. Click **More info** then **Run anyway**.
 
 ### Scheduled or remote cleaning
 
-Turn on **Settings > Automatic cleaning** for a weekly clean. Or run `CPC.exe /auto` yourself, from Task Scheduler, a script or an RMM tool. It cleans the items last ticked in Custom Clean, or the Recommended set if it's never been opened. It skips anything whose program is open, honors the never-clean folders, writes a log, and exits with 0 on success.
+Turn on **Settings > Automatic cleaning** for a weekly clean. Or run `Kempt.exe /auto` yourself, from Task Scheduler, a script or an RMM tool. It cleans the items last ticked in Custom Clean, or the Recommended set if it's never been opened. It skips anything whose program is open, honors the never-clean folders, writes a log, and exits with 0 on success.
 
 ## Building
 
@@ -57,7 +57,7 @@ You need Go 1.24 or newer. Go builds the Windows exe from Windows, Mac or Linux.
 .\build.ps1       # Windows PowerShell
 ```
 
-Output goes to `dist\CPC.exe` and `dist\CPC-arm64.exe`.
+Output goes to `dist\Kempt.exe` and `dist\Kempt-arm64.exe`.
 
 The interface is `web/index.html`, embedded into the exe. To work on it in a normal browser, load `web/dev/mock.js` first. It fakes the backend.
 
@@ -71,15 +71,15 @@ go-winres make --in winres/winres.json --arch amd64,arm64
 ## Testing
 
 - `go test ./...` runs the unit tests anywhere.
-- The **CPC Windows test** GitHub workflow runs on a real Windows machine. It runs the unit tests natively, cleans planted junk with `/auto`, and then drives the actual window through UI Automation. That covers Health Check, scan, clean and confirm, registry scan, fix and undo, Duplicate Finder, Startup Manager tabs, Software Updater, Driver Check, the weekly schedule switch, and Help.
-- The **CPC build** workflow produces the exes as a downloadable artifact on every push.
+- The **Kempt Windows test** GitHub workflow runs on a real Windows machine. It runs the unit tests natively, cleans planted junk with `/auto`, and then drives the actual window through UI Automation. That covers Health Check, scan, clean and confirm, registry scan, fix and undo, Duplicate Finder, Startup Manager tabs, Software Updater, Driver Check, the weekly schedule switch, and Help.
+- The **Kempt build** workflow produces the exes as a downloadable artifact on every push.
 
 ## Code signing
 
-Unsigned exes trigger SmartScreen, and some antivirus tools are wary of anything that deletes files in bulk. If CPC goes out to client PCs, sign it. An OV code signing certificate runs about $200 to $400 a year. Azure Trusted Signing is cheaper if you qualify.
+Unsigned exes trigger SmartScreen, and some antivirus tools are wary of anything that deletes files in bulk. If Kempt goes out to client PCs, sign it. An OV code signing certificate runs about $200 to $400 a year. Azure Trusted Signing is cheaper if you qualify.
 
 ```
-signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /a dist\CPC.exe
+signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /a dist\Kempt.exe
 ```
 
 ## Layout

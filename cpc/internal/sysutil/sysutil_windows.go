@@ -1,4 +1,4 @@
-// Package sysutil wraps the handful of Win32 calls CPC needs.
+// Package sysutil wraps the handful of Win32 calls Kempt needs.
 package sysutil
 
 import (
@@ -25,7 +25,7 @@ var (
 	procDnsFlushResolverCache = dnsapi.NewProc("DnsFlushResolverCache")
 )
 
-// IsElevated reports whether CPC is running as administrator.
+// IsElevated reports whether Kempt is running as administrator.
 func IsElevated() bool {
 	return windows.GetCurrentProcessToken().IsElevated()
 }
