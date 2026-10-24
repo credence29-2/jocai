@@ -68,6 +68,7 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .btn:hover:not(:disabled) { background: rgba(255,255,255,.09); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn.primary { background: var(--grad); border-color: transparent; color: var(--on-accent); box-shadow: var(--glow); }
+.btn.primary:disabled { box-shadow: none; filter: saturate(.5); }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.07); box-shadow: 0 12px 38px rgba(46,230,197,.32); }
 .btn.ghost { background: transparent; border-color: var(--line); }
 .btn.danger { background: linear-gradient(135deg, #ff6b6b, #ff8e53); border-color: transparent; color: #1a0808; box-shadow: 0 10px 30px rgba(255,107,107,.25); }
