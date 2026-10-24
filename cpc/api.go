@@ -22,7 +22,7 @@ import (
 const appName = "Credence PC Cleaner"
 
 // version is set at build time with -ldflags "-X main.version=...".
-var version = "1.1.0"
+var version = "1.3.0"
 
 // scheduleName is the Task Scheduler entry CPC manages.
 const scheduleName = "Credence PC Cleaner weekly clean"

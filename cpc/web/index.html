@@ -6,202 +6,223 @@
 <title>Credence PC Cleaner</title>
 <style>
 :root {
-  --bg: #20232b; --side: #1b1e25; --panel: #2a2e37; --card: #323742; --card2: #3a404c; --hover: #444b58;
-  --line: #3f4551; --text: #f1f3f6; --sub: #b4bbc6; --dim: #858d99;
-  --accent: #2f7cf6; --accent-hi: #4b8ff8; --teal: #5eead4; --good: #34c77b; --warn: #f2a93b; --bad: #ef5d5a;
-  --radius: 10px;
+  --bg: #0a0d12; --side: #0d1117; --panel: #0f131a; --card: #141a22; --card2: #1a212b; --hover: rgba(255,255,255,.055);
+  --line: rgba(255,255,255,.075); --line2: rgba(255,255,255,.12);
+  --text: #eef2f6; --sub: #9ba6b4; --dim: #65717f;
+  --accent: #2ee6c5; --accent2: #4cc9ff; --on-accent: #04141a;
+  --grad: linear-gradient(135deg, #2ee6c5 0%, #4cc9ff 100%);
+  --glow: 0 10px 34px rgba(46,230,197,.22);
+  --good: #4ade80; --warn: #f6b94a; --bad: #ff6b6b;
+  --radius: 14px;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px; color: var(--text); background: var(--bg);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; user-select: none; }
-body { display: flex; background: var(--side); }
+body { display: flex; background: var(--bg); }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(900px 500px at 12% -10%, rgba(46,230,197,.10), transparent 60%), radial-gradient(800px 500px at 100% 110%, rgba(76,201,255,.08), transparent 60%); }
 button { font: inherit; color: inherit; cursor: pointer; }
-button:disabled { cursor: default; opacity: .45; }
+button:disabled { cursor: default; opacity: .4; }
 input, select { font: inherit; color: inherit; }
 svg { flex: none; }
+h1, h2, h3 { font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.3px; }
 .muted { color: var(--sub); }
 .dim { color: var(--dim); }
+.hl { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* ---------- sidebar ---------- */
-.sidebar { width: 216px; flex: none; background: var(--side); display: flex; flex-direction: column; padding: 16px 8px 14px; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 22px; }
-.brand b { display: block; font-size: 15px; letter-spacing: .2px; }
-.brand span { display: block; font-size: 12px; color: var(--sub); }
+.sidebar { width: 236px; flex: none; position: relative; z-index: 1; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 20px 12px 16px; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 2px 8px 26px; }
+.brand .mark { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--grad); box-shadow: var(--glow); color: var(--on-accent); font-weight: 800; font-size: 19px; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -1px; }
+.brand b { display: block; font-size: 15px; letter-spacing: .1px; }
+.brand span { display: block; font-size: 11.5px; color: var(--dim); letter-spacing: .6px; text-transform: uppercase; margin-top: 1px; }
+.nav-label { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--dim); padding: 14px 12px 6px; font-weight: 600; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
-.nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 8px; background: none; color: var(--sub); text-align: left; position: relative; }
-.nav button { color: #d9dde3; font-weight: 600; }
-.nav button:hover { background: #262a33; color: #fff; }
-.nav button.active { background: #2d3442; color: #fff; }
-.nav button.active svg { color: var(--accent-hi); }
+.nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border: 0; border-radius: 10px; background: none; color: var(--sub); text-align: left; position: relative; font-weight: 500; }
+.nav button svg { color: var(--dim); }
+.nav button:hover { background: var(--hover); color: var(--text); }
+.nav button.active { background: linear-gradient(90deg, rgba(46,230,197,.14), rgba(76,201,255,.05)); color: #fff; font-weight: 600; }
+.nav button.active svg { color: var(--accent); }
+.nav button.active::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: var(--grad); box-shadow: 0 0 12px rgba(46,230,197,.6); }
 .side-spacer { flex: 1; }
-.side-foot { border-top: 1px solid #2a2e37; padding: 12px 8px 0; font-size: 12px; color: var(--dim); }
-.side-foot .admin { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--sub); }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
-.dot.warn { background: var(--warn); }
-.side-foot .btn { width: 100%; margin-bottom: 10px; background: transparent; border: 1.5px solid #8a929e; color: #e3e6ea; }
+.side-foot { padding: 14px 8px 0; border-top: 1px solid var(--line); margin-top: 10px; font-size: 12px; color: var(--dim); }
+.side-foot .admin { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--sub); font-size: 12.5px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 10px var(--good); flex: none; }
+.dot.warn { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+.side-foot .btn { width: 100%; margin-bottom: 10px; }
 
 /* ---------- main ---------- */
-main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--panel); margin: 10px 10px 10px 0; border-radius: 10px; overflow: hidden; }
+main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; flex-direction: column; background: transparent; }
 .page { display: none; flex: 1; min-height: 0; flex-direction: column; }
 .page.active { display: flex; }
-.page-head { padding: 20px 24px 14px; display: flex; align-items: flex-end; gap: 16px; }
-.page-head h1 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
-.page-head p { margin: 0; color: var(--sub); }
+.page-head { padding: 26px 32px 14px; display: flex; align-items: flex-end; gap: 16px; }
+.page-head h1 { font-size: 26px; font-weight: 700; margin: 0 0 6px; }
+.page-head p { margin: 0; color: var(--sub); max-width: 760px; line-height: 1.5; }
 .page-head .grow { flex: 1; }
-.page-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 24px 24px; }
+.page-body { flex: 1; min-height: 0; overflow: auto; padding: 6px 32px 32px; }
 
 /* ---------- buttons ---------- */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--card2); font-weight: 600; white-space: nowrap; }
-.btn:hover:not(:disabled) { background: var(--hover); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.primary:hover:not(:disabled) { background: var(--accent-hi); }
-.btn.ghost { background: transparent; }
-.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
-.btn.small { height: 30px; padding: 0 12px; font-size: 13px; }
-.btn.big { height: 46px; padding: 0 28px; font-size: 15px; border-radius: 10px; }
-.link { background: none; border: 0; padding: 0; color: var(--accent-hi); font-weight: 600; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 18px; border-radius: 11px; border: 1px solid var(--line2); background: rgba(255,255,255,.05); font-weight: 600; white-space: nowrap; transition: background .15s, transform .08s, box-shadow .15s; }
+.btn:hover:not(:disabled) { background: rgba(255,255,255,.09); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.primary { background: var(--grad); border-color: transparent; color: var(--on-accent); box-shadow: var(--glow); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.07); box-shadow: 0 12px 38px rgba(46,230,197,.32); }
+.btn.ghost { background: transparent; border-color: var(--line); }
+.btn.danger { background: linear-gradient(135deg, #ff6b6b, #ff8e53); border-color: transparent; color: #1a0808; box-shadow: 0 10px 30px rgba(255,107,107,.25); }
+.btn.small { height: 32px; padding: 0 13px; font-size: 13px; border-radius: 9px; }
+.btn.big { height: 48px; padding: 0 28px; font-size: 15px; border-radius: 13px; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; }
 .link:hover { text-decoration: underline; }
 
 /* ---------- checkbox and switch ---------- */
-.cb { appearance: none; width: 18px; height: 18px; margin: 0; border: 1.5px solid #8a929e; border-radius: 4px; display: inline-grid; place-content: center; background: transparent; cursor: pointer; flex: none; }
-.cb:checked, .cb:indeterminate { background: #5b8def; border-color: #5b8def; }
-.cb:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
-.cb:indeterminate::after { content: ""; width: 8px; height: 2px; background: #fff; border-radius: 1px; }
-.cb:disabled { opacity: .35; cursor: default; }
-.switch { position: relative; width: 40px; height: 22px; flex: none; }
+.cb { appearance: none; width: 18px; height: 18px; margin: 0; border: 1.5px solid #4b5664; border-radius: 6px; display: inline-grid; place-content: center; background: rgba(255,255,255,.03); cursor: pointer; flex: none; transition: all .12s; }
+.cb:hover { border-color: #7b8794; }
+.cb:checked, .cb:indeterminate { background: var(--grad); border-color: transparent; box-shadow: 0 0 0 3px rgba(46,230,197,.15); }
+.cb:checked::after { content: ""; width: 9px; height: 5px; border: 2.2px solid var(--on-accent); border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+.cb:indeterminate::after { content: ""; width: 9px; height: 2.2px; background: var(--on-accent); border-radius: 1px; }
+.cb:disabled { opacity: .3; cursor: default; }
+.switch { position: relative; width: 42px; height: 24px; flex: none; }
 .switch input { opacity: 0; position: absolute; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
-.switch span { position: absolute; inset: 0; border-radius: 11px; background: #3a424c; transition: background .15s; }
-.switch span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
-.switch input:checked + span { background: var(--accent); }
-.switch input:checked + span::after { transform: translateX(18px); }
+.switch span { position: absolute; inset: 0; border-radius: 12px; background: #2a333e; transition: background .15s; }
+.switch span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #c9d2dc; transition: transform .15s, background .15s; }
+.switch input:checked + span { background: var(--grad); box-shadow: 0 0 14px rgba(46,230,197,.35); }
+.switch input:checked + span::after { transform: translateX(18px); background: var(--on-accent); }
 .switch input:disabled { cursor: default; }
-.switch input:disabled + span { opacity: .4; }
+.switch input:disabled + span { opacity: .35; }
+
+/* ---------- segmented tabs ---------- */
+.tabs { display: inline-flex; gap: 2px; padding: 4px; margin: 0 32px 14px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--line); align-self: flex-start; }
+.tabs button { display: flex; align-items: center; gap: 8px; border: 0; border-radius: 9px; background: transparent; padding: 8px 16px; color: var(--sub); font-weight: 600; font-size: 14px; transition: all .15s; }
+.tabs button:hover { color: var(--text); }
+.tabs button.active { background: var(--card2); color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.35), inset 0 0 0 1px var(--line2); }
+.tabs button.active svg { color: var(--accent); }
 
 /* ---------- custom clean ---------- */
-.tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #555c69; }
-.tabs button { display: flex; align-items: center; gap: 8px; border: 1px solid #555c69; border-bottom: 0; border-radius: 6px 6px 0 0; background: #2a2e37; padding: 9px 18px; color: #e3e6ea; font-weight: 600; font-size: 15px; margin-bottom: -1px; }
-.tabs button.active { background: var(--bg); color: #fff; border-color: #6b7380; }
-.tabs button.active svg { color: var(--accent-hi); }
-.tabs button:hover { color: #fff; }
-.clean-wrap { flex: 1; min-height: 0; display: flex; background: var(--bg); }
-.picker { width: 380px; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--bg); }
+.clean-wrap { flex: 1; min-height: 0; display: flex; gap: 16px; padding: 0 32px 16px; }
+.picker { width: 400px; flex: none; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .select-row { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-.select-row label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.select-row label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; }
 .select-row .grow { flex: 1; }
-.groups { flex: 1; overflow: auto; }
-.group { border-bottom: 1px solid var(--line); }
-.group-head { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 48px; cursor: pointer; }
-.group.some > .group-head { background: #343945; }
-.group-head:hover { background: #3a404c; }
-.group-head .name { flex: 1; font-weight: 600; font-size: 15px; }
-.group-head .count { font-size: 12px; color: var(--dim); }
-.chev { color: #c9ced6; transition: transform .15s; }
+.groups { flex: 1; overflow: auto; padding: 8px; }
+.group { border-radius: 12px; margin-bottom: 6px; background: rgba(255,255,255,.025); border: 1px solid transparent; overflow: hidden; position: relative; }
+.group.some { border-color: var(--line); background: rgba(255,255,255,.04); }
+.group.some::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--grad); }
+.group-head { display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; height: 50px; cursor: pointer; }
+.group-head:hover { background: var(--hover); }
+.group-head .name { flex: 1; font-weight: 600; font-size: 14.5px; }
+.group-head .count { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.chev { color: var(--dim); transition: transform .15s; }
 .group.open .chev { transform: rotate(180deg); }
-.group-items { display: none; padding: 4px 0 8px; background: #252932; }
+.group-items { display: none; padding: 2px 6px 8px; }
 .group.open .group-items { display: block; }
-.item { display: flex; align-items: center; gap: 10px; padding: 7px 16px 7px 48px; cursor: pointer; }
-.item:hover { background: #2e333d; }
+.item { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 42px; cursor: pointer; border-radius: 8px; }
+.item:hover { background: var(--hover); }
 .item .label { flex: 1; min-width: 0; }
 .item .label small { display: block; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item.locked { cursor: default; }
 .item.locked .label { color: var(--dim); }
-.pill { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #2e2a1f; color: var(--warn); }
-.gicon { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; flex: none; }
+.pill { font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; padding: 3px 8px; border-radius: 8px; background: rgba(246,185,74,.14); color: var(--warn); }
+.gicon { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; flex: none; }
 
-.results { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.results { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; }
-.empty h2 { font-size: 18px; margin: 16px 0 6px; }
-.empty p { margin: 0; color: var(--sub); max-width: 420px; line-height: 1.5; }
-.empty .icon-ring { width: 72px; height: 72px; display: grid; place-items: center; color: #7fa7f5; }
-.empty .lead { color: #fff; margin-bottom: 14px; }
-.res-head { padding: 20px 22px 14px; border-bottom: 1px solid var(--line); }
-.res-head .big { font-size: 26px; font-weight: 700; }
+.empty h2 { font-size: 21px; margin: 18px 0 6px; }
+.empty p { margin: 0; color: var(--sub); max-width: 440px; line-height: 1.55; }
+.empty .lead { color: var(--text); margin-bottom: 12px; }
+.empty .icon-ring { width: 84px; height: 84px; border-radius: 26px; display: grid; place-items: center; color: var(--accent); background: linear-gradient(135deg, rgba(46,230,197,.16), rgba(76,201,255,.08)); border: 1px solid rgba(46,230,197,.25); box-shadow: 0 0 40px rgba(46,230,197,.12); }
+.res-head { padding: 22px 24px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,.03), transparent); }
+.res-head .big { font-size: 30px; font-weight: 800; letter-spacing: -.6px; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; }
 .res-head .big.good { color: var(--good); }
-.res-head .msg { color: var(--sub); margin-top: 4px; }
+.res-head .msg { color: var(--sub); margin-top: 6px; }
 .res-list { flex: 1; overflow: auto; padding: 8px 0; }
-.res-group { padding: 10px 22px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--dim); }
-.res-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 4px 12px; align-items: center; padding: 7px 22px; }
-.res-row .size { text-align: right; font-variant-numeric: tabular-nums; }
-.res-row .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: #252b32; overflow: hidden; }
-.res-row .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--teal)); }
+.res-group { padding: 12px 24px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); font-weight: 700; }
+.res-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 5px 12px; align-items: center; padding: 8px 24px; }
+.res-row .size { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.res-row .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.06); overflow: hidden; }
+.res-row .bar i { display: block; height: 100%; background: var(--grad); border-radius: 2px; }
 .res-row .note { grid-column: 1 / -1; font-size: 12px; color: var(--dim); }
 .res-row .note.err { color: var(--bad); }
-.res-zero { padding: 10px 22px; color: var(--dim); font-size: 13px; }
-.progress { width: 100%; max-width: 420px; height: 6px; border-radius: 3px; background: #252b32; overflow: hidden; margin: 18px 0 10px; }
-.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--teal)); transition: width .2s; }
+.res-zero { padding: 12px 24px; color: var(--dim); font-size: 13px; }
+.progress { width: 100%; max-width: 420px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; margin: 18px 0 10px; }
+.progress i { display: block; height: 100%; width: 0; background: var(--grad); transition: width .2s; border-radius: 3px; }
 .path { font-size: 12px; color: var(--dim); max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: center; }
-.spinner { width: 54px; height: 54px; border-radius: 50%; border: 4px solid #25303f; border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+.spinner { width: 56px; height: 56px; border-radius: 50%; border: 4px solid rgba(255,255,255,.07); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.actionbar { display: flex; align-items: center; gap: 14px; padding: 18px 36px; border-top: 1px solid #555c69; background: var(--bg); }
+.actionbar { display: flex; align-items: center; gap: 12px; margin: 0 32px 18px; padding: 12px 14px 12px 22px; border-radius: 16px; background: rgba(20,26,34,.85); border: 1px solid var(--line2); backdrop-filter: blur(14px); box-shadow: 0 14px 40px rgba(0,0,0,.45); }
 .actionbar .grow { flex: 1; }
-.actionbar .count { color: #fff; font-weight: 700; font-size: 15px; margin-right: 6px; }
-.actionbar .btn { height: 40px; border-radius: 20px; padding: 0 22px; font-size: 15px; }
-.actionbar .btn:not(.primary) { background: transparent; border: 1.5px solid #c9ced6; }
+.actionbar .count { color: var(--text); font-weight: 700; font-size: 14.5px; margin-right: 6px; }
+.actionbar .btn { height: 40px; padding: 0 22px; font-size: 14.5px; }
 
 /* ---------- cards ---------- */
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
-.card h3 { margin: 0 0 6px; font-size: 15px; }
-.card p { margin: 0; color: var(--sub); line-height: 1.5; }
+.card { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; position: relative; }
+.card::before { content: ""; position: absolute; left: 20px; right: 20px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent); }
+.card.warn { border-color: rgba(246,185,74,.35); }
+.card h3 { margin: 0 0 6px; font-size: 15.5px; }
+.card p { margin: 0; color: var(--sub); line-height: 1.55; }
 .stack > * + * { margin-top: 14px; }
 .row { display: flex; align-items: center; gap: 12px; }
 .row .grow { flex: 1; min-width: 0; }
 
 /* ---------- health ---------- */
-.hero { display: flex; align-items: center; gap: 30px; padding: 28px; }
-.hero h2 { margin: 0 0 6px; font-size: 20px; }
-.hero p { max-width: 520px; }
-.gauge { width: 132px; height: 132px; flex: none; position: relative; }
+.hero { display: flex; align-items: center; gap: 34px; padding: 30px 32px; overflow: hidden; }
+.hero::after { content: ""; position: absolute; left: -60px; top: -80px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(46,230,197,.16), transparent 65%); pointer-events: none; }
+.hero > * { position: relative; }
+.hero h2 { margin: 0 0 8px; font-size: 22px; }
+.hero p { max-width: 560px; }
+.hero .icon-ring { width: 84px; height: 84px; border-radius: 26px; display: grid; place-items: center; flex: none; background: linear-gradient(135deg, rgba(74,222,128,.16), rgba(76,201,255,.06)); border: 1px solid rgba(74,222,128,.25); }
+.gauge { width: 140px; height: 140px; flex: none; position: relative; filter: drop-shadow(0 0 18px rgba(46,230,197,.25)); }
 .gauge svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.gauge .val { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 13px; color: var(--sub); }
-.gauge .val b { display: block; font-size: 22px; color: var(--text); }
+.gauge .val { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 12.5px; color: var(--sub); }
+.gauge .val b { display: block; font-size: 23px; color: var(--text); font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -.5px; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
-.tile .k { display: flex; align-items: center; gap: 8px; color: var(--sub); font-weight: 600; }
-.tile .v { font-size: 22px; font-weight: 700; }
-.tile .s { color: var(--sub); font-size: 13px; flex: 1; }
-.tile .meter { height: 6px; border-radius: 3px; background: #252b32; overflow: hidden; }
-.tile .meter i { display: block; height: 100%; background: var(--accent); }
-.status-good, .lrow .chip.status-good { color: var(--good); }
+.tile { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+.tile .k { display: flex; align-items: center; gap: 8px; color: var(--sub); font-weight: 600; font-size: 13px; letter-spacing: .3px; text-transform: uppercase; }
+.tile .v { font-size: 26px; font-weight: 800; letter-spacing: -.6px; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+.tile .s { color: var(--sub); font-size: 13px; flex: 1; line-height: 1.5; }
+.tile .meter { height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; }
+.tile .meter i { display: block; height: 100%; background: var(--grad); border-radius: 3px; }
+.status-good { color: var(--good); }
 .status-warn { color: var(--warn); }
 
-/* ---------- lists (startup, programs) ---------- */
-.list { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.lrow { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-top: 1px solid var(--line); }
+/* ---------- lists ---------- */
+.list { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.lrow { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--line); }
 .lrow:first-child { border-top: 0; }
-.lrow:hover { background: #22272e; }
-.avatar { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: #fff; flex: none; }
+.lrow:hover { background: var(--hover); }
+.lrow.head { background: rgba(255,255,255,.04); }
+.lrow.head.sub { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .6px; font-weight: 700; }
+.avatar { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; color: #fff; flex: none; }
 .lrow .main { flex: 1; min-width: 0; }
 .lrow .main b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lrow .main small { display: block; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lrow .meta { width: 120px; text-align: right; color: var(--sub); font-size: 13px; flex: none; }
-.lrow .chip { font-size: 12px; color: var(--sub); background: #262c33; padding: 3px 9px; border-radius: 10px; white-space: nowrap; flex: none; }
+.lrow .meta { width: 120px; text-align: right; color: var(--sub); font-size: 13px; flex: none; font-variant-numeric: tabular-nums; }
+.lrow .chip { font-size: 12px; color: var(--sub); background: rgba(255,255,255,.07); border: 1px solid var(--line); padding: 3px 10px; border-radius: 9px; white-space: nowrap; flex: none; }
+.lrow .chip.status-good { color: var(--good); background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.25); }
 .lrow .actions { display: flex; gap: 8px; flex: none; }
 .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.search { flex: 1; max-width: 380px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); padding: 0 12px 0 36px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236c7681' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 11px center; }
-.search:focus, select:focus, input[type=time]:focus { border-color: var(--accent); }
-select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); padding: 0 10px; outline: none; }
+.search { flex: 1; max-width: 380px; height: 38px; border-radius: 11px; border: 1px solid var(--line2); background: rgba(255,255,255,.04); padding: 0 12px 0 38px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2365717f' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px center; }
+.search:focus, select:focus, input[type=time]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(46,230,197,.15); }
+select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid var(--line2); background: var(--card); padding: 0 10px; outline: none; }
 .loading { padding: 40px; text-align: center; color: var(--sub); }
-.page > .tabs { padding: 0 24px; }
-.tabs button[data-st], .tabs button[data-dt] { font-size: 14px; }
-.hero .icon-ring { width: 72px; height: 72px; display: grid; place-items: center; flex: none; }
 
 /* ---------- modal and toast ---------- */
-.modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 10; }
+.modal-back { position: fixed; inset: 0; background: rgba(4,6,10,.6); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 10; }
 .modal-back.show { display: flex; }
-.modal { width: 440px; max-width: calc(100% - 40px); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 22px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
-.modal h3 { margin: 0 0 10px; font-size: 17px; }
-.modal .body { color: var(--sub); line-height: 1.5; }
-.modal .body .warnbox { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #2b2619; color: #f3d39b; }
-.modal .btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-.toast { position: fixed; right: 20px; bottom: 20px; max-width: 420px; padding: 12px 16px; border-radius: 10px; background: #2a2f37; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.4); transform: translateY(20px); opacity: 0; transition: all .2s; pointer-events: none; z-index: 20; line-height: 1.45; }
+.modal { width: 460px; max-width: calc(100% - 40px); background: var(--card); border: 1px solid var(--line2); border-radius: 18px; padding: 24px 24px 20px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.modal h3 { margin: 0 0 10px; font-size: 18px; }
+.modal .body { color: var(--sub); line-height: 1.55; }
+.modal .body .warnbox { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(246,185,74,.12); border: 1px solid rgba(246,185,74,.3); color: #f3d39b; }
+.modal .btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.toast { position: fixed; right: 22px; bottom: 22px; max-width: 420px; padding: 12px 16px 12px 18px; border-radius: 12px; background: rgba(26,33,43,.95); border: 1px solid var(--line2); border-left: 3px solid var(--accent); box-shadow: 0 14px 40px rgba(0,0,0,.5); transform: translateY(16px); opacity: 0; transition: all .2s; pointer-events: none; z-index: 20; line-height: 1.45; }
 .toast.show { transform: none; opacity: 1; }
-.toast.err { border-color: #5a2a2a; background: #3a2324; }
+.toast.err { border-left-color: var(--bad); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #2f363e; border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 5px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); background-clip: padding-box; border: 3px solid transparent; }
 ::-webkit-scrollbar-track { background: transparent; }
 </style>
 </head>
@@ -209,27 +230,29 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
 
 <aside class="sidebar">
   <div class="brand">
-    <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">
-      <defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c4e93"/><stop offset="1" stop-color="#2f7cf6"/></linearGradient></defs>
-      <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#lg)"/>
-      <path d="M41 21.5a15 15 0 1 0 0 21" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
-      <path d="M48 26l2.2 5.8L56 34l-5.8 2.2L48 42l-2.2-5.8L40 34l5.8-2.2z" fill="#5eead4"/>
-    </svg>
+    <div class="mark" aria-hidden="true">C</div>
     <div><b>Credence</b><span>PC Cleaner</span></div>
   </div>
+  <div class="nav-label">Clean</div>
   <nav class="nav" id="nav">
-    <button data-page="health"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Health Check</button>
-    <button data-page="clean"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Custom Clean</button>
-    <button data-page="uninstall"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Uninstaller</button>
-    <button data-page="dupes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/></svg>Duplicate Finder</button>
-    <button data-page="startup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>Startup Manager</button>
-    <button data-page="updater"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M12 8v5l3 2"/></svg>Software Updater</button>
-    <button data-page="drivers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>Driver Updater</button>
+    <button data-page="health"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Health Check</button>
+    <button data-page="clean"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Custom Clean</button>
+    <button data-page="dupes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/></svg>Duplicate Finder</button>
+  </nav>
+  <div class="nav-label">Optimize</div>
+  <nav class="nav">
+    <button data-page="startup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>Startup Manager</button>
+    <button data-page="uninstall"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Uninstaller</button>
+  </nav>
+  <div class="nav-label">Keep current</div>
+  <nav class="nav">
+    <button data-page="updater"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M12 8v5l3 2"/></svg>Software Updater</button>
+    <button data-page="drivers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>Driver Updater</button>
   </nav>
   <div class="side-spacer"></div>
   <nav class="nav">
-    <button data-page="settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
-    <button data-page="help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg>Help</button>
+    <button data-page="settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    <button data-page="help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg>Help</button>
   </nav>
   <div class="side-foot">
     <div class="admin"><span class="dot" id="adminDot"></span><span id="adminText">Checking...</span></div>
@@ -248,7 +271,7 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
   <!-- Custom Clean -->
   <section class="page" id="page-clean">
     <div class="page-head"><div class="grow"><h1>Custom Clean</h1></div>
-      <button class="btn small" id="btnConfigure" style="border-radius:16px;background:transparent;border:1.5px solid #c9ced6">
+      <button class="btn small ghost" id="btnConfigure">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Configure</button></div>
     <div class="tabs" id="tabs">
       <button data-tab="junk" class="active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="m10 12 4 4m0-4-4 4"/></svg>Junk</button>
@@ -279,7 +302,7 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
   <section class="page" id="page-startup">
     <div class="page-head"><div class="grow"><h1>Startup Manager</h1><p id="startupIntro">Turn off apps you don't need at sign-in. Nothing is deleted, and Task Manager shows the same setting.</p></div>
       <button class="btn small" id="startupRefresh">Refresh</button></div>
-    <div class="tabs" id="stTabs" style="margin-bottom:14px">
+    <div class="tabs" id="stTabs">
       <button data-st="apps" class="active">Startup apps</button>
       <button data-st="tasks">Scheduled tasks</button>
       <button data-st="services">Background services</button>
@@ -327,7 +350,7 @@ select, input[type=time] { height: 36px; border-radius: 8px; border: 1px solid v
       <button data-dt="installed">Installed drivers</button>
       <button data-dt="ignored">Ignored</button>
     </div>
-    <div class="page-body" id="drvBody" style="padding-top:18px"></div>
+    <div class="page-body" id="drvBody"></div>
     <div class="actionbar">
       <button class="btn" id="drvFix">Fix a problem</button>
       <span class="grow"></span>
@@ -400,7 +423,7 @@ function confirmBox(title, html, okText = "OK", danger = false) {
   });
 }
 
-const palette = ["#2f7cf6", "#16a37f", "#c2410c", "#7c3aed", "#0e7490", "#be185d", "#4d7c0f", "#b45309"];
+const palette = ["#2563eb", "#0d9488", "#c2410c", "#7c3aed", "#0e7490", "#be185d", "#4d7c0f", "#b45309"];
 function avatarColor(name) { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0; return palette[h % palette.length]; }
 const groupColors = { "Google Chrome": "#1a73e8", "Microsoft Edge": "#0f8a7e", "Firefox": "#e8590c", "Brave": "#d9480f", "Vivaldi": "#c92a2a" };
 const ic = d => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -776,8 +799,10 @@ async function fixHealth() { await startRun("health", "clean", recommendedIds())
 
 function gauge(fraction, label, value, color) {
   const c = 2 * Math.PI * 52, off = c * (1 - Math.min(1, Math.max(0, fraction)));
-  return `<div class="gauge"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="#252b32" stroke-width="10"/>
-    <circle cx="60" cy="60" r="52" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>
+  const stroke = color === "accent" ? "url(#ringGrad)" : color;
+  return `<div class="gauge"><svg viewBox="0 0 120 120"><defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee6c5"/><stop offset="1" stop-color="#4cc9ff"/></linearGradient></defs>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="10"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="${stroke}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>
     <div class="val"><div><b>${value}</b>${label}</div></div></div>`;
 }
 
@@ -794,18 +819,18 @@ function renderHealth() {
       <div class="path" id="curPath" style="text-align:left;direction:ltr">${esc(r.path || "")}</div></div></div>`;
   } else if (h.state === "done") {
     const junk = h.summary.bytes;
-    hero = `<div class="card hero">${gauge(junk > 0 ? Math.min(1, junk / (2 * 1024 ** 3)) : 0, "junk", fmtBytes(junk), junk > 500 * 1024 ** 2 ? "#f2a93b" : "#2f7cf6")}
+    hero = `<div class="card hero">${gauge(junk > 0 ? Math.min(1, junk / (2 * 1024 ** 3)) : 0, "junk", fmtBytes(junk), junk > 500 * 1024 ** 2 ? "#f6b94a" : "accent")}
       <div class="grow"><h2>${junk > 0 ? fmtBytes(junk) + " of junk can be removed" : "Your PC looks clean"}</h2>
       <p>${junk > 0 ? "These are the Recommended items: temp files, Recycle Bin, caches and error reports. Cookies and history are left alone." : "Nothing in the Recommended items needs cleaning right now."}</p>
       <div class="row" style="margin-top:16px">${junk > 0 ? '<button class="btn primary big" id="hFix">Fix it</button>' : ""}
       <button class="btn big" id="hAgain">Check again</button><button class="link" id="hCustom">Customize in Custom Clean</button></div></div></div>`;
   } else if (h.state === "fixed") {
-    hero = `<div class="card hero">${gauge(1, "freed", fmtBytes(h.summary.bytes), "#34c77b")}
+    hero = `<div class="card hero">${gauge(1, "freed", fmtBytes(h.summary.bytes), "#4ade80")}
       <div class="grow"><h2 class="status-good">All done</h2><p>${esc(h.summary.message)}</p>
       <div class="row" style="margin-top:16px"><button class="btn big" id="hAgain">Check again</button>
       ${h.summary.logPath ? '<button class="link" id="hLog">View log</button>' : ""}</div></div></div>`;
   } else {
-    hero = `<div class="card hero">${gauge(used, "disk used", Math.round(used * 100) + "%", used > .9 ? "#ef5d5a" : "#2f7cf6")}
+    hero = `<div class="card hero">${gauge(used, "disk used", Math.round(used * 100) + "%", used > .9 ? "#ff6b6b" : "accent")}
       <div class="grow"><h2>Run a health check</h2>
       <p>CPC checks for junk using the Recommended items, counts your startup apps and looks at free space. Nothing is removed until you choose to fix it.</p>
       <div class="row" style="margin-top:16px"><button class="btn primary big" id="hRun">Run Health Check</button></div></div></div>`;
@@ -1013,7 +1038,7 @@ function renderDupeResults(el) {
       <div class="row" style="margin-top:12px"><button class="btn small" id="pickOld">Keep the oldest copy</button><button class="btn small" id="pickNew">Keep the newest copy</button><button class="btn small ghost" id="pickNone">Clear selection</button>
       <span class="grow"></span><b>${sel} selected (${fmtBytes(selBytes)})</b><button class="btn primary" id="dupeDel" ${sel ? "" : "disabled"}>Move to Recycle Bin</button></div></div>
     <div class="stack" style="margin-top:14px">${g.slice(0, 300).map(gr => `<div class="list">
-      <div class="lrow" style="background:#2b3039"><div class="main"><b>${esc(gr.files[0].path.split(/[\\/]/).pop())}</b><small>${gr.files.length} copies, ${fmtBytes(gr.size)} each</small></div></div>
+      <div class="lrow head"><div class="main"><b>${esc(gr.files[0].path.split(/[\\/]/).pop())}</b><small>${gr.files.length} copies, ${fmtBytes(gr.size)} each</small></div></div>
       ${gr.files.map(f => `<label class="lrow" style="cursor:pointer"><input type="checkbox" class="cb" data-df="${f.id}" ${D.picked.has(f.id) ? "checked" : ""}>
         <div class="main"><b style="font-weight:400">${esc(f.path)}</b><small>Modified ${esc(f.modified)}</small></div>
         <button class="link" data-show="${esc(f.path)}" style="font-size:13px">Show</button></label>`).join("")}</div>`).join("")}
@@ -1139,16 +1164,16 @@ function renderDrivers() {
   if (DR.tab === "installed") return renderInstalledDrivers(el, d);
   if (DR.tab === "ignored") return renderIgnoredDrivers(el, d);
   let html = "";
-  if (DR.reboot) html += `<div class="card" style="border-color:#6b5a2a;margin-bottom:14px"><div class="row"><div class="grow"><h3 class="status-warn">Restart to finish</h3><p>Some drivers finish installing after a restart.</p></div></div></div>`;
+  if (DR.reboot) html += `<div class="card warn" style="margin-bottom:14px"><div class="row"><div class="grow"><h3 class="status-warn">Restart to finish</h3><p>Some drivers finish installing after a restart.</p></div></div></div>`;
   if (d.wuError) {
     html += `<div class="card"><h3>Couldn't check Windows Update</h3><p>${esc(d.wuError)}</p><p style="margin-top:8px">Check the internet connection and that the Windows Update service isn't turned off, then click Scan again.</p></div>`;
   } else if (!d.updates.length) {
     html += `<div class="card hero"><div class="icon-ring" style="color:var(--good)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></div>
       <div class="grow"><h2>Windows Update has no driver updates for this PC</h2><p>Every driver Windows Update knows about is current. Some makers only post newer drivers on their own websites, listed below.</p></div></div>`;
   } else {
-    html += `<h2 style="margin:0 0 4px;font-size:24px"><span style="color:#f08a3c">${d.updates.length} driver${d.updates.length === 1 ? "" : "s"}</span> to update</h2>
+    html += `<h2 style="margin:0 0 4px;font-size:24px"><span class="hl">${d.updates.length} driver${d.updates.length === 1 ? "" : "s"}</span> to update</h2>
       <p class="muted" style="margin:0 0 14px">From Windows Update, Microsoft's catalog of tested drivers. Choose the drivers to update for fewer bugs and better security.</p>
-      <div class="list"><div class="lrow" style="background:#2b3039;font-size:13px;color:var(--sub)">
+      <div class="list"><div class="lrow head sub">
         <input type="checkbox" class="cb" id="drvAll" aria-label="Select all drivers" ${sel === d.updates.length ? "checked" : ""} ${DR.busy ? "disabled" : ""}>
         <div class="main">Drivers</div><span class="meta">Installed</span><span class="meta">New version</span><span class="meta">Released</span><span style="width:70px"></span></div>`;
     for (const g of drvGroups(d.updates)) {
@@ -1196,9 +1221,9 @@ function renderInstalledDrivers(el, d) {
   let html = `<div class="toolbar"><input class="search" id="drvSearch" placeholder="Search drivers" value="${esc(DR.q || "")}" aria-label="Search drivers"><span class="grow"></span>
     <span class="muted">${d.installed.filter(x => !x.hasUpdate).length} up to date, ${d.installed.filter(x => x.hasUpdate).length} with an update</span></div><div class="list">`;
   for (const g of drvGroups(list)) {
-    html += `<div class="lrow" style="background:#2b3039"><div class="main" style="display:flex;align-items:center;gap:10px">${dicon(g.name)}<b>${esc(g.name)} (${g.items.length})</b></div></div>`;
+    html += `<div class="lrow head"><div class="main" style="display:flex;align-items:center;gap:10px">${dicon(g.name)}<b>${esc(g.name)} (${g.items.length})</b></div></div>`;
     html += g.items.map(x => `<div class="lrow" style="padding-left:44px"><div class="main"><b>${esc(x.device)}</b><small>${esc(x.provider || x.manufacturer)}</small></div>
-      ${x.hasUpdate ? '<span class="chip" style="color:#f08a3c">Update available</span>' : ""}
+      ${x.hasUpdate ? '<span class="chip" style="color:var(--accent)">Update available</span>' : ""}
       <span class="meta">${esc(x.version)}</span><span class="meta">${esc(fmtDate(x.date))}</span></div>`).join("");
   }
   el.innerHTML = html + `</div>`;
