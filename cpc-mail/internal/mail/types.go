@@ -1,0 +1,148 @@
+// Package mail holds the provider-neutral mail types, the MIME builder and the
+// rules for picking a From address and signature.
+package mail
+
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+// Folder is one of the unified folders every provider maps onto.
+type Folder string
+
+const (
+	Inbox   Folder = "inbox"
+	Starred Folder = "starred"
+	Sent    Folder = "sent"
+	Archive Folder = "archive"
+	Spam    Folder = "spam"
+	Trash   Folder = "trash"
+	// All is used for searches, which look everywhere except spam and trash.
+	All Folder = "all"
+)
+
+// Folders lists the folders shown in the sidebar, in order.
+var Folders = []Folder{Inbox, Starred, Sent, Archive, Spam, Trash}
+
+// Address is one mailbox, like "Jacob <jacob@example.com>".
+type Address struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email"`
+}
+
+// Summary is one row in the message list.
+type Summary struct {
+	AccountID      string    `json:"accountId"`
+	ID             string    `json:"id"`
+	ThreadID       string    `json:"threadId,omitempty"`
+	From           Address   `json:"from"`
+	To             []Address `json:"to,omitempty"`
+	Subject        string    `json:"subject"`
+	Snippet        string    `json:"snippet"`
+	Date           time.Time `json:"date"`
+	Unread         bool      `json:"unread"`
+	Starred        bool      `json:"starred"`
+	HasAttachments bool      `json:"hasAttachments"`
+}
+
+// Attachment describes a file on a received message.
+type Attachment struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	MIMEType  string `json:"mimeType"`
+	Size      int64  `json:"size"`
+	ContentID string `json:"contentId,omitempty"`
+	Inline    bool   `json:"inline,omitempty"`
+}
+
+// Message is a full message opened in the reading pane.
+type Message struct {
+	Summary
+	Cc      []Address `json:"cc,omitempty"`
+	ReplyTo []Address `json:"replyTo,omitempty"`
+	// DeliveredTo holds any extra addresses the provider says this copy was
+	// delivered to (Gmail's Delivered-To, X-Original-To). It helps pick the
+	// alias a message was sent to when it came in through Bcc or a forward.
+	DeliveredTo []Address    `json:"deliveredTo,omitempty"`
+	MessageID   string       `json:"messageId,omitempty"`
+	References  string       `json:"references,omitempty"`
+	HTML        string       `json:"html,omitempty"`
+	Text        string       `json:"text,omitempty"`
+	Attachments []Attachment `json:"attachments,omitempty"`
+}
+
+// OutFile is an attachment on an outgoing message.
+type OutFile struct {
+	Name     string `json:"name"`
+	MIMEType string `json:"mimeType"`
+	Data     []byte `json:"data"`
+}
+
+// Outgoing is a message ready to send.
+type Outgoing struct {
+	From    Address
+	ReplyTo string
+	To      []Address
+	Cc      []Address
+	Bcc     []Address
+	Subject string
+	HTML    string
+	Files   []OutFile
+	// InReplyTo and References thread a reply; ThreadID keeps it in the same
+	// Gmail conversation.
+	InReplyTo  string
+	References string
+	ThreadID   string
+}
+
+// Alias is a send-as address a provider reports for an account.
+type Alias struct {
+	Email         string `json:"email"`
+	Name          string `json:"name,omitempty"`
+	ReplyTo       string `json:"replyTo,omitempty"`
+	SignatureHTML string `json:"signatureHtml,omitempty"`
+	Primary       bool   `json:"primary,omitempty"`
+	Default       bool   `json:"default,omitempty"`
+}
+
+// Page is one page of a folder or search from one account.
+type Page struct {
+	Messages []Summary
+	// Next is passed back to get the following page. Empty means no more.
+	Next string
+}
+
+// Change is something to do to a message.
+type Change string
+
+const (
+	MarkRead    Change = "read"
+	MarkUnread  Change = "unread"
+	Star        Change = "star"
+	Unstar      Change = "unstar"
+	MoveArchive Change = "archive"
+	MoveTrash   Change = "trash"
+	MoveInbox   Change = "inbox"
+	MoveSpam    Change = "spam"
+)
+
+// Provider is one connected mailbox.
+type Provider interface {
+	// List returns a page of a folder, or of a search when query isn't empty.
+	List(ctx context.Context, folder Folder, query, cursor string, max int) (Page, error)
+	Get(ctx context.Context, id string) (*Message, error)
+	Apply(ctx context.Context, id string, c Change) error
+	// Attachment returns the bytes of an attachment on a message.
+	Attachment(ctx context.Context, msgID, attID string) ([]byte, error)
+	Send(ctx context.Context, m *Outgoing) error
+	// Aliases returns the send-as addresses the provider knows about. It
+	// always includes the primary address.
+	Aliases(ctx context.Context) ([]Alias, error)
+	// Unread counts unread messages in the inbox.
+	Unread(ctx context.Context) (int, error)
+}
+
+// ErrAuth means the account's sign-in has expired or was revoked and the
+// person needs to reconnect it.
+var ErrAuth = errors.New("sign-in expired, reconnect this account")

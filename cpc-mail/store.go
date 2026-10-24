@@ -1,0 +1,20 @@
+package main
+
+import (
+	"os"
+
+	"github.com/credence29-2/jocai/cpc-mail/internal/store"
+)
+
+// openStore opens the saved settings, or a throwaway folder in demo mode so
+// sample accounts never mix with real ones.
+func openStore(dir string, demoMode bool) (*store.Store, error) {
+	if demoMode {
+		tmp, err := os.MkdirTemp("", "cpc-mail-demo-")
+		if err != nil {
+			return nil, err
+		}
+		dir = tmp
+	}
+	return store.Open(dir)
+}
