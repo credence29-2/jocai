@@ -22,7 +22,7 @@ import (
 const appName = "Kempt"
 
 // version is set at build time with -ldflags "-X main.version=...".
-var version = "1.4.0"
+var version = "1.4.1"
 
 // scheduleName is the Task Scheduler entry Kempt manages. oldScheduleName is
 // what earlier versions created; it is replaced when the schedule changes.
