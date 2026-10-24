@@ -15,9 +15,9 @@ import (
 )
 
 type msg struct {
-	m       mail.Message
-	folder  mail.Folder
-	files   map[string][]byte
+	m      mail.Message
+	folder mail.Folder
+	files  map[string][]byte
 }
 
 // Box is one fake account.

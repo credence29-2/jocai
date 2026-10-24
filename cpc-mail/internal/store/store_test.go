@@ -53,4 +53,3 @@ func TestRoundTrip(t *testing.T) {
 func containsToken(b []byte) bool {
 	return strings.Contains(string(b), "refresh-xyz")
 }
-

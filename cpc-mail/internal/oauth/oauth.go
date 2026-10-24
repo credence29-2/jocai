@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -106,7 +107,9 @@ func Start(p *Provider, loginHint string) (*Flow, error) {
 	// the port is free.
 	ln6, _ := net.Listen("tcp", "[::1]:"+strconv.Itoa(port))
 
-	redirect := fmt.Sprintf("http://localhost:%d/", port)
+	// No trailing slash, so it matches "http://localhost" as registered with
+	// Microsoft (which ignores the port for loopback addresses).
+	redirect := fmt.Sprintf("http://localhost:%d", port)
 	verifier := randString(48)
 	state := randString(24)
 	sum := sha256.Sum256([]byte(verifier))
@@ -406,6 +409,10 @@ func (s *Source) Do(req *http.Request, scopes []string, out any) error {
 		}
 		if out == nil || resp.StatusCode == 204 {
 			return nil
+		}
+		if raw, ok := out.(*[]byte); ok {
+			*raw, err = io.ReadAll(resp.Body)
+			return err
 		}
 		return json.NewDecoder(resp.Body).Decode(out)
 	}

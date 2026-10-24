@@ -77,11 +77,12 @@ func Open(dir string) (*Store, error) {
 		return nil, err
 	}
 	if b, err := os.ReadFile(filepath.Join(dir, "tokens.bin")); err == nil {
-		plain, err := unprotect(b)
-		if err != nil {
-			return nil, errors.New("saved sign-ins can't be read on this PC or Windows account; reconnect your accounts")
+		// Sign-ins copied from another PC or Windows account can't be
+		// decrypted. Start without them; each account then asks to be
+		// reconnected.
+		if plain, err := unprotect(b); err == nil {
+			json.Unmarshal(plain, &s.secrets)
 		}
-		json.Unmarshal(plain, &s.secrets)
 	}
 	return s, nil
 }

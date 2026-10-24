@@ -1,0 +1,51 @@
+name: CPC Mail build
+
+on:
+  push:
+    paths:
+      - "cpc-mail/**"
+      - ".github/workflows/cpc-mail.yml"
+  pull_request:
+    paths:
+      - "cpc-mail/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cpc-mail
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cpc-mail/go.mod
+          cache-dependency-path: cpc-mail/go.sum
+      - name: Vet
+        run: |
+          go vet ./...
+          GOOS=windows go vet ./...
+      - name: Test and build
+        run: ./build.sh "1.0.${{ github.run_number }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CPC-Mail
+          path: |
+            cpc-mail/dist/CPCMail.exe
+            cpc-mail/dist/CPCMail-arm64.exe
+
+  windows-test:
+    # The sign-in store uses Windows DPAPI, which only runs on Windows.
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: cpc-mail
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cpc-mail/go.mod
+          cache-dependency-path: cpc-mail/go.sum
+      - name: Unit tests
+        run: go test ./...

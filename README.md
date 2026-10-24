@@ -6,3 +6,4 @@ Personal tools and utilities.
 | --- | --- |
 | [cpc](cpc/) | Credence PC Cleaner, a portable CCleaner replacement for Windows |
 | [cpc-mobile](cpc-mobile/) | CPC Mobile, the Android companion app |
+| [cpc-mail](cpc-mail/) | CPC Mail, one window for all your Gmail and Outlook accounts, with aliases and signatures |

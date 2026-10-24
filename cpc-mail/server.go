@@ -254,7 +254,7 @@ type listIn struct {
 }
 
 type listOut struct {
-	Messages []mail.Summary   `json:"messages"`
+	Messages []mail.Summary    `json:"messages"`
 	Cursors  map[string]string `json:"cursors"`
 	Errors   map[string]string `json:"errors"`
 }
