@@ -201,3 +201,21 @@ func TestAttachmentDownloadIsNotRendered(t *testing.T) {
 		t.Fatalf("code=%d headers=%v", rec.Code, rec.Header())
 	}
 }
+
+func TestPullSignature(t *testing.T) {
+	hs := newHarness(t)
+	var al mail.Alias
+	if code := hs.call("POST", "/api/aliases/signature", map[string]string{"accountId": "demo-g", "email": "Support@credence.example"}, &al); code != 200 {
+		t.Fatalf("code %d", code)
+	}
+	if !strings.Contains(al.SignatureHTML, "General Manager") {
+		t.Fatalf("signature = %q", al.SignatureHTML)
+	}
+	var res map[string]string
+	if code := hs.call("POST", "/api/aliases/signature", map[string]string{"accountId": "demo-o", "email": "jacob.demo@outlook.example"}, &res); code == 200 || !strings.Contains(res["error"], "Signature defaults") {
+		t.Fatalf("blank signature: %d %v", code, res)
+	}
+	if code := hs.call("POST", "/api/aliases/signature", map[string]string{"accountId": "demo-g", "email": "nobody@x.com"}, &res); code == 200 || !strings.Contains(res["error"], "send-as") {
+		t.Fatalf("unknown address: %d %v", code, res)
+	}
+}

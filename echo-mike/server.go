@@ -137,6 +137,7 @@ func (a *app) routes() http.Handler {
 	api("POST /api/identity", a.handleIdentity)
 	api("POST /api/identity/delete", a.handleIdentityDelete)
 	api("POST /api/aliases/import", a.handleImport)
+	api("POST /api/aliases/signature", a.handlePullSignature)
 	api("POST /api/settings", a.handleSettings)
 	api("POST /api/connect", a.handleConnect)
 	api("POST /api/connect/cancel", a.handleConnectCancel)
@@ -565,6 +566,37 @@ func (a *app) handleIdentityDelete(w http.ResponseWriter, r *http.Request) (any,
 		return nil
 	})
 	return map[string]bool{"ok": err == nil}, err
+}
+
+// handlePullSignature fetches one address's current signature from the
+// provider without saving it, so the alias editor can show it before Save.
+func (a *app) handlePullSignature(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		AccountID string `json:"accountId"`
+		Email     string `json:"email"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	p, _, err := a.provider(in.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	aliases, err := p.Aliases(r.Context())
+	if err != nil {
+		a.noteErr(in.AccountID, err)
+		return nil, err
+	}
+	for _, al := range aliases {
+		if !strings.EqualFold(al.Email, strings.TrimSpace(in.Email)) {
+			continue
+		}
+		if strings.TrimSpace(al.SignatureHTML) == "" {
+			return nil, fmt.Errorf("Gmail has no default signature for %s. In Gmail settings, under Signature defaults, pick %s and choose a signature for new emails, then save and try again", al.Email, al.Email)
+		}
+		return al, nil
+	}
+	return nil, fmt.Errorf("Gmail doesn't list %s as a verified send-as address on this account", in.Email)
 }
 
 func (a *app) handleImport(w http.ResponseWriter, r *http.Request) (any, error) {
