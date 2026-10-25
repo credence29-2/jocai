@@ -24,6 +24,10 @@ type Config struct {
 	// HTTPPort, trusting X-Forwarded-* from a reverse proxy in front).
 	HTTPS    string `json:"https"`
 	HTTPPort int    `json:"http_port"`
+	// ListenIP limits the web ports to one local address. Empty means all
+	// of them. Set it when something else on the machine already uses 443
+	// or 80 on a different address, like a local-only Caddy on 127.0.0.1.
+	ListenIP string `json:"listen_ip"`
 	// ACMEEmail is optional; Let's Encrypt uses it for expiry warnings.
 	ACMEEmail string `json:"acme_email"`
 

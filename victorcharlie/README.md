@@ -120,6 +120,7 @@ If you'd rather not open ports, everyone can install [Tailscale](https://tailsca
 | `domain` | | Your public name, like `ourplace.duckdns.org` |
 | `https` | `off` | `auto` (Let's Encrypt on 80/443), `off` (plain HTTP on `http_port`), `proxy` (plain HTTP behind Tailscale or a reverse proxy) |
 | `http_port` | 8080 | Port for `off` and `proxy` |
+| `listen_ip` | | Only take the web ports on this local address, like `192.168.40.23`. Use it when another program already listens on 443 or 80 on a different address (for example `127.0.0.1`) |
 | `rtc_tcp_port` / `rtc_udp_port` | 7881 / 7882 | Voice and video ports to forward |
 | `public_ip` | | Force the advertised IP instead of looking it up |
 | `lan_only` | false | Skip the public IP lookup (home network or Tailscale only) |

@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -114,14 +115,14 @@ func run(dataDir string) error {
 			Cache:      autocert.DirCache(filepath.Join(dataDir, "certs")),
 			Email:      cfg.ACMEEmail,
 		}
-		tlsSrv := &http.Server{Addr: ":443", Handler: h, TLSConfig: &tls.Config{GetCertificate: mgr.GetCertificate, NextProtos: []string{"h2", "http/1.1", "acme-tls/1"}}, ReadHeaderTimeout: 10 * time.Second}
-		plain := &http.Server{Addr: ":80", Handler: mgr.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}
+		tlsSrv := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, "443"), Handler: h, TLSConfig: &tls.Config{GetCertificate: mgr.GetCertificate, NextProtos: []string{"h2", "http/1.1", "acme-tls/1"}}, ReadHeaderTimeout: 10 * time.Second}
+		plain := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, "80"), Handler: mgr.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}
 		servers = append(servers, tlsSrv, plain)
 		go func() { errc <- tlsSrv.ListenAndServeTLS("", "") }()
 		go func() { errc <- plain.ListenAndServe() }()
 		log.Printf("%s %s is up at https://%s", cfg.AppName, version, cfg.Domain)
 	default:
-		plain := &http.Server{Addr: fmt.Sprintf(":%d", cfg.HTTPPort), Handler: h, ReadHeaderTimeout: 10 * time.Second}
+		plain := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, strconv.Itoa(cfg.HTTPPort)), Handler: h, ReadHeaderTimeout: 10 * time.Second}
 		servers = append(servers, plain)
 		go func() { errc <- plain.ListenAndServe() }()
 		log.Printf("%s %s is up at http://localhost:%d", cfg.AppName, version, cfg.HTTPPort)
