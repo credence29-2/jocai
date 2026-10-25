@@ -100,6 +100,15 @@ try {
   const b = await person("bob");
   const c = await person("carol");
 
+  // The eye button shows and hides what you typed.
+  await a.goto(base);
+  await a.fill('input[autocomplete="new-password"] >> nth=0', "peekaboo1");
+  await a.click('.password-box button[title="Show password"] >> nth=0');
+  const shownType = await a.getAttribute(".password-box input >> nth=0", "type");
+  await a.click('.password-box button[title="Hide password"] >> nth=0');
+  const hiddenType = await a.getAttribute(".password-box input >> nth=0", "type");
+  check(shownType === "text" && hiddenType === "password", "the eye button shows and hides the password");
+
   await register(a, "alice");
   const ready = await st(a);
   const guild = Object.values(ready.guilds)[0];

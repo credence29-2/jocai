@@ -163,6 +163,19 @@ export function Toast() {
   );
 }
 
+// A password box with an eye button to show what you typed.
+export function PasswordInput(props: Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="password-box">
+      <input {...props} type={shown ? "text" : "password"} />
+      <button type="button" className="icon-btn tiny" title={shown ? "Hide password" : "Show password"} aria-label={shown ? "Hide password" : "Show password"} onClick={() => setShown(!shown)}>
+        <Icon name={shown ? "eyeOff" : "eye"} size={18} />
+      </button>
+    </div>
+  );
+}
+
 export function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button type="button" role="switch" aria-checked={on} disabled={disabled} className={"toggle" + (on ? " on" : "")} onClick={() => onChange(!on)}>

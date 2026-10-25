@@ -7,7 +7,7 @@ import { playSound } from "../sounds";
 import { toast, useStore } from "../store";
 import type { User } from "../types";
 import { comboOf, keyLabel, saveSettings, useVoice, voice } from "../voice";
-import { Avatar, Field, hexColor, Toggle } from "./common";
+import { Avatar, Field, hexColor, PasswordInput, Toggle } from "./common";
 import { SettingsShell } from "./GuildSettings";
 
 export function UserSettings({ tab: initial }: { tab?: string }) {
@@ -73,10 +73,10 @@ function Account({ me }: { me: User }) {
       )}
       <h3 className="mt">Change password</h3>
       <Field label="Current password">
-        <input type="password" autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} />
+        <PasswordInput autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} />
       </Field>
       <Field label="New password" hint="At least 8 characters. Your other devices get logged out.">
-        <input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+        <PasswordInput autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
       </Field>
       <button
         className="btn primary"

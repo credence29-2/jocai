@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { appName } from "../brand";
-import { GuildIcon } from "./common";
+import { GuildIcon, PasswordInput } from "./common";
 
 interface InviteInfo {
   code: string;
@@ -74,12 +74,12 @@ export function Auth({ setup, invite, openRegistration, onDone }: { setup: boole
         </label>
         <label className="field">
           <span className="field-label">Password</span>
-          <input type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={mode === "register" ? 8 : 1} />
+          <PasswordInput autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={mode === "register" ? 8 : 1} />
         </label>
         {mode === "register" && (
           <label className="field">
             <span className="field-label">Confirm password</span>
-            <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+            <PasswordInput autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
           </label>
         )}
         {error && <div className="error">{error}</div>}

@@ -354,6 +354,19 @@ code {
   flex: 1;
   min-width: 0;
 }
+.password-box {
+  position: relative;
+  display: flex;
+}
+.password-box input {
+  padding-right: 40px;
+}
+.password-box .icon-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
 .field-label {
   font-size: 12px;
   font-weight: 700;
