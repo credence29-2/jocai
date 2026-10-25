@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/credence29-2/jocai/echo-mike/internal/mail"
@@ -119,7 +120,7 @@ func (s *Store) Update(fn func(d *Data) error) error {
 }
 
 // currentVersion is the data layout Migrate brings older files up to.
-const currentVersion = 1
+const currentVersion = 2
 
 // Migrate updates data saved by older versions.
 func (s *Store) Migrate() error {
@@ -133,6 +134,15 @@ func (s *Store) Migrate() error {
 			for i := range d.Identities {
 				if d.Identities[i].Imported {
 					d.Identities[i].SignatureOnReplies = true
+				}
+			}
+		}
+		if d.Version < 2 {
+			// Addresses without a display name got the address itself as
+			// their name. Clear it so mail shows just the address.
+			for i := range d.Identities {
+				if strings.EqualFold(strings.TrimSpace(d.Identities[i].Name), d.Identities[i].Email) {
+					d.Identities[i].Name = ""
 				}
 			}
 		}

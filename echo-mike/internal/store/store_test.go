@@ -77,3 +77,16 @@ func TestMigrateTurnsOnReplySignatures(t *testing.T) {
 		t.Fatal("migrate ran twice")
 	}
 }
+
+func TestMigrateClearsAddressAsName(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "config.json"), []byte(`{"version":1,"identities":[
+		{"id":"a","email":"Jacob.Oyler@alphapos.net","name":"jacob.oyler@alphapos.net"},
+		{"id":"b","email":"b@x.com","name":"Bob"}]}`), 0o600)
+	s, _ := Open(dir)
+	s.Migrate()
+	d := s.Get()
+	if d.Identities[0].Name != "" || d.Identities[1].Name != "Bob" {
+		t.Fatalf("names = %q %q", d.Identities[0].Name, d.Identities[1].Name)
+	}
+}

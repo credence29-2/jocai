@@ -438,7 +438,7 @@ func (a *app) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
 		return nil, fmt.Errorf("pick a From address")
 	}
 	o := &mail.Outgoing{
-		From: mail.Address{Name: id.Name, Email: id.Email}, ReplyTo: id.ReplyTo,
+		From: mail.Address{Name: displayName(id), Email: id.Email}, ReplyTo: id.ReplyTo,
 		Subject: in.Subject, HTML: in.HTML, Files: in.Files,
 		InReplyTo: in.InReplyTo, References: in.References,
 	}
@@ -652,8 +652,11 @@ func (a *app) importAliases(ctx context.Context, accountID string) (int, error) 
 				}
 				continue
 			}
+			// With no display name from the provider, fall back to the
+			// account's name, but never to an address: people would see
+			// "jacob@x.com <jacob@x.com>".
 			name := al.Name
-			if name == "" {
+			if name == "" && !strings.Contains(acct.Name, "@") {
 				name = acct.Name
 			}
 			d.Identities = append(d.Identities, mail.Identity{
@@ -821,4 +824,13 @@ func (a *app) handleOpen(w http.ResponseWriter, r *http.Request) (any, error) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil, nil
+}
+
+// displayName is the name shown with an address, left out when it's just the
+// address again.
+func displayName(id *mail.Identity) string {
+	if n := strings.TrimSpace(id.Name); n != "" && !strings.EqualFold(n, id.Email) {
+		return n
+	}
+	return ""
 }
