@@ -47,7 +47,13 @@ Point these at your server's local IP (give the server a reserved/static IP in t
 | 7881 | TCP | Voice and video (fallback) |
 | 7882 | UDP | Voice and video (main) |
 
-If Windows Firewall asks, allow the server on private and public networks.
+On Windows, also open them in the firewall (admin PowerShell). A task running in the background never gets the usual "allow access" popup:
+
+```powershell
+New-NetFirewallRule -DisplayName "Victor Charlie web" -Direction Inbound -Protocol TCP -LocalPort 80,443 -Action Allow
+New-NetFirewallRule -DisplayName "Victor Charlie voice TCP" -Direction Inbound -Protocol TCP -LocalPort 7881 -Action Allow
+New-NetFirewallRule -DisplayName "Victor Charlie voice UDP" -Direction Inbound -Protocol UDP -LocalPort 7882 -Action Allow
+```
 
 ### 4. Edit victorcharlie.json
 
@@ -70,11 +76,11 @@ Start the server again and open `https://ourplace.duckdns.org`. The first accoun
 **Windows:** run this once in an admin PowerShell (change the path) so it starts with the PC and restarts if it ever crashes:
 
 ```powershell
-$a = New-ScheduledTaskAction -Execute "C:\Victor Charlie\victorcharlie-server.exe" -WorkingDirectory "C:\Victor Charlie"
+$a = New-ScheduledTaskAction -Execute "C:\VictorCharlie\victorcharlie-server.exe" -WorkingDirectory "C:\VictorCharlie"
 $t = New-ScheduledTaskTrigger -AtStartup
 $s = New-ScheduledTaskSettingsSet -RestartCount 99 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit 0 -AllowStartIfOnBatteries
-Register-ScheduledTask -TaskName "Victor Charlie" -Action $a -Trigger $t -Settings $s -User "SYSTEM" -RunLevel Highest
-Start-ScheduledTask -TaskName "Victor Charlie"
+Register-ScheduledTask -TaskName "VictorCharlie" -Action $a -Trigger $t -Settings $s -User "SYSTEM" -RunLevel Highest
+Start-ScheduledTask -TaskName "VictorCharlie"
 ```
 
 Check `victorcharlie-data\victorcharlie.log` to see what it's doing.
