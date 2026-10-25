@@ -3,8 +3,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -29,6 +31,20 @@ import (
 
 var version = "dev"
 
+// errLogged marks a startup error that has already been written to the log.
+var errLogged = errors.New("already logged")
+
+// quietTLS drops the "TLS handshake error" lines that bots probing random
+// names like access.yourname.duckdns.org cause all day long.
+type quietTLS struct{ w io.Writer }
+
+func (q quietTLS) Write(p []byte) (int, error) {
+	if bytes.Contains(p, []byte("TLS handshake error")) {
+		return len(p), nil
+	}
+	return q.w.Write(p)
+}
+
 func main() {
 	dataDir := flag.String("data", defaultDataDir(), "folder for the database, uploads and victorcharlie.json")
 	showVersion := flag.Bool("version", false, "print the version and exit")
@@ -43,7 +59,6 @@ func main() {
 		time.Sleep(3 * time.Second)
 	}
 	if err := run(*dataDir); err != nil {
-		log.Printf("Victor Charlie stopped: %v", err)
 		pauseOnWindows()
 		os.Exit(1)
 	}
@@ -57,7 +72,12 @@ func defaultDataDir() string {
 	return filepath.Join(filepath.Dir(exe), "victorcharlie-data")
 }
 
-func run(dataDir string) error {
+func run(dataDir string) (err error) {
+	defer func() {
+		if err != nil && err != errLogged {
+			log.Printf("Victor Charlie stopped: %v", err)
+		}
+	}()
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return err
 	}
@@ -66,6 +86,14 @@ func run(dataDir string) error {
 		return err
 	}
 	defer logFile.Close()
+	// Registered after the Close above so it runs first: the reason for a
+	// failed start lands in the log file, not only in a console nobody sees.
+	defer func() {
+		if err != nil {
+			log.Printf("Victor Charlie stopped: %v", err)
+			err = errLogged
+		}
+	}()
 	logOut := io.MultiWriter(os.Stderr, logFile)
 	log.SetOutput(logOut)
 	cfg, err := config.Load(dataDir)
@@ -91,20 +119,21 @@ func run(dataDir string) error {
 		PublicIP: cfg.PublicIP, LANOnly: cfg.LANOnly,
 		WebhookURL: webhook,
 	})
+	// LiveKit points the standard logger at its own, filtered at warn level.
+	// Take it back, even if LiveKit failed, so Victor Charlie's messages show.
+	log.SetOutput(logOut)
+	log.SetFlags(log.Ldate | log.Ltime)
+	log.SetPrefix("")
 	if err != nil {
 		return err
 	}
 	defer m.Stop()
-	// LiveKit points the standard logger at its own, filtered at warn level.
-	// Take it back so Victor Charlie's messages show.
-	log.SetOutput(logOut)
-	log.SetFlags(log.Ldate | log.Ltime)
-	log.SetPrefix("")
 
 	srv := api.New(cfg, st, m, webui.FS())
 	go http.Serve(internal, srv.InternalHandler())
 
 	h := srv.Handler()
+	quiet := log.New(quietTLS{logOut}, "", log.Ldate|log.Ltime)
 	errc := make(chan error, 2)
 	var servers []*http.Server
 	switch cfg.HTTPS {
@@ -115,14 +144,14 @@ func run(dataDir string) error {
 			Cache:      autocert.DirCache(filepath.Join(dataDir, "certs")),
 			Email:      cfg.ACMEEmail,
 		}
-		tlsSrv := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, "443"), Handler: h, TLSConfig: &tls.Config{GetCertificate: mgr.GetCertificate, NextProtos: []string{"h2", "http/1.1", "acme-tls/1"}}, ReadHeaderTimeout: 10 * time.Second}
-		plain := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, "80"), Handler: mgr.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}
+		tlsSrv := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, "443"), Handler: h, TLSConfig: &tls.Config{GetCertificate: mgr.GetCertificate, NextProtos: []string{"h2", "http/1.1", "acme-tls/1"}}, ReadHeaderTimeout: 10 * time.Second, ErrorLog: quiet}
+		plain := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, "80"), Handler: mgr.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second, ErrorLog: quiet}
 		servers = append(servers, tlsSrv, plain)
 		go func() { errc <- tlsSrv.ListenAndServeTLS("", "") }()
 		go func() { errc <- plain.ListenAndServe() }()
 		log.Printf("%s %s is up at https://%s", cfg.AppName, version, cfg.Domain)
 	default:
-		plain := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, strconv.Itoa(cfg.HTTPPort)), Handler: h, ReadHeaderTimeout: 10 * time.Second}
+		plain := &http.Server{Addr: net.JoinHostPort(cfg.ListenIP, strconv.Itoa(cfg.HTTPPort)), Handler: h, ReadHeaderTimeout: 10 * time.Second, ErrorLog: quiet}
 		servers = append(servers, plain)
 		go func() { errc <- plain.ListenAndServe() }()
 		log.Printf("%s %s is up at http://localhost:%d", cfg.AppName, version, cfg.HTTPPort)

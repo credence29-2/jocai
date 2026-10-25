@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 )
 
 // pauseOnWindows keeps the console open after a startup error when Victor Charlie
@@ -12,8 +13,18 @@ func pauseOnWindows() {
 	if os.Getenv("VC_RESTARTED") != "" {
 		return
 	}
+	// When started in the background (Task Scheduler) nobody can press
+	// Enter, so give up after a while; the task then restarts Victor Charlie.
 	fmt.Fprintln(os.Stderr, "\nPress Enter to close.")
-	fmt.Scanln()
+	done := make(chan struct{})
+	go func() {
+		fmt.Scanln()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+	}
 }
 
 // restartSelf starts a fresh copy of Victor Charlie in this console and exits.
