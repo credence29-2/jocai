@@ -35,6 +35,9 @@ type Settings struct {
 	// LoadImages shows remote images without asking. Off by default so
 	// tracking pixels don't report that a message was opened.
 	LoadImages bool `json:"loadImages"`
+	// LightMessages shows email bodies and the compose window on white.
+	// Off by default, so they match the dark app.
+	LightMessages bool `json:"lightMessages"`
 }
 
 // Data is everything in config.json.

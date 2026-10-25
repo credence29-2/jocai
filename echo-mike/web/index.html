@@ -142,6 +142,14 @@ select.input { padding-right: 6px; }
 .fmt button { width: 32px; height: 30px; border: 0; border-radius: 6px; background: none; color: #d4d9df; font-weight: 700; display: grid; place-items: center; }
 .fmt button:hover { background: var(--card2); }
 .editor-wrap { flex: 1; min-height: 0; overflow: auto; background: #fff; }
+/* Dark mode for mail content: invert, then rotate hues back so colors keep
+   their hue. Images get the same filter again, which cancels it out.
+   #cdd1da inverts to the panel color. */
+.dark-mail .paper, .dark-mail .paper iframe { background: #cdd1da; }
+.dark-mail .paper iframe, .dark-mail .editor-wrap, .dark-mail .sig-box .editor { filter: invert(1) hue-rotate(180deg); }
+.dark-mail .editor-wrap, .dark-mail .editor { background: #cdd1da; }
+.dark-mail .editor img, .dark-mail .editor video { filter: invert(1) hue-rotate(180deg); }
+.reader.light-msg .paper, .reader.light-msg .paper iframe { background: #fff; filter: none; }
 .editor { min-height: 100%; padding: 16px 20px; color: #222; background: #fff; outline: none; font: 14px/1.5 "Segoe UI", system-ui, sans-serif; color-scheme: light; }
 .editor blockquote { margin: 0 0 0 .8ex; border-left: 1px solid #ccc; padding-left: 1ex; }
 .editor .cm-signature { color: #444; }
@@ -252,6 +260,8 @@ const ICON = {
   unread: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
   clip: '<path d="m21.4 11-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
 };
 const icon = (n, size = 18, extra = "") => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${ICON[n]}</svg>`;
@@ -410,6 +420,7 @@ async function openMessage(m) {
   if (!m) return;
   S.sel = { accountId: m.accountId, id: m.id };
   S.showImages = !!S.settings.loadImages;
+  S.lightMsg = false;
   renderList();
   $("#readPane").innerHTML = `<div class="empty"><div class="spin"></div></div>`;
   try {
@@ -441,9 +452,10 @@ function renderReader() {
       ${inSpam ? "" : `<button class="tb" data-act="spam" title="Report spam">${icon("spam")}</button>`}
       ${inTrash ? "" : `<button class="tb" data-act="trash" title="Delete (Del)">${icon("trash")}</button>`}
       <button class="tb" data-act="unread" title="Mark unread (U)">${icon("unread")}</button>
+      ${S.settings.lightMessages ? "" : `<button class="tb ${S.lightMsg ? "on-light" : ""}" data-act="light" title="${S.lightMsg ? "Show this message dark" : "Show this message on white, for emails that look wrong in dark"}">${icon(S.lightMsg ? "moon" : "sun")}</button>`}
       <button class="tb ${m.starred ? "on" : ""}" data-act="star" title="${m.starred ? "Unstar" : "Star"} (S)">${icon("starred")}</button>
     </div>
-    <div class="reader">
+    <div class="reader ${S.lightMsg ? "light-msg" : ""}">
       <h1>${esc(m.subject || "(no subject)")}</h1>
       <div class="hdr">
         <div class="avatar" style="background:${hue(m.from.email)}">${esc(initials(m.from))}</div>
@@ -466,6 +478,7 @@ function renderReader() {
 // so tracking pixels can't report that you read it.
 function renderBody() {
   const m = S.msg;
+  const dark = !S.settings.lightMessages && !S.lightMsg;
   const doc = new DOMParser().parseFromString(m.html || `<div style="white-space:pre-wrap;font-family:inherit">${esc(m.text || "")}</div>`, "text/html");
   doc.querySelectorAll("script,iframe,frame,frameset,object,embed,base,meta,link[rel=import],form button[type=submit]").forEach(n => n.remove());
   doc.querySelectorAll("a[href],area[href]").forEach(n => {
@@ -489,7 +502,7 @@ function renderBody() {
   const csp = `default-src 'none'; style-src 'unsafe-inline'; font-src data:${S.showImages ? " https:" : ""}; ${imgSrc}`;
   const head = doc.head || doc.documentElement.insertBefore(doc.createElement("head"), doc.body);
   head.insertAdjacentHTML("afterbegin", `<meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_self">
-    <style>html,body{margin:0}body{padding:18px 20px;font:14px/1.5 "Segoe UI",system-ui,sans-serif;color:#222;word-wrap:break-word;color-scheme:light}img{max-width:100%;height:auto}blockquote{margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex}pre{white-space:pre-wrap}</style>`);
+    <style>html,body{margin:0}${dark ? "html{background:#cdd1da}img,video,picture{filter:invert(1) hue-rotate(180deg)}" : ""}body{padding:18px 20px;font:14px/1.5 "Segoe UI",system-ui,sans-serif;color:#222;word-wrap:break-word;color-scheme:light}img{max-width:100%;height:auto}blockquote{margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex}pre{white-space:pre-wrap}</style>`);
   const f = $("#msgFrame");
   f.onload = () => {
     const d = f.contentDocument;
@@ -512,6 +525,7 @@ async function act(kind) {
   const m = S.msg;
   if (!m) return;
   if (kind === "reply" || kind === "replyAll" || kind === "forward") return replyTo(m, kind);
+  if (kind === "light") { S.lightMsg = !S.lightMsg; return renderReader(); }
   const summary = S.messages.find(x => x.accountId === m.accountId && x.id === m.id);
   let change = kind;
   if (kind === "star") change = m.starred ? "unstar" : "star";
@@ -937,6 +951,8 @@ function renderSetup() {
 
 function renderGeneral() {
   $("#setBody").innerHTML = `
+    <label class="check"><input type="checkbox" id="gDark" ${S.settings.lightMessages ? "" : "checked"}>Show emails and the compose window in dark mode</label>
+    <p class="muted" style="margin:-4px 0 18px 26px;line-height:1.5;max-width:640px">Colors in emails are adjusted to read well on dark. If one looks off, use the sun button above that message to see it on white. What you send always looks normal to the people you send it to.</p>
     <label class="check"><input type="checkbox" id="gImages" ${S.settings.loadImages ? "checked" : ""}>Show remote images automatically</label>
     <p class="muted" style="margin:-4px 0 18px 26px;line-height:1.5;max-width:640px">Off is safer. Senders use hidden images to see when and where you opened their email.</p>
     <h4 style="margin:20px 0 8px">Keyboard shortcuts</h4>
@@ -946,6 +962,9 @@ function renderGeneral() {
       <span class="code">J</span> / <span class="code">K</span> next and previous &nbsp; <span class="code">/</span> search &nbsp; <span class="code">Ctrl+Enter</span> send
     </div>
     <p class="dim" style="margin-top:24px">Project Echo Mike ${esc(S.version)}</p>`;
+  $("#gDark").onchange = async e => {
+    try { await api("/api/settings", { ...S.settings, lightMessages: !e.target.checked }); await refreshState(); if (S.msg) renderReader(); } catch (err) { toast(err.message); }
+  };
   $("#gImages").onchange = async e => {
     try { await api("/api/settings", { ...S.settings, loadImages: e.target.checked }); await refreshState(); } catch (err) { toast(err.message); }
   };
@@ -978,6 +997,7 @@ async function refreshState() {
   const st = await api("/api/state");
   Object.assign(S, { accounts: st.accounts, identities: st.identities, settings: st.settings, demo: st.demo, version: st.version });
   $("#demoFlag").hidden = !S.demo;
+  document.body.classList.toggle("dark-mail", !S.settings.lightMessages);
   renderSidebar();
 }
 async function pollUnread() {
