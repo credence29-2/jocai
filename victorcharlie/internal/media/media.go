@@ -154,12 +154,14 @@ func twirpHeaders(ctx context.Context, h http.Header) (context.Context, error) {
 	return twirp.WithHTTPRequestHeaders(ctx, h)
 }
 
-// Token mints a join token for one person in one voice channel.
+// Token mints a join token for one person in one voice channel. It is only
+// good for a few minutes; LiveKit refreshes it for clients already in, so
+// an old copy can't be replayed after a mute or ban.
 func Token(key, secret, identity, name, room string, canPublish, canSubscribe bool, sources []string) (string, error) {
 	t, f := true, false
 	g := &auth.VideoGrant{RoomJoin: true, Room: room, CanSubscribe: &t, CanPublishData: &t, CanUpdateOwnMetadata: &f}
 	g.CanPublish = &canPublish
 	g.CanSubscribe = &canSubscribe
 	g.CanPublishSources = sources
-	return auth.NewAccessToken(key, secret).SetIdentity(identity).SetName(name).SetVideoGrant(g).SetValidFor(6 * time.Hour).ToJWT()
+	return auth.NewAccessToken(key, secret).SetIdentity(identity).SetName(name).SetVideoGrant(g).SetValidFor(5 * time.Minute).ToJWT()
 }

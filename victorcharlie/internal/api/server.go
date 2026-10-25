@@ -34,6 +34,11 @@ type Server struct {
 func New(cfg *config.Config, st *store.Store, m *media.Server, web fs.FS) *Server {
 	s := &Server{cfg: cfg, st: st, media: m, web: web, slow: map[[2]store.ID]time.Time{}}
 	s.hub = newHub(s)
+	go func() {
+		for range time.Tick(30 * time.Minute) {
+			s.limiter.sweep()
+		}
+	}()
 	return s
 }
 
@@ -139,6 +144,14 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")
 		h.Set("X-Frame-Options", "DENY")
+		if r.TLS != nil {
+			h.Set("Strict-Transport-Security", "max-age=31536000")
+		}
+		if !strings.HasPrefix(r.URL.Path, "/uploads/") {
+			// Scripts only from this server: an injected <script> or inline
+			// handler can't run even if some text slips through unescaped.
+			h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' wss: ws:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+		}
 		if strings.HasPrefix(r.URL.Path, "/api/") && r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get("X-VC") != "1" {
 			httpError(w, http.StatusForbidden, "missing X-VC header")
 			return
@@ -252,8 +265,56 @@ func itoa(n int) string {
 
 // limiter slows down password guessing: a few tries per minute per address.
 type limiter struct {
-	mu   sync.Mutex
-	hits map[string][]time.Time
+	mu    sync.Mutex
+	hits  map[string][]time.Time
+	bytes map[string][]spent
+}
+
+// spend records n bytes against key and reports whether the total within
+// per stays under max.
+func (l *limiter) spend(key string, n, max int64, per time.Duration) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.bytes == nil {
+		l.bytes = map[string][]spent{}
+	}
+	cut := time.Now().Add(-per)
+	h := l.bytes[key]
+	for len(h) > 0 && h[0].at.Before(cut) {
+		h = h[1:]
+	}
+	var total int64
+	for _, x := range h {
+		total += x.n
+	}
+	if total+n > max {
+		l.bytes[key] = h
+		return false
+	}
+	l.bytes[key] = append(h, spent{time.Now(), n})
+	return true
+}
+
+type spent struct {
+	at time.Time
+	n  int64
+}
+
+// sweep forgets keys with nothing recent, so the maps don't grow forever.
+func (l *limiter) sweep() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	cut := time.Now().Add(-2 * time.Hour)
+	for k, h := range l.hits {
+		if len(h) == 0 || h[len(h)-1].Before(cut) {
+			delete(l.hits, k)
+		}
+	}
+	for k, h := range l.bytes {
+		if len(h) == 0 || h[len(h)-1].at.Before(cut) {
+			delete(l.bytes, k)
+		}
+	}
 }
 
 func (l *limiter) allow(key string, n int, per time.Duration) bool {

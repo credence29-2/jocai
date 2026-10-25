@@ -57,6 +57,9 @@ func (g *Guild) Base(uid ID) uint64 {
 
 // In is what a member may do in one channel of this server.
 func (g *Guild) In(uid ID, c *Channel) uint64 {
+	if uid != g.OwnerID && g.Members[uid] == nil {
+		return 0
+	}
 	p := g.Base(uid)
 	if p == PermAll || c == nil {
 		return p

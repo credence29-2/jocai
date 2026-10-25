@@ -232,6 +232,40 @@ func (s *Server) refreshVoicePerms(gid store.ID) {
 	}
 }
 
+// enforceVoice drops a participant who may no longer be in a channel and
+// otherwise applies their current mute, deafen and video permissions.
+func (s *Server) enforceVoice(cid, uid store.ID) bool {
+	var perms uint64
+	var mute, deaf, ok bool
+	s.st.Read(func() {
+		u := s.st.User(uid)
+		c := s.st.Channel(cid)
+		if u == nil || u.Disabled || c == nil {
+			return
+		}
+		perms, mute, deaf, ok = s.voicePerms(uid, c)
+	})
+	if !ok {
+		s.removeFromRoom(cid, uid)
+		return false
+	}
+	src := sources(perms, mute)
+	_, err := s.media.Rooms.UpdateParticipant(s.adminCtx(cid), &livekit.UpdateParticipantRequest{
+		Room:     cid.String(),
+		Identity: uid.String(),
+		Permission: &livekit.ParticipantPermission{
+			CanSubscribe:      !deaf,
+			CanPublish:        len(src) > 0,
+			CanPublishData:    true,
+			CanPublishSources: lkSources(src),
+		},
+	})
+	if err != nil {
+		log.Printf("update voice perms for %v: %v", uid, err)
+	}
+	return true
+}
+
 func (h *Hub) voiceIn(cid store.ID) []VoiceState {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -262,7 +296,7 @@ func (s *Server) visibleVoice(uid store.ID) []*VoiceState {
 				if slices.Contains(c.Recipients, uid) {
 					out = append(out, &v)
 				}
-			} else if g := s.st.Guild(c.GuildID); g != nil && g.In(uid, c)&store.PermViewChannel != 0 {
+			} else if g := s.st.Guild(c.GuildID); g != nil && g.Members[uid] != nil && g.In(uid, c)&store.PermViewChannel != 0 {
 				out = append(out, &v)
 			}
 		}
@@ -323,6 +357,11 @@ func (s *Server) livekitWebhook(w http.ResponseWriter, r *http.Request) {
 	h := s.hub
 	switch ev.Event {
 	case "participant_joined":
+		// A join token is a snapshot of permissions when it was issued; make
+		// the live connection match what the person may do now.
+		if !s.enforceVoice(cid, uid) {
+			return
+		}
 		var gid store.ID
 		var mute, deaf, isDM bool
 		s.st.Read(func() {

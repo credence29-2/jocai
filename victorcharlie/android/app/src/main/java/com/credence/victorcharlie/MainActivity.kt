@@ -148,8 +148,7 @@ class MainActivity : Activity() {
 
         w.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, req: WebResourceRequest): Boolean {
-                val u = req.url.toString()
-                if (u.startsWith(origin)) return false
+                if (sameOrigin(req.url, origin)) return false
                 startActivity(Intent(Intent.ACTION_VIEW, req.url))
                 return true
             }
@@ -165,7 +164,7 @@ class MainActivity : Activity() {
 
         w.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                if (!request.origin.toString().startsWith(origin)) {
+                if (!sameOrigin(request.origin, origin)) {
                     request.deny()
                     return
                 }
@@ -213,6 +212,16 @@ class MainActivity : Activity() {
 
         setContentView(w)
         w.loadUrl(url)
+    }
+
+    /**
+     * Whether a URL is the configured server: same scheme, host and port.
+     * A prefix check would let chat.example.org.evil.com pass as the server.
+     */
+    private fun sameOrigin(u: Uri, origin: String): Boolean {
+        val o = Uri.parse(origin)
+        val port = { x: Uri -> if (x.port != -1) x.port else if (x.scheme == "https") 443 else 80 }
+        return u.scheme.equals(o.scheme, true) && u.host.equals(o.host, true) && port(u) == port(o)
     }
 
     @Deprecated("Activity result API needs AndroidX; this app stays dependency-light")

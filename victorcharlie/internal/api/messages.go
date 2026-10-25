@@ -91,30 +91,8 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request, u *store.Us
 		ReplyTo store.ID `json:"reply_to"`
 		Nonce   string   `json:"nonce"`
 	}
-	var atts []store.Attachment
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
-		if perms&store.PermAttachFiles == 0 {
-			forbidden(w)
-			return
-		}
-		var ok bool
-		atts, ok = s.receiveFiles(w, r)
-		if !ok {
-			return
-		}
-		json.Unmarshal([]byte(r.FormValue("payload_json")), &body)
-	} else if !decode(w, r, &body) {
-		return
-	}
-	body.Content = strings.TrimSpace(body.Content)
-	if body.Content == "" && len(atts) == 0 {
-		badRequest(w, "message is empty")
-		return
-	}
-	if utf8.RuneCountInString(body.Content) > maxMessage {
-		badRequest(w, "messages are up to 4000 characters")
-		return
-	}
+	// Rate checks come before reading the body so rejected uploads never
+	// touch the disk.
 	if slow > 0 && perms&(store.PermManageMessages|store.PermManageChannels) == 0 {
 		key := [2]store.ID{cid, u.ID}
 		s.slowMu.Lock()
@@ -129,6 +107,37 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request, u *store.Us
 	}
 	if !s.limiter.allow("msg:"+u.ID.String(), 20, 10*time.Second) {
 		httpError(w, http.StatusTooManyRequests, "you're sending messages too fast")
+		return
+	}
+	var atts []store.Attachment
+	// Files saved below are removed again if the message isn't posted.
+	posted := false
+	defer func() {
+		if !posted {
+			s.removeAttachments(atts)
+		}
+	}()
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
+		if perms&store.PermAttachFiles == 0 {
+			forbidden(w)
+			return
+		}
+		var ok bool
+		atts, ok = s.receiveFiles(w, r, u.ID)
+		if !ok {
+			return
+		}
+		json.Unmarshal([]byte(r.FormValue("payload_json")), &body)
+	} else if !decode(w, r, &body) {
+		return
+	}
+	body.Content = strings.TrimSpace(body.Content)
+	if body.Content == "" && len(atts) == 0 {
+		badRequest(w, "message is empty")
+		return
+	}
+	if utf8.RuneCountInString(body.Content) > maxMessage {
+		badRequest(w, "messages are up to 4000 characters")
 		return
 	}
 	m := &store.Message{ChannelID: cid, Content: body.Content, Attachments: atts}
@@ -153,6 +162,7 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request, u *store.Us
 		fail(w, err)
 		return
 	}
+	posted = true
 	out := struct {
 		*store.Message
 		Nonce string `json:"nonce,omitempty"`
@@ -288,7 +298,7 @@ func (s *Server) listPins(w http.ResponseWriter, r *http.Request, u *store.User)
 	cid := pathID(r, "cid")
 	var perms uint64
 	s.st.Read(func() { _, _, perms = s.channelAccess(cid, u.ID) })
-	if perms == 0 {
+	if perms&store.PermReadHistory == 0 {
 		fail(w, store.ErrNotFound)
 		return
 	}

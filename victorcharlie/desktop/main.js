@@ -55,6 +55,18 @@ function serverOrigin() {
   }
 }
 
+// Whether a URL is the configured server: same scheme, host and port. A
+// prefix check would let chat.example.org.evil.com pass as the server.
+function isServer(url) {
+  const origin = serverOrigin();
+  if (!origin || !url) return false;
+  try {
+    return new URL(url).origin === origin;
+  } catch {
+    return false;
+  }
+}
+
 function showWindow() {
   if (!win) return;
   if (win.isMinimized()) win.restore();
@@ -89,8 +101,7 @@ function createWindow() {
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    const origin = serverOrigin();
-    if (origin && url.startsWith(origin + "/uploads/")) {
+    if (isServer(url) && new URL(url).pathname.startsWith("/uploads/")) {
       // Uploads need the login cookie, so open them in-app.
       return { action: "allow", overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: "#000" } };
     }
@@ -101,12 +112,13 @@ function createWindow() {
   win.webContents.on("will-navigate", (e, url) => {
     if (url.startsWith("vc-setup://")) {
       e.preventDefault();
+      // Only the bundled setup page may change the saved server.
+      if (!win.webContents.getURL().startsWith("file:")) return;
       const u = new URL(url).searchParams.get("url");
       connectTo(u);
       return;
     }
-    const origin = serverOrigin();
-    if (origin && !url.startsWith(origin) && !url.startsWith("file:")) {
+    if (!isServer(url) && !url.startsWith("file:")) {
       e.preventDefault();
       shell.openExternal(url);
     }
@@ -182,8 +194,7 @@ function setupCapture() {
   });
 
   session.defaultSession.setPermissionRequestHandler((wc, permission, callback, details) => {
-    const origin = serverOrigin();
-    const ok = origin && (details.requestingUrl || wc.getURL()).startsWith(origin);
+    const ok = isServer(details.requestingUrl || wc.getURL());
     callback(!!ok && ["media", "display-capture", "notifications", "fullscreen", "clipboard-sanitized-write", "clipboard-read"].includes(permission));
   });
   session.defaultSession.setPermissionCheckHandler((_wc, permission, requestingOrigin) => {

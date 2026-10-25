@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/credence29-2/jocai/victorcharlie/internal/store"
 	_ "golang.org/x/image/webp"
@@ -96,7 +97,11 @@ func (e uploadErr) Error() string { return string(e) }
 const errTooBig = uploadErr("file too big")
 
 // receiveFiles saves every file in a multipart message post.
-func (s *Server) receiveFiles(w http.ResponseWriter, r *http.Request) ([]store.Attachment, bool) {
+// uploadBudget is how much one person may upload per hour, across all
+// messages, so nobody can fill the server's disk.
+const uploadBudget = 2 << 30
+
+func (s *Server) receiveFiles(w http.ResponseWriter, r *http.Request, uid store.ID) ([]store.Attachment, bool) {
 	limit := int64(s.cfg.MaxUploadMB) << 20
 	r.Body = http.MaxBytesReader(w, r.Body, limit*10+1<<20)
 	mr, err := r.MultipartReader()
@@ -138,12 +143,21 @@ func (s *Server) receiveFiles(w http.ResponseWriter, r *http.Request) ([]store.A
 			return nil, false
 		}
 		out = append(out, a)
+		if !s.limiter.spend("bytes:"+uid.String(), a.Size, uploadBudget, time.Hour) {
+			cleanup()
+			httpError(w, http.StatusTooManyRequests, "you've uploaded a lot in the last hour; try again later")
+			return nil, false
+		}
 	}
 	return out, true
 }
 
 // receiveImage takes a single image (avatar or server icon).
-func (s *Server) receiveImage(w http.ResponseWriter, r *http.Request) (store.Attachment, bool) {
+func (s *Server) receiveImage(w http.ResponseWriter, r *http.Request, uid store.ID) (store.Attachment, bool) {
+	if !s.limiter.allow("image:"+uid.String(), 10, time.Hour) {
+		httpError(w, http.StatusTooManyRequests, "too many image changes, try again later")
+		return store.Attachment{}, false
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, 9<<20)
 	f, hdr, err := r.FormFile("file")
 	if err != nil {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"regexp"
 	"strings"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/credence29-2/jocai/victorcharlie/internal/store"
 )
+
+var errNeedInvite = errors.New("invite required")
 
 var usernameRe = regexp.MustCompile(`^[a-zA-Z0-9_.]{2,32}$`)
 
@@ -59,7 +62,6 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "use a password of at least 8 characters")
 		return
 	}
-	first := s.st.UserCount() == 0
 	var inv *store.Invite
 	if body.Invite != "" {
 		var err error
@@ -68,11 +70,16 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if !first && !s.cfg.OpenRegistration && inv == nil {
+	u, first, err := s.st.CreateUser(body.Username, body.Password, func(first bool) error {
+		if !first && !s.cfg.OpenRegistration && inv == nil {
+			return errNeedInvite
+		}
+		return nil
+	})
+	if err == errNeedInvite {
 		httpError(w, http.StatusForbidden, "you need an invite link to make an account here")
 		return
 	}
-	u, err := s.st.CreateUser(body.Username, body.Password, first)
 	if err != nil {
 		fail(w, err)
 		return
@@ -103,6 +110,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	if !s.limiter.allow("login:"+s.clientIP(r), 10, time.Minute) {
 		httpError(w, http.StatusTooManyRequests, "too many tries, wait a minute")
+		return
+	}
+	// Per account too, so guessing from many addresses doesn't help.
+	if !s.limiter.allow("acct:"+strings.ToLower(strings.TrimSpace(body.Username)), 20, 15*time.Minute) {
+		httpError(w, http.StatusTooManyRequests, "too many tries for that account, wait 15 minutes")
 		return
 	}
 	u := s.st.CheckPassword(strings.TrimSpace(body.Username), body.Password)
@@ -211,14 +223,18 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request, u *store
 }
 
 func (s *Server) uploadAvatar(w http.ResponseWriter, r *http.Request, u *store.User) {
-	a, ok := s.receiveImage(w, r)
+	a, ok := s.receiveImage(w, r, u.ID)
 	if !ok {
 		return
 	}
+	var old string
+	s.st.Read(func() { old = s.st.User(u.ID).Avatar })
 	if _, err := s.st.UpdateUser(u.ID, store.UserPatch{Avatar: &a.URL}); err != nil {
+		s.removeAttachments([]store.Attachment{a})
 		fail(w, err)
 		return
 	}
+	s.removeAttachments([]store.Attachment{{URL: old}})
 	s.broadcastUser(u.ID)
 	writeJSON(w, map[string]string{"avatar": a.URL})
 }

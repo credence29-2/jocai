@@ -288,6 +288,27 @@ func (s *Store) DeleteMessage(id ID) error {
 	return err
 }
 
+// AttachmentsIn lists every file posted in the given channels, so they can
+// be removed from disk when the channels go.
+func (s *Store) AttachmentsIn(cids []ID) []Attachment {
+	var out []Attachment
+	for _, cid := range cids {
+		rows, err := s.db.Query(`SELECT attachments FROM messages WHERE channel_id = ? AND attachments != '[]'`, cid)
+		if err != nil {
+			continue
+		}
+		for rows.Next() {
+			var js string
+			var atts []Attachment
+			if rows.Scan(&js) == nil && json.Unmarshal([]byte(js), &atts) == nil {
+				out = append(out, atts...)
+			}
+		}
+		rows.Close()
+	}
+	return out
+}
+
 func (s *Store) SetPinned(id ID, pinned bool) error {
 	_, err := s.db.Exec(`UPDATE messages SET pinned = ? WHERE id = ?`, b2i(pinned), id)
 	return err

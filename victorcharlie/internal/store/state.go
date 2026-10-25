@@ -267,23 +267,31 @@ func (s *Store) SharesGuild(a, b ID) bool {
 
 var ErrTaken = errors.New("that username is taken")
 
-func (s *Store) CreateUser(username, password string, admin bool) (*User, error) {
+// CreateUser makes an account. The very first account is the admin; allow
+// decides, under the same lock, whether this signup may go ahead given
+// whether it would be the first, so two signups at once can't both be.
+func (s *Store) CreateUser(username, password string, allow func(first bool) error) (*User, bool, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 11)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	first := len(s.users) == 0
+	if err := allow(first); err != nil {
+		return nil, false, err
+	}
+	admin := first
 	if _, ok := s.byName[strings.ToLower(username)]; ok {
-		return nil, ErrTaken
+		return nil, false, ErrTaken
 	}
 	u := &User{ID: NewID(), Username: username, DisplayName: username, Status: "online", IsAdmin: admin, passwordHash: string(hash)}
 	if _, err := s.db.Exec(`INSERT INTO users (id, username, display_name, password_hash, is_admin) VALUES (?, ?, ?, ?, ?)`, u.ID, u.Username, u.DisplayName, u.passwordHash, b2i(admin)); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	s.users[u.ID] = u
 	s.byName[strings.ToLower(username)] = u.ID
-	return u, nil
+	return u, first, nil
 }
 
 var (
@@ -400,6 +408,10 @@ func (s *Store) SessionUser(tok string) *User {
 	var last int64
 	h := hashToken(tok)
 	if err := s.db.QueryRow(`SELECT user_id, last_seen FROM sessions WHERE token_hash = ?`, h).Scan(&uid, &last); err != nil {
+		return nil
+	}
+	if now()-last > 90*24*3600_000 {
+		s.db.Exec(`DELETE FROM sessions WHERE token_hash = ?`, h)
 		return nil
 	}
 	if now()-last > 3600_000 {

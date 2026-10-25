@@ -257,6 +257,25 @@ try {
   await api(b, "PATCH", `/guilds/${guild.id}/members/${carolId}`, { channel_id: null });
   check(await waitFor(async () => (await c.evaluate(() => window.vc.voiceState().status)) === "idle", 10000), "mod disconnects carol");
 
+  // Security regressions from the review.
+  // 1. A private voice channel in a server you're not in must not break your app.
+  const cg = await api(c, "POST", "/guilds", { name: "Carol's place" });
+  await waitFor(async () => (await st(c)).guilds[cg.body.id]);
+  const cgRole = await api(c, "POST", `/guilds/${cg.body.id}/roles`, { name: "Crew", permissions: 0 });
+  const secret = await api(c, "POST", `/guilds/${cg.body.id}/channels`, { type: "voice", name: "Hideout", overwrites: [{ id: cg.body.id, allow: 0, deny: 1 }, { id: cgRole.body.id, allow: 1, deny: 0 }] });
+  await c.evaluate((id) => window.vc.voice.join(id), secret.body.id);
+  await waitFor(async () => (await c.evaluate(() => window.vc.voiceState().status)) === "connected", 15000);
+  await b.reload();
+  check(await waitFor(() => b.locator(".app").count(), 15000) && !(await st(b)).guilds[cg.body.id], "someone else's private voice channel doesn't break your app");
+  await c.evaluate(() => window.vc.voice.leave());
+  // 2. Manage Channels alone can't create a channel that grants extra permissions.
+  const chMgr = await api(a, "POST", `/guilds/${guild.id}/roles`, { name: "Channel helper", permissions: 1 << 17 });
+  await api(a, "PATCH", `/guilds/${guild.id}/members/${carolId}`, { roles: [chMgr.body.id] });
+  await waitFor(async () => Object.values((await st(c)).guilds).find((g) => g.id === guild.id)?.permissions & (1 << 17));
+  const sneaky = await api(c, "POST", `/guilds/${guild.id}/channels`, { type: "text", name: "sneaky", overwrites: [{ id: carolId, allow: 1 << 5, deny: 0 }] });
+  check(sneaky.status === 403, "creating a channel can't grant permissions you don't have");
+  await api(a, "PATCH", `/guilds/${guild.id}/members/${carolId}`, { roles: [] });
+
   // Push to talk.
   await a.evaluate(() => {
     const s = JSON.parse(localStorage.getItem("vc.voice") || "{}");

@@ -179,14 +179,18 @@ func (s *Server) uploadGuildIcon(w http.ResponseWriter, r *http.Request, u *stor
 	if !s.check(w, gid, u.ID, store.PermManageServer, nil) {
 		return
 	}
-	a, ok := s.receiveImage(w, r)
+	a, ok := s.receiveImage(w, r, u.ID)
 	if !ok {
 		return
 	}
+	var old string
+	s.st.Read(func() { old = s.st.Guild(gid).Icon })
 	if err := s.st.UpdateGuild(gid, store.GuildPatch{Icon: &a.URL}); err != nil {
+		s.removeAttachments([]store.Attachment{a})
 		fail(w, err)
 		return
 	}
+	s.removeAttachments([]store.Attachment{{URL: old}})
 	s.syncGuild(gid)
 	writeJSON(w, map[string]string{"icon": a.URL})
 }
@@ -205,10 +209,21 @@ func (s *Server) deleteGuild(w http.ResponseWriter, r *http.Request, u *store.Us
 	for _, v := range s.hub.voiceInGuild(gid) {
 		s.removeFromRoom(v.ChannelID, v.UserID)
 	}
+	var cids []store.ID
+	var icon string
+	s.st.Read(func() {
+		g := s.st.Guild(gid)
+		icon = g.Icon
+		for cid := range g.Channels {
+			cids = append(cids, cid)
+		}
+	})
+	files := s.st.AttachmentsIn(cids)
 	if err := s.st.DeleteGuild(gid); err != nil {
 		fail(w, err)
 		return
 	}
+	s.removeAttachments(append(files, store.Attachment{URL: icon}))
 	s.hub.toUsers(members, "GUILD_DELETE", map[string]any{"id": gid})
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -565,7 +580,22 @@ func (s *Server) createChannel(w http.ResponseWriter, r *http.Request, u *store.
 		badRequest(w, "bitrate must be 8 to 384 kbps")
 		return
 	}
-	if !s.check(w, gid, u.ID, store.PermManageChannels, nil) {
+	c.OwnerID, c.Recipients, c.LastMessageID = 0, nil, 0
+	if !s.check(w, gid, u.ID, store.PermManageChannels, func(g *store.Guild, base uint64) bool {
+		if len(c.Overwrites) == 0 {
+			return true
+		}
+		// Same rule as editing a channel's permissions.
+		if base&store.PermManageRoles == 0 {
+			return false
+		}
+		for _, o := range c.Overwrites {
+			if (o.Allow|o.Deny)&^base != 0 {
+				return false
+			}
+		}
+		return true
+	}) {
 		return
 	}
 	nc, err := s.st.CreateChannel(gid, c)
@@ -741,10 +771,12 @@ func (s *Server) deleteChannel(w http.ResponseWriter, r *http.Request, u *store.
 	for _, v := range s.hub.voiceIn(cid) {
 		s.removeFromRoom(cid, v.UserID)
 	}
+	files := s.st.AttachmentsIn([]store.ID{cid})
 	if err := s.st.DeleteChannel(cid); err != nil {
 		fail(w, err)
 		return
 	}
+	s.removeAttachments(files)
 	s.syncGuild(gid)
 	w.WriteHeader(http.StatusNoContent)
 }
