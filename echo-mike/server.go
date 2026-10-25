@@ -59,6 +59,7 @@ func newApp(st *store.Store, demoMode bool, openURL func(string) error) *app {
 	if demoMode {
 		a.addDemoAccounts()
 	}
+	st.Migrate()
 	return a
 }
 
@@ -651,7 +652,7 @@ func (a *app) importAliases(ctx context.Context, accountID string) (int, error) 
 			}
 			d.Identities = append(d.Identities, mail.Identity{
 				ID: store.NewID(), AccountID: accountID, Email: al.Email, Name: name,
-				ReplyTo: al.ReplyTo, SignatureHTML: al.SignatureHTML, Default: al.Default, Imported: true,
+				ReplyTo: al.ReplyTo, SignatureHTML: al.SignatureHTML, SignatureOnReplies: true, Default: al.Default, Imported: true,
 			})
 			added++
 		}

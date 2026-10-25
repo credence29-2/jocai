@@ -53,3 +53,27 @@ func TestRoundTrip(t *testing.T) {
 func containsToken(b []byte) bool {
 	return strings.Contains(string(b), "refresh-xyz")
 }
+
+func TestMigrateTurnsOnReplySignatures(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "config.json"), []byte(`{"identities":[
+		{"id":"a","email":"a@x.com","imported":true,"signatureOnReplies":false},
+		{"id":"b","email":"b@x.com","imported":false,"signatureOnReplies":false}]}`), 0o600)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	d := s.Get()
+	if !d.Identities[0].SignatureOnReplies || d.Identities[1].SignatureOnReplies || d.Version != currentVersion {
+		t.Fatalf("after migrate: %+v", d)
+	}
+	// Running again leaves later choices alone.
+	s.Update(func(d *Data) error { d.Identities[0].SignatureOnReplies = false; return nil })
+	s.Migrate()
+	if s.Get().Identities[0].SignatureOnReplies {
+		t.Fatal("migrate ran twice")
+	}
+}

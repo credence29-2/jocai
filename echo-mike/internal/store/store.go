@@ -39,6 +39,8 @@ type Settings struct {
 
 // Data is everything in config.json.
 type Data struct {
+	// Version is the data layout version; see Migrate.
+	Version    int             `json:"version"`
 	Settings   Settings        `json:"settings"`
 	Accounts   []Account       `json:"accounts"`
 	Identities []mail.Identity `json:"identities"`
@@ -109,6 +111,29 @@ func (s *Store) Update(fn func(d *Data) error) error {
 		return err
 	}
 	return writeFile(filepath.Join(s.dir, "config.json"), b)
+}
+
+// currentVersion is the data layout Migrate brings older files up to.
+const currentVersion = 1
+
+// Migrate updates data saved by older versions.
+func (s *Store) Migrate() error {
+	if s.Get().Version >= currentVersion {
+		return nil
+	}
+	return s.Update(func(d *Data) error {
+		if d.Version < 1 {
+			// 1.0.0 imported Gmail addresses with their signature left off
+			// replies and forwards. Turn it on, as new imports now do.
+			for i := range d.Identities {
+				if d.Identities[i].Imported {
+					d.Identities[i].SignatureOnReplies = true
+				}
+			}
+		}
+		d.Version = currentVersion
+		return nil
+	})
 }
 
 // Secret returns an account's saved refresh token.
