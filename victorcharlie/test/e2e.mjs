@@ -315,6 +315,10 @@ try {
   await shot(b, "7-phone-chat");
   await b.click(".main-head .mobile-only");
   await shot(b, "8-phone-channels");
+  await b.click('.user-panel button[title="Settings"]');
+  check(await b.locator(".settings-danger-mobile", { hasText: "Log out" }).isVisible(), "log out is reachable on a phone-sized screen");
+  await b.click(".settings-danger-mobile");
+  check(await waitFor(() => b.locator(".auth-card").count(), 10000), "logging out returns to the login screen");
 } catch (e) {
   console.log("FAIL  test crashed:", e);
   failures++;

@@ -27,6 +27,7 @@ import (
 	"github.com/credence29-2/jocai/victorcharlie/internal/store"
 	"github.com/credence29-2/jocai/victorcharlie/internal/webui"
 	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/term"
 )
 
 var version = "dev"
@@ -48,9 +49,17 @@ func (q quietTLS) Write(p []byte) (int, error) {
 func main() {
 	dataDir := flag.String("data", defaultDataDir(), "folder for the database, uploads and victorcharlie.json")
 	showVersion := flag.Bool("version", false, "print the version and exit")
+	resetUser := flag.String("reset-password", "", "set a new password for this username and exit (stop the server first)")
 	flag.Parse()
 	if *showVersion {
 		fmt.Println(version)
+		return
+	}
+	if *resetUser != "" {
+		if err := resetPassword(*dataDir, *resetUser); err != nil {
+			fmt.Fprintln(os.Stderr, "Password not changed:", err)
+			os.Exit(1)
+		}
 		return
 	}
 	log.SetFlags(log.Ldate | log.Ltime)
@@ -62,6 +71,53 @@ func main() {
 		pauseOnWindows()
 		os.Exit(1)
 	}
+}
+
+// resetPassword is the way back in for someone who forgot their password,
+// including the admin, who has nobody else to reset it for them.
+func resetPassword(dataDir, username string) error {
+	st, err := store.Open(dataDir)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	var u *store.User
+	st.Read(func() { u = st.UserByName(username) })
+	if u == nil {
+		var names []string
+		st.Read(func() {
+			for _, x := range st.Users() {
+				names = append(names, x.Username)
+			}
+		})
+		return fmt.Errorf("no account called %q. Accounts: %s", username, strings.Join(names, ", "))
+	}
+	ask := func(prompt string) (string, error) {
+		fmt.Print(prompt)
+		b, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Println()
+		return string(b), err
+	}
+	pw, err := ask("New password for " + u.Username + " (typing is hidden): ")
+	if err != nil {
+		return err
+	}
+	if len(pw) < 8 {
+		return errors.New("use at least 8 characters")
+	}
+	again, err := ask("Type it again: ")
+	if err != nil {
+		return err
+	}
+	if pw != again {
+		return errors.New("the two passwords didn't match")
+	}
+	if err := st.SetPassword(u.ID, pw); err != nil {
+		return err
+	}
+	st.DeleteSessions(u.ID, "")
+	fmt.Printf("Password changed for %s. Start the server again and log in.\n", u.Username)
+	return nil
 }
 
 func defaultDataDir() string {

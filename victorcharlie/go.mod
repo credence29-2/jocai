@@ -12,10 +12,12 @@ replace github.com/pion/ice/v4 => github.com/livekit/ice/v4 v4.4.0-warp.3
 require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/livekit/livekit-server v1.13.10
+	github.com/livekit/mediatransportutil v0.0.0-20260821083140-f234b534b095
 	github.com/livekit/protocol v1.52.2-0.20261012065025-9bb708cdb819
 	github.com/twitchtv/twirp v8.1.3+incompatible
 	golang.org/x/crypto v0.58.0
 	golang.org/x/image v0.47.0
+	golang.org/x/term v0.47.0
 	modernc.org/sqlite v1.61.0
 )
 
@@ -58,7 +60,6 @@ require (
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/lithammer/shortuuid/v4 v4.3.0 // indirect
 	github.com/livekit/mageutil v0.0.0-20250511045019-0f1ff63f7731 // indirect
-	github.com/livekit/mediatransportutil v0.0.0-20260821083140-f234b534b095 // indirect
 	github.com/livekit/psrpc v0.8.2 // indirect
 	github.com/mackerelio/go-osstat v0.2.8 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

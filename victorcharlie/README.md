@@ -112,6 +112,18 @@ If you'd rather not open ports, everyone can install [Tailscale](https://tailsca
 - **Windows app:** download `VictorCharlie-Setup-*.exe` (installer) or `VictorCharlie-Portable-*.exe` from the **Victor Charlie desktop app** Actions run. Enter your server address on first launch. Push-to-talk, mute and deafen keys work everywhere, including in games. It lives in the tray when you close the window.
 - **Android:** install `VictorCharlie-*.apk` from the **Victor Charlie Android app** Actions run (allow installing from your browser or file manager). Enter the server address on first launch. Voice, video, chat and watching streams all work, and voice keeps going with the screen off. Two limits: sharing your phone's own screen isn't supported yet, and message notifications only arrive while the app is running (there's no push service).
 
+## Forgot your password
+
+Admins can reset anyone's password in the app under Settings, Server admin. If the admin forgets their own, run this on the server (Windows example):
+
+```powershell
+Stop-ScheduledTask -TaskName "VictorCharlie"
+C:\VictorCharlie\victorcharlie-server.exe -reset-password yourusername
+Start-ScheduledTask -TaskName "VictorCharlie"
+```
+
+It asks for the new password twice and signs that account out everywhere.
+
 ## Settings reference (victorcharlie.json)
 
 | Setting | Default | Meaning |

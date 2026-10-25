@@ -42,7 +42,15 @@ function SettingsShell({ title, tabs, tab, setTab, children, danger }: { title: 
             </option>
           ))}
         </select>
-        <div className="settings-content">{children}</div>
+        <div className="settings-content">
+          {children}
+          {danger && (
+            // The side menu (and its red button) is hidden on phones.
+            <button className="btn danger settings-danger-mobile" onClick={danger.onClick}>
+              {danger.label}
+            </button>
+          )}
+        </div>
       </section>
     </div>
   );

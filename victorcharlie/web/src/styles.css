@@ -2123,7 +2123,8 @@ button.sidebar-head:hover {
   color: var(--text-strong);
   border-color: var(--text-strong);
 }
-.settings-tabs-mobile {
+.settings-tabs-mobile,
+.settings-danger-mobile {
   display: none;
 }
 .toggle-row {
@@ -2409,6 +2410,11 @@ button.sidebar-head:hover {
   .settings-close {
     top: 12px;
     right: 12px;
+  }
+  .settings-danger-mobile {
+    display: block;
+    margin-top: 40px;
+    width: 100%;
   }
   .settings-tabs-mobile {
     display: block;
