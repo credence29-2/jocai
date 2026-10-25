@@ -38,6 +38,8 @@ type Settings struct {
 	// LightMessages shows email bodies and the compose window on white.
 	// Off by default, so they match the dark app.
 	LightMessages bool `json:"lightMessages"`
+	// MuteNotifications stops new-mail notifications.
+	MuteNotifications bool `json:"muteNotifications"`
 }
 
 // Data is everything in config.json.

@@ -6,8 +6,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
+	"time"
 	"unsafe"
 
 	webview2 "github.com/jchv/go-webview2"
@@ -65,6 +67,17 @@ func main() {
 	w.SetSize(960, 600, webview2.HintMin)
 	darkTitleBar(uintptr(w.Window()))
 	w.Navigate(u)
+
+	t := newTray(uintptr(w.Window()))
+	defer t.remove()
+	a.notify = t.notify
+	a.onNewMail = func() {
+		w.Dispatch(func() { w.Eval("window.onNewMail && window.onNewMail()") })
+	}
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	go a.watchMail(ctx, time.Minute)
+
 	w.Run()
 }
 

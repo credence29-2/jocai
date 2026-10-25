@@ -50,6 +50,12 @@ type app struct {
 	mu        sync.Mutex
 	providers map[string]mail.Provider
 	flow      *oauth.Flow
+
+	// notify shows a desktop notification; nil where there's no desktop.
+	notify func(title, body string)
+	// onNewMail tells the window to refresh; nil when there's no window.
+	onNewMail func()
+	watch     watcher
 }
 
 func newApp(st *store.Store, demoMode bool, openURL func(string) error) *app {

@@ -232,6 +232,13 @@ func (b *Box) Aliases(context.Context) ([]mail.Alias, error) {
 	return append([]mail.Alias(nil), b.aliases...), nil
 }
 
+// Deliver puts a new unread message in the inbox, as if it just arrived.
+func (b *Box) Deliver(from mail.Address, subject, body string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.seed(time.Now(), []seed{{from, b.Email, subject, body, 0, true, false, mail.Inbox, ""}})
+}
+
 func (b *Box) Unread(context.Context) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()

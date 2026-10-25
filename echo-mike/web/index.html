@@ -43,6 +43,7 @@ svg { flex: none; }
 .nav .warn-badge { margin-left: auto; color: var(--warn); font-size: 12px; }
 .side-spacer { flex: 1; }
 .side-foot { border-top: 1px solid #2a2e37; padding-top: 8px; }
+#muteBtn.muted-on { color: var(--warn); }
 
 /* ---------- main layout ---------- */
 main { flex: 1; min-width: 0; display: flex; background: var(--panel); margin: 10px 10px 10px 0; border-radius: 10px; overflow: hidden; }
@@ -204,6 +205,7 @@ select.input { padding-right: 6px; }
   <nav class="nav" id="accounts"></nav>
   <div class="side-spacer"></div>
   <nav class="nav side-foot">
+    <button id="muteBtn"></button>
     <button id="settingsBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
   </nav>
 </aside>
@@ -260,6 +262,8 @@ const ICON = {
   unread: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
   clip: '<path d="m21.4 11-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-2"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -951,6 +955,8 @@ function renderSetup() {
 
 function renderGeneral() {
   $("#setBody").innerHTML = `
+    <label class="check"><input type="checkbox" id="gNotify" ${S.settings.muteNotifications ? "" : "checked"}>Show a Windows notification when new mail arrives</label>
+    <p class="muted" style="margin:-4px 0 18px 26px;line-height:1.5;max-width:640px">Checks every minute while Project Echo Mike is open. You can also turn this on and off with the bell at the bottom of the sidebar. Windows Do not disturb is respected.</p>
     <label class="check"><input type="checkbox" id="gDark" ${S.settings.lightMessages ? "" : "checked"}>Show emails and the compose window in dark mode</label>
     <p class="muted" style="margin:-4px 0 18px 26px;line-height:1.5;max-width:640px">Colors in emails are adjusted to read well on dark. If one looks off, use the sun button above that message to see it on white. What you send always looks normal to the people you send it to.</p>
     <label class="check"><input type="checkbox" id="gImages" ${S.settings.loadImages ? "checked" : ""}>Show remote images automatically</label>
@@ -962,6 +968,7 @@ function renderGeneral() {
       <span class="code">J</span> / <span class="code">K</span> next and previous &nbsp; <span class="code">/</span> search &nbsp; <span class="code">Ctrl+Enter</span> send
     </div>
     <p class="dim" style="margin-top:24px">Project Echo Mike ${esc(S.version)}</p>`;
+  $("#gNotify").onchange = e => setMute(!e.target.checked);
   $("#gDark").onchange = async e => {
     try { await api("/api/settings", { ...S.settings, lightMessages: !e.target.checked }); await refreshState(); if (S.msg) renderReader(); } catch (err) { toast(err.message); }
   };
@@ -971,6 +978,24 @@ function renderGeneral() {
 }
 
 $("#settingsBtn").onclick = () => openSettings();
+
+function renderMute() {
+  const off = !!S.settings.muteNotifications;
+  $("#muteBtn").innerHTML = icon(off ? "bellOff" : "bell") + (off ? "Notifications off" : "Notifications on");
+  $("#muteBtn").title = off ? "Turn new-mail notifications back on" : "Pause new-mail notifications";
+  $("#muteBtn").classList.toggle("muted-on", off);
+}
+async function setMute(off) {
+  try { await api("/api/settings", { ...S.settings, muteNotifications: off }); await refreshState(); toast(off ? "Notifications off" : "Notifications on"); }
+  catch (e) { toast(e.message); }
+}
+$("#muteBtn").onclick = () => setMute(!S.settings.muteNotifications);
+
+// The desktop app calls this when new mail arrives.
+window.onNewMail = () => {
+  pollUnread();
+  if (S.folder === "inbox" && !S.query && !S.loading) loadList.quiet();
+};
 
 /* ---------- keyboard ---------- */
 // Escape closes only the topmost window.
@@ -997,6 +1022,7 @@ async function refreshState() {
   const st = await api("/api/state");
   Object.assign(S, { accounts: st.accounts, identities: st.identities, settings: st.settings, demo: st.demo, version: st.version });
   $("#demoFlag").hidden = !S.demo;
+  renderMute();
   document.body.classList.toggle("dark-mail", !S.settings.lightMessages);
   renderSidebar();
 }
