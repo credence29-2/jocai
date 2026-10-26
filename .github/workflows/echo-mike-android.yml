@@ -38,11 +38,11 @@ jobs:
         run: ./gradlew --no-daemon testReleaseUnitTest assembleRelease
       - name: Rename APK
         working-directory: echo-mike/android
-        run: cp app/build/outputs/apk/release/app-release.apk "ProjectEchoMike-1.2.${{ github.run_number }}.apk"
+        run: cp app/build/outputs/apk/release/app-release.apk ProjectEchoMike.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Project-Echo-Mike-Android
-          path: echo-mike/android/ProjectEchoMike-*.apk
+          path: echo-mike/android/ProjectEchoMike.apk
 
   emulator:
     needs: build
@@ -73,3 +73,27 @@ jobs:
           name: Project-Echo-Mike-Android-screenshots
           path: echo-mike/android/smoke/
           if-no-files-found: ignore
+
+  # Puts the APK at a fixed link you can open on the phone:
+  # https://github.com/credence29-2/jocai/releases/download/echo-mike-android/ProjectEchoMike.apk
+  # Only builds that passed the emulator test get there.
+  publish:
+    needs: [build, emulator]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Project-Echo-Mike-Android
+      - name: Replace the download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release delete echo-mike-android -R "$REPO" --yes --cleanup-tag || true
+          gh release create echo-mike-android ProjectEchoMike.apk -R "$REPO" \
+            --target "${{ github.sha }}" --prerelease \
+            --title "Project Echo Mike for Android" \
+            --notes "Build 1.2.${{ github.run_number }}. Open ProjectEchoMike.apk on your phone to install or update."
