@@ -208,6 +208,7 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .search:focus, select:focus, input[type=time]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(46,230,197,.15); }
 select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid var(--line2); background: var(--card); padding: 0 10px; outline: none; }
 .loading { padding: 40px; text-align: center; color: var(--sub); }
+.console { margin: 0; padding: 10px 12px; border-radius: 10px; background: #070a0e; border: 1px solid var(--line); color: #b9c3cf; font: 12px/1.5 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow: auto; user-select: text; }
 
 /* ---------- modal and toast ---------- */
 .modal-back { position: fixed; inset: 0; background: rgba(4,6,10,.6); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 10; }
@@ -243,7 +244,13 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
   <div class="nav-label">Optimize</div>
   <nav class="nav">
     <button data-page="startup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>Startup Manager</button>
+    <button data-page="bloat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="m15 15 6 6m0-6-6 6"/></svg>Bloatware</button>
     <button data-page="uninstall"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Uninstaller</button>
+  </nav>
+  <div class="nav-label">Support</div>
+  <nav class="nav">
+    <button data-page="repair"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>Repair Tools</button>
+    <button data-page="report"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Tech Report</button>
   </nav>
   <div class="nav-label">Keep current</div>
   <nav class="nav">
@@ -361,6 +368,31 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
     </div>
   </section>
 
+  <!-- Repair Tools -->
+  <section class="page" id="page-repair">
+    <div class="page-head"><div class="grow"><h1>Repair Tools</h1><p>The fixes support techs run by hand, one click each, with the output shown as it happens.</p></div></div>
+    <div class="page-body" id="repairBody"></div>
+  </section>
+
+  <!-- Bloatware -->
+  <section class="page" id="page-bloat">
+    <div class="page-head"><div class="grow"><h1>Bloatware</h1><p>Preinstalled Store apps most people never open. Tick what to remove. Windows' own apps and anything it needs are never listed.</p></div>
+      <button class="btn small" id="bloatRefresh">Refresh</button></div>
+    <div class="page-body" id="bloatBody"></div>
+    <div class="actionbar">
+      <label class="row" style="gap:10px;cursor:pointer"><input type="checkbox" class="cb" id="bloatAll"> <span class="muted">Also remove for every user on this PC</span></label>
+      <span class="grow"></span>
+      <span class="count" id="bloatSel">0 selected</span>
+      <button class="btn primary" id="bloatGo">Remove selected</button>
+    </div>
+  </section>
+
+  <!-- Tech Report -->
+  <section class="page" id="page-report">
+    <div class="page-head"><div class="grow"><h1>Tech Report</h1><p>A one-page summary of this PC to paste into a ticket: hardware, Windows, drives, startup, programs and anything that needs attention.</p></div></div>
+    <div class="page-body stack" id="reportBody"></div>
+  </section>
+
   <!-- Help -->
   <section class="page" id="page-help">
     <div class="page-head"><div class="grow"><h1>Help</h1><p>What each part of Kempt does, and what it never touches.</p></div></div>
@@ -467,6 +499,9 @@ function show(page) {
   if (page === "updater") S.updates ? renderUpdates() : loadUpdates();
   if (page === "drivers") S.drivers ? renderDrivers() : loadDrivers();
   if (page === "help") renderHelp();
+  if (page === "repair") S.repairTools ? renderRepair() : loadRepair();
+  if (page === "bloat") S.bloat ? renderBloat() : loadBloat();
+  if (page === "report") renderReport();
   if (page === "health") renderHealth();
 }
 document.querySelectorAll(".nav button").forEach(b => b.onclick = () => show(b.dataset.page));
@@ -758,6 +793,8 @@ window.cpcEvent = (name, p) => {
   if (name.startsWith("dupe")) return dupeEvent(name, p);
   if (name.startsWith("upd")) return updEvent(name, p);
   if (name.startsWith("drv")) return drvEvent(name, p);
+  if (name.startsWith("repair")) return repairEvent(name, p);
+  if (name.startsWith("bloat")) return bloatEvent(name, p);
   if (name === "regScanned") {
     S.reg.busy = false; S.reg.issues = p; S.reg.picked = new Set(p.map(i => i.id));
     renderPicker(); renderResults(); return;
@@ -852,7 +889,18 @@ function renderHealth() {
       <div class="s">${h.state === "done" ? files(h.summary.files) + " in the Recommended items." : "Temp files, caches, Recycle Bin and error reports."}</div>
       <div><button class="link" id="hCustom2">Open Custom Clean</button></div></div>
   </div>`;
-  el.innerHTML = hero + tiles;
+  const hh = S.health;
+  const worst = hh && hh.disks.length ? hh.disks.reduce((a, d) => ({ bad: 2, warn: 1, good: 0 }[d.level] > ({ bad: 2, warn: 1, good: 0 }[a.level] || 0) ? d : a), hh.disks[0]) : null;
+  const lvlColor = l => l === "bad" ? "var(--bad)" : l === "warn" ? "var(--warn)" : "var(--good)";
+  const health = `<div class="tiles" style="margin-top:14px;grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div class="tile"><div class="k">Drive condition</div>
+      <div class="v" style="color:${worst ? lvlColor(worst.level) : "var(--text)"}">${!hh ? "..." : !worst ? "Unknown" : worst.level === "good" ? "Healthy" : worst.level === "warn" ? "Check" : "Failing"}</div>
+      <div class="s">${!hh ? "Reading SMART data." : !worst ? "Windows didn't report drive health. Run as administrator." : hh.disks.map(d => `<div><b style="color:var(--text)">${esc(d.name)}</b> (${esc(d.mediaType)}, ${fmtBytes(d.size)}): ${esc(d.text)}${d.wear >= 0 ? " Wear " + d.wear + "%." : ""}</div>`).join("")}</div></div>
+    <div class="tile"><div class="k">Battery</div>
+      <div class="v" style="color:${hh && hh.battery.present ? lvlColor(hh.battery.level) : "var(--text)"}">${!hh ? "..." : !hh.battery.present ? "None" : hh.battery.healthPercent ? hh.battery.healthPercent + "% health" : "Present"}</div>
+      <div class="s">${!hh ? "" : esc(hh.battery.text)}${hh && hh.battery.present ? ` Now ${esc(hh.battery.status.toLowerCase())}, ${hh.battery.charge}% charged.` : ""}</div></div></div>`;
+  el.innerHTML = hero + tiles + health;
+  if (!hh && !S.healthLoading) { S.healthLoading = true; slow(api.Health()).then(h => { S.health = h; }).catch(() => { S.health = { disks: [], battery: { present: false, text: "" } }; }).finally(() => { S.healthLoading = false; renderHealth(); }); }
   const on = (id, fn) => { const b = $("#" + id); if (b) b.onclick = fn; };
   on("hRun", runHealth); on("hAgain", runHealth); on("hFix", fixHealth);
   on("hCustom", () => show("clean")); on("hCustom2", () => show("clean")); on("hStartup", () => show("startup"));
@@ -1305,6 +1353,9 @@ function renderHelp() {
     ["Duplicate Finder", "Finds byte-for-byte identical files and moves the extra copies to the Recycle Bin. One copy of every file is always kept."],
     ["Startup Manager", "Turns off startup apps, scheduled tasks from other programs and third-party background services. Nothing is deleted, so every change can be reversed."],
     ["Software Updater", "Uses winget, Microsoft's app installer, to update apps silently. Store apps update themselves."],
+    ["Repair Tools", "One-click versions of the fixes techs run by hand: System File Checker, DISM, network stack reset, Windows Update reset, icon cache, Explorer restart, disk check, Store reset and print spooler restart. Output is shown live."],
+    ["Bloatware", "Lists preinstalled Store apps like Candy Crush, Xbox extras and promo apps, and removes the ones you tick. Windows' own apps are never offered."],
+    ["Tech Report", "Builds a one-page summary of the PC for a ticket: make and model, Windows version and patch, drive and battery condition, startup, services, programs and warnings. Also available as Kempt.exe /report from a script."],
     ["Driver Updater", "Checks Windows Update for newer drivers and installs the ones you pick, with a restore point first. It also lists every installed driver, lets you ignore an update, and Fix a problem shows devices with errors. Some makers post newer drivers only on their own sites, and Kempt links to those pages."],
     ["Automatic cleaning", "Settings can schedule a weekly clean with the items you ticked in Custom Clean. It skips apps that are open. You can also run Kempt.exe /auto from a script or RMM tool."],
     ["What Kempt never touches", "Documents, photos, bookmarks, Windows' own scheduled tasks and services, COM and ActiveX registry entries, and anything newer than 24 hours in temp folders. Cookies, history and passwords are only cleaned if you tick them."],
@@ -1315,6 +1366,136 @@ function renderHelp() {
       <button class="btn small" id="helpLogs">Open logs</button><button class="btn small" id="helpBk">Open registry backups</button></div></div>`;
   $("#helpLogs").onclick = () => api.OpenLogs().catch(() => toast("No logs yet. Run a clean first.", true));
   $("#helpBk").onclick = () => api.OpenBackups().catch(e => toast(errText(e), true));
+}
+
+// ---------------------------------------------------------------- repair tools
+const RP = { running: null, lines: [], pct: -1, step: 0, total: 1, results: {}, open: null };
+const repairIcons = {
+  sfc: '<path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  dism: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 14h.01M12 14h4"/>',
+  network: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  wureset: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  icons: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  explorer: '<path d="M3 7h7l2 2h9v10H3z"/>',
+  chkdsk: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/>',
+  store: '<path d="M3 7h18l-1.5 12a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2z"/><path d="M8 7a4 4 0 0 1 8 0"/>',
+  printspool: '<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+};
+async function loadRepair() {
+  try { S.repairTools = await api.RepairTools(); } catch (e) { S.repairTools = []; toast(errText(e), true); }
+  renderRepair();
+}
+function renderRepair() {
+  const el = $("#repairBody"), tools = S.repairTools || [];
+  el.innerHTML = `<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">${tools.map(t => {
+    const r = RP.results[t.id], running = RP.running === t.id, open = RP.open === t.id;
+    return `<div class="tile" style="gap:10px">
+      <div class="row"><span class="gicon" style="background:${running ? "var(--accent)" : "rgba(255,255,255,.08)"};width:34px;height:34px;border-radius:10px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${running ? "var(--on-accent)" : "currentColor"}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${repairIcons[t.id] || ""}</svg></span>
+        <div class="grow"><b style="font-size:15px">${esc(t.name)}</b><div class="dim" style="font-size:12px">About ${esc(t.minutes)} min${t.reboot ? " · restart afterwards" : ""}${t.needsAdmin && !t.selectable ? " · needs administrator" : ""}</div></div>
+        ${running ? '<button class="btn small" data-stop="1">Stop</button>' : `<button class="btn small ${r ? "" : "primary"}" data-run="${t.id}" ${RP.running || !t.selectable ? "disabled" : ""}>${r ? "Run again" : "Run"}</button>`}</div>
+      <p class="muted" style="font-size:13px;margin:0">${esc(t.description)}</p>
+      <div class="dim" style="font-size:12px"><b style="color:var(--sub)">When:</b> ${esc(t.when)}</div>
+      ${running ? `<div class="progress" style="max-width:none;margin:4px 0 0"><i style="width:${RP.pct >= 0 ? RP.pct : (RP.step / RP.total * 100)}%"></i></div>
+        <pre class="console" id="repairOut">${esc(RP.lines.slice(-8).join("\n"))}</pre>` : ""}
+      ${r && !running ? `<div class="${r.ok ? "status-good" : "status-warn"}" style="font-weight:600">${esc(r.text)}</div>
+        ${open ? `<pre class="console" style="max-height:220px">${esc(r.output)}</pre><button class="link" data-close="${t.id}" style="font-size:13px">Hide output</button>` : `<button class="link" data-open="${t.id}" style="font-size:13px">Show output</button>`}` : ""}
+    </div>`; }).join("")}</div>
+    <p class="dim" style="font-size:12px;margin-top:14px">These run Windows' own repair commands. Each one shows the real output, so you can paste it into a ticket if something fails.</p>`;
+  el.querySelectorAll("[data-run]").forEach(b => b.onclick = () => runRepair(b.dataset.run));
+  el.querySelectorAll("[data-stop]").forEach(b => b.onclick = () => api.StopRepair());
+  el.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { RP.open = b.dataset.open; renderRepair(); });
+  el.querySelectorAll("[data-close]").forEach(b => b.onclick = () => { RP.open = null; renderRepair(); });
+}
+async function runRepair(id) {
+  const t = S.repairTools.find(x => x.id === id);
+  if (t.reboot || id === "explorer" || id === "icons") {
+    const msg = id === "explorer" || id === "icons" ? "The desktop and taskbar will disappear for a moment and come back." : "Finish by restarting the PC afterwards. Any open network connections will drop for a moment.";
+    if (!await confirmBox(t.name + "?", msg, "Run")) return;
+  }
+  RP.running = id; RP.lines = []; RP.pct = -1; RP.step = 0; RP.total = 1; delete RP.results[id]; RP.open = null;
+  renderRepair();
+  try { await api.RunRepair(id); } catch (e) { RP.running = null; renderRepair(); toast(errText(e), true); }
+}
+function repairEvent(name, p) {
+  if (name === "repairProgress") {
+    RP.lines = p.lines; RP.pct = p.pct; RP.step = p.step; RP.total = p.total;
+    const out = $("#repairOut");
+    if (out) { out.textContent = p.lines.slice(-8).join("\n"); const bar = out.previousElementSibling.querySelector("i"); if (bar) bar.style.width = (p.pct >= 0 ? p.pct : p.step / p.total * 100) + "%"; }
+    else renderRepair();
+  }
+  if (name === "repairDone") {
+    RP.running = null; RP.results[p.id] = p; renderRepair();
+    toast(p.text, !p.ok);
+  }
+}
+
+// ---------------------------------------------------------------- bloatware
+const BL = { picked: new Set(), status: {}, busy: false };
+async function loadBloat() {
+  $("#bloatBody").innerHTML = '<div class="loading">Reading installed Store apps. This takes a few seconds...</div>';
+  try { S.bloat = await slow(api.BloatList()); } catch (e) { S.bloat = { apps: [], groups: [] }; toast(errText(e), true); }
+  BL.picked = new Set(S.bloat.apps.filter(a => a.checked).map(a => a.name)); BL.status = {};
+  renderBloat();
+}
+function renderBloat() {
+  const el = $("#bloatBody"), d = S.bloat; if (!d) return;
+  $("#bloatSel").textContent = BL.picked.size + " selected";
+  $("#bloatGo").disabled = BL.busy || !BL.picked.size;
+  $("#bloatAll").disabled = !d.elevated || BL.busy;
+  $("#bloatAll").parentElement.title = d.elevated ? "" : "Restart as administrator to remove for all users.";
+  if (!d.apps.length) { el.innerHTML = '<div class="card"><h3>Nothing to remove</h3><p>No removable Store apps were found for this account.</p></div>'; return; }
+  let html = "";
+  for (const g of d.groups) {
+    const items = d.apps.filter(a => a.group === g); if (!items.length) continue;
+    const on = items.filter(a => BL.picked.has(a.name)).length;
+    html += `<div class="list" style="margin-bottom:12px"><div class="lrow head"><input type="checkbox" class="cb" data-bg="${esc(g)}" aria-label="${esc(g)}" ${on === items.length ? "checked" : ""} ${BL.busy ? "disabled" : ""}><div class="main"><b>${esc(g)}</b></div><span class="muted">${on}/${items.length}</span></div>`;
+    html += items.map(a => { const st = BL.status[a.name];
+      const badge = !st ? "" : st.status === "removing" ? '<span class="chip">Removing...</span>' : st.status === "removed" ? '<span class="chip status-good">Removed</span>' : `<span class="chip" style="color:var(--bad)" title="${esc(st.error)}">Failed</span>`;
+      return `<label class="lrow" style="cursor:pointer"><input type="checkbox" class="cb" data-ba="${esc(a.name)}" aria-label="${esc(a.label)}" ${BL.picked.has(a.name) ? "checked" : ""} ${BL.busy || (st && st.status === "removed") ? "disabled" : ""}>
+        <div class="avatar" style="background:${avatarColor(a.label)}">${esc((a.label.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
+        <div class="main"><b>${esc(a.label)}</b><small>${esc(a.publisher)}${a.version ? " · " + esc(a.version) : ""}${a.note ? " · " + esc(a.note) : ""}${st && st.status === "failed" ? `<br><span style="color:var(--bad)">${esc(st.error)}</span>` : ""}</small></div>
+        <span class="meta">${a.size ? fmtBytes(a.size) : ""}</span>${badge}</label>`; }).join("") + "</div>";
+  }
+  el.innerHTML = html + '<p class="dim" style="font-size:12px">Removed apps can be reinstalled from the Microsoft Store. PC maker apps are listed but unticked because some hold support tools.</p>';
+  el.querySelectorAll("[data-ba]").forEach(cb => cb.onchange = () => { cb.checked ? BL.picked.add(cb.dataset.ba) : BL.picked.delete(cb.dataset.ba); renderBloat(); });
+  el.querySelectorAll("[data-bg]").forEach(cb => cb.onchange = () => { d.apps.filter(a => a.group === cb.dataset.bg).forEach(a => cb.checked ? BL.picked.add(a.name) : BL.picked.delete(a.name)); renderBloat(); });
+}
+$("#bloatRefresh").onclick = loadBloat;
+$("#bloatGo").onclick = async () => {
+  const n = BL.picked.size; if (!n) return;
+  if (!await confirmBox("Remove " + n + " app" + (n === 1 ? "" : "s") + "?", "They can be reinstalled from the Microsoft Store later." + ($("#bloatAll").checked ? " They will also be removed for every user and won't come back for new accounts." : ""), "Remove")) return;
+  BL.busy = true; renderBloat();
+  try { await api.BloatRemove([...BL.picked], $("#bloatAll").checked); } catch (e) { BL.busy = false; renderBloat(); toast(errText(e), true); }
+};
+function bloatEvent(name, p) {
+  if (name === "bloatProgress") { BL.status[p.name] = p; if (p.status === "removed") BL.picked.delete(p.name); }
+  if (name === "bloatDone") { BL.busy = false; toast(p.removed + " removed" + (p.failed ? ", " + p.failed + " failed." : "."), p.failed > 0); }
+  if (S.bloat) renderBloat();
+}
+
+// ---------------------------------------------------------------- tech report
+const RT = { busy: false, last: null };
+function renderReport() {
+  const el = $("#reportBody");
+  if (RT.busy) { el.innerHTML = `<div class="card hero"><div class="spinner"></div><div class="grow"><h2>Gathering details...</h2><p>Hardware, Windows, drives, startup, services and programs. About 20 seconds.</p></div></div>`; return; }
+  const r = RT.last;
+  el.innerHTML = `<div class="card hero"><div class="icon-ring"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></div>
+      <div class="grow"><h2>${r ? "Report ready for " + esc(r.computer) : "Build a tech report"}</h2>
+      <p>${r ? "Saved as a web page and a text file. Copy the text straight into a ticket, or open the page to print it." : "Everything a tech needs to know about this PC on one page. Nothing is sent anywhere; it's saved to this PC and shown to you."}</p>
+      <div class="row" style="margin-top:14px;flex-wrap:wrap">${r ? `<button class="btn primary" id="rptCopy">Copy text for ticket</button><button class="btn" id="rptOpen">Open report page</button><button class="btn" id="rptAgain">Build again</button>` : `<button class="btn primary big" id="rptGo">Build report</button>`}
+      <button class="link" id="rptFolder">Open reports folder</button></div></div></div>
+    ${r && r.warnings.length ? `<div class="card warn"><h3 class="status-warn">Needs attention</h3><ul style="margin:6px 0 0;padding-left:20px;color:var(--sub);line-height:1.6">${r.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul></div>` : r ? `<div class="card"><h3 class="status-good">Nothing needs attention</h3><p>No warnings on drives, battery, devices, updates or activation.</p></div>` : ""}
+    ${r ? `<div class="card"><h3>Preview</h3><pre class="console" style="max-height:360px;margin-top:8px">${esc(r.text)}</pre></div>` : `<div class="card"><h3>From a script</h3><p>Run <b>Kempt.exe /report</b> to open the report in the browser, or <b>Kempt.exe /report C:\\path\\file.html</b> (or .txt) to save it somewhere, for example from your RMM tool.</p></div>`}`;
+  const on = (id, fn) => { const b = $("#" + id); if (b) b.onclick = fn; };
+  on("rptGo", buildReport); on("rptAgain", buildReport);
+  on("rptCopy", async () => { try { await navigator.clipboard.writeText(r.text); toast("Copied. Paste it into the ticket."); } catch (e) { toast("Couldn't copy. Select the preview text and copy it by hand.", true); } });
+  on("rptOpen", () => api.OpenPath(r.html).catch(e => toast(errText(e), true)));
+  on("rptFolder", () => api.OpenReports().catch(e => toast(errText(e), true)));
+}
+async function buildReport() {
+  RT.busy = true; renderReport();
+  try { RT.last = await slow(api.Report()); } catch (e) { toast(errText(e), true); }
+  RT.busy = false; renderReport();
 }
 
 // ---------------------------------------------------------------- settings

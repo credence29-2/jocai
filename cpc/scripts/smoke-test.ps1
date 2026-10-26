@@ -197,6 +197,37 @@ if (Expect $win "(drivers? to update|has no driver updates|Couldn't check Window
     Click $win "Close" | Out-Null
 }
 
+Click $win "Repair Tools" | Out-Null
+if (Expect $win "Repair system files" "Repair Tools rendered" 20) {
+    Shot "6f-repair"
+    # Restart the print spooler is quick and harmless on a runner.
+    $btn = Wait-For { $c = New-Object System.Windows.Automation.PropertyCondition($AE::NameProperty, "Run"); $all = $win.FindAll($TS::Descendants, $c); if ($all.Count -ge 9) { $all } } 10
+    if ($btn) {
+        # Buttons are in tool order; print spooler is the last tool.
+        try { $btn[$btn.Count - 1].GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep 1 } catch { Fail "could not start a repair tool: $_" }
+        if (Expect $win "(Print spooler restarted|Finished|Done\.)" "repair tool ran and reported" 120) { Shot "6g-repair-done" }
+    } else { Fail "repair Run buttons not found" }
+}
+
+Click $win "Bloatware" | Out-Null
+if (Expect $win "(selected|Nothing to remove)" "Bloatware list loaded" 240) { Shot "6h-bloat"; Write-Host "Bloat: $((Texts $win).Substring(0, [Math]::Min(600, (Texts $win).Length)))" }
+
+Click $win "Tech Report" | Out-Null
+Click $win "Build report" | Out-Null
+if (Expect $win "Report ready for" "tech report built" 240) {
+    Shot "6i-report"
+    $rpt = Get-ChildItem "$env:LOCALAPPDATA\Kempt\reports\*.html" | Sort-Object LastWriteTime | Select-Object -Last 1
+    if ($rpt -and (Get-Content $rpt.FullName -Raw) -match "Kempt tech report") { Pass "report file written: $($rpt.Name)" } else { Fail "report html missing" }
+    $txt = Get-ChildItem "$env:LOCALAPPDATA\Kempt\reports\*.txt" | Sort-Object LastWriteTime | Select-Object -Last 1
+    Write-Host "----- report text (first 40 lines) -----"; Get-Content $txt.FullName | Select-Object -First 40; Write-Host "-----"
+}
+# /report from the command line
+$cli = Start-Process $exe -ArgumentList "/report", "`"$env:RUNNER_TEMP\kempt-cli-report.txt`"" -PassThru -Wait
+if ($cli.ExitCode -eq 0 -and (Test-Path "$env:RUNNER_TEMP\kempt-cli-report.txt")) { Pass "/report wrote a text report" } else { Fail "/report failed with $($cli.ExitCode)" }
+
+Click $win "Health Check" | Out-Null
+if (Expect $win "(Drive condition)" "health tiles rendered" 60) { Shot "6j-health" }
+
 Click $win "Help" | Out-Null
 Expect $win "What Kempt never touches" "Help rendered" | Out-Null
 

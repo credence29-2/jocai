@@ -22,10 +22,16 @@ var indexHTML string
 const webview2Download = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
 
 func main() {
-	for _, a := range os.Args[1:] {
+	for i, a := range os.Args[1:] {
 		switch strings.ToLower(a) {
 		case "/auto", "-auto", "--auto":
 			os.Exit(runAuto())
+		case "/report", "-report", "--report":
+			dest := ""
+			if i+2 < len(os.Args) {
+				dest = os.Args[i+2]
+			}
+			os.Exit(runReport(dest))
 		}
 	}
 

@@ -262,3 +262,44 @@ func TestDriverGuards(t *testing.T) {
 		t.Error("arbitrary URL accepted")
 	}
 }
+
+func TestRepairAndBloatGuards(t *testing.T) {
+	a := newAPI(t.TempDir(), false, func(string, any) {})
+	if len(a.RepairTools()) == 0 {
+		t.Fatal("no repair tools")
+	}
+	for _, tl := range a.RepairTools() {
+		if tl["needsAdmin"] == true && tl["selectable"] == true {
+			t.Errorf("%v selectable without admin", tl["id"])
+		}
+	}
+	if err := a.RunRepair("sfc"); err == nil {
+		t.Error("admin tool ran unelevated")
+	}
+	if err := a.RunRepair("nope"); err == nil {
+		t.Error("unknown tool accepted")
+	}
+	if err := a.BloatRemove(nil, false); err == nil {
+		t.Error("empty list accepted")
+	}
+	if err := a.BloatRemove([]string{"x; Remove-Item"}, false); err == nil {
+		t.Error("unsafe name accepted")
+	}
+}
+
+func TestReportWritesFiles(t *testing.T) {
+	dir := t.TempDir()
+	a := newAPI(dir, false, func(string, any) {})
+	h, txt, r, err := a.buildReport()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{h, txt} {
+		if b, err := os.ReadFile(p); err != nil || len(b) == 0 {
+			t.Fatalf("%s not written", p)
+		}
+	}
+	if r.App != appName || r.Company != companyName {
+		t.Fatal("report header wrong")
+	}
+}
