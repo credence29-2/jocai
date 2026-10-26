@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/credence29-2/jocai/cpc/internal/clean"
+	"github.com/credence29-2/jocai/cpc/internal/leftovers"
 	"github.com/credence29-2/jocai/cpc/internal/programs"
 	"github.com/credence29-2/jocai/cpc/internal/regclean"
 	"github.com/credence29-2/jocai/cpc/internal/settings"
@@ -64,6 +65,9 @@ type api struct {
 
 	startupRows []startup.Entry
 	programRows []programs.Program
+
+	pendingUninstalls map[string]leftovers.Program
+	leftoverResults   map[string]leftovers.Result
 
 	regMu     sync.Mutex
 	regIssues []regclean.Issue
@@ -491,7 +495,12 @@ func (a *api) Uninstall(index int) error {
 	if index < 0 || index >= len(a.programRows) {
 		return errors.New("That program changed. Refresh the list.")
 	}
-	return programs.RunUninstaller(a.programRows[index])
+	p := a.programRows[index]
+	if err := programs.RunUninstaller(p); err != nil {
+		return err
+	}
+	a.rememberUninstall(p)
+	return nil
 }
 
 func (a *api) ProgramFolder(index int) error {

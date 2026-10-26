@@ -253,8 +253,41 @@ if (Expect $win "(Drive condition)" "health tiles rendered" 60) { Shot "6j-healt
 Click $win "Help" | Out-Null
 Expect $win "What Kempt never touches" "Help rendered" | Out-Null
 
+# Uninstaller: plant a fake program whose uninstaller removes its own entry,
+# then check Kempt finds and removes the folder and key it leaves behind.
+$fakeDir = "$env:LOCALAPPDATA\Kempt Test App"
+New-Item -ItemType Directory -Force $fakeDir | Out-Null
+Set-Content "$fakeDir\settings.ini" "left behind"
+$fakeKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\KemptTestApp"
+New-Item -Path $fakeKey -Force | Out-Null
+Set-ItemProperty $fakeKey DisplayName "Kempt Test App"
+Set-ItemProperty $fakeKey Publisher "804 Test Labs"
+Set-ItemProperty $fakeKey DisplayVersion "1.0"
+Set-ItemProperty $fakeKey InstallLocation $fakeDir
+Set-ItemProperty $fakeKey UninstallString 'cmd.exe /c reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\KemptTestApp" /f'
+New-Item -Path "HKCU:\Software\804 Test Labs\Kempt Test App" -Force | Out-Null
+Set-ItemProperty "HKCU:\Software\804 Test Labs\Kempt Test App" Theme "dark"
 Click $win "Uninstaller" | Out-Null
 if (Expect $win "programs" "Uninstaller rendered") { Shot "7-uninstaller" }
+Click $win "Refresh" | Out-Null
+if (Expect $win "Kempt Test App" "planted program listed" 30) {
+    Click $win "Uninstall Kempt Test App" | Out-Null
+    Click $win "Uninstall" | Out-Null
+    if (Expect $win "Leftovers from Kempt Test App" "leftovers found after uninstall" 60) {
+        Shot "7b-leftovers"
+        $t = Texts $win
+        if ($t -match "Kempt Test App\\settings|LOCALAPPDATA|Local\\Kempt Test App") { Pass "leftover folder listed" } else { Fail "leftover folder not listed: $t" }
+        if ($t -match "HKEY_CURRENT_USER\\Software\\804 Test Labs\\Kempt Test App") { Pass "leftover registry key listed" } else { Fail "leftover key not listed" }
+        Click $win "Remove leftovers (2)" | Out-Null
+        Click $win "Remove" | Out-Null
+        Start-Sleep 4
+        if (Test-Path $fakeDir) { Fail "leftover folder still there" } else { Pass "leftover folder moved to Recycle Bin" }
+        if (Test-Path "HKCU:\Software\804 Test Labs\Kempt Test App") { Fail "leftover key still there" } else { Pass "leftover key removed" }
+    }
+}
+Remove-Item -Recurse -Force $fakeDir -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "HKCU:\Software\804 Test Labs" -ErrorAction SilentlyContinue
+Remove-Item -Force $fakeKey -ErrorAction SilentlyContinue
 
 Click $win "Settings" | Out-Null
 if (Expect $win "Automatic cleaning" "Settings rendered") { Shot "8-settings" }

@@ -54,8 +54,14 @@
       { index: 1, name: "Toast POS Terminal", publisher: "Toast, Inc.", version: "4.2.1", sizeKB: 52000, size: "50.8 MB", installed: "Jan 12, 2026", hasFolder: true },
       { index: 2, name: "Zoom Workplace", publisher: "Zoom Communications", version: "6.2.5", sizeKB: 310000, size: "302.7 MB", installed: "Aug 30, 2025", hasFolder: false },
       { index: 3, name: "7-Zip 24.08 (x64)", publisher: "Igor Pavlov", version: "24.08", sizeKB: 5800, size: "5.7 MB", installed: "", hasFolder: true },
-    ],
-    cpcUninstall: async () => null, cpcProgramFolder: async () => null,
+    ].filter(p => p.name !== window.__gone),
+    cpcUninstall: async i => { window.__gone = (await window.cpcPrograms()).find(p => p.index === i).name; return null; }, cpcProgramFolder: async () => null,
+    cpcLeftovers: async () => later(window.__gone ? [{ program: window.__gone, bytes: 48e6, folders: [
+      { path: "C:\\Users\\Jacob\\AppData\\Roaming\\" + window.__gone, size: 41e6, files: 120, why: "Folder named after the program" },
+      { path: "C:\\Users\\Jacob\\AppData\\Local\\" + window.__gone, size: 7e6, files: 14, why: "Folder named after the program" }],
+      keys: [{ path: "HKEY_CURRENT_USER\\Software\\" + window.__gone, why: "Program settings" }, { path: "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{3F2A-" + window.__gone.length + "}", why: "Leftover uninstall entry" }] }] : []),
+    cpcRemoveLeftovers: async (program, folders, keys) => setTimeout(() => emit("leftoversDone", { program, folders: folders.length, keys: keys.length, bytes: 48e6, backup: "registry-20261026-1200" }), 150),
+    cpcDismissLeftovers: async () => null,
     cpcSchedule: async () => ({ enabled: false, nextRun: "" }),
     cpcSetSchedule: async on => ({ enabled: on, nextRun: on ? "10/26/2026 12:00:00 PM" : "" }),
     cpcRegCategories: async () => [["apppaths","Application paths",0],["obsolete","Obsolete software",1],["startup","Run at startup",0],["muicache","MUI cache",0],["shareddlls","Missing shared DLLs",1],["installers","Installer folders",1],["help","Help files",0],["fonts","Fonts",0],["firewall","Firewall rules",1],["sounds","Sound events",0]]

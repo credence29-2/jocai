@@ -827,6 +827,7 @@ window.cpcEvent = (name, p) => {
   }
   if (name.startsWith("dupe")) return dupeEvent(name, p);
   if (name.startsWith("disk")) return diskEvent(name, p);
+  if (name.startsWith("leftovers")) return leftoversEvent(name, p);
   if (name.startsWith("upd")) return updEvent(name, p);
   if (name.startsWith("drv")) return drvEvent(name, p);
   if (name.startsWith("repair")) return repairEvent(name, p);
@@ -1046,6 +1047,35 @@ async function loadPrograms() {
   $("#progBody").innerHTML = '<div class="loading">Loading...</div>';
   try { S.programs = await api.Programs(); } catch (e) { S.programs = []; toast(errText(e), true); }
   renderPrograms();
+  try { S.leftovers = await slow(api.Leftovers()); } catch (e) { S.leftovers = []; }
+  if (S.leftovers.length) { S.leftoverPick = {}; S.leftovers.forEach(r => S.leftoverPick[r.program] = new Set([...r.folders, ...r.keys].map(i => i.path))); renderPrograms(); }
+}
+// After an uninstaller starts, watch for the program to disappear, then
+// reload so leftovers are offered without a manual Refresh.
+let unwatch = null;
+function watchUninstall(name) {
+  if (unwatch) clearInterval(unwatch);
+  let tries = 0;
+  unwatch = setInterval(async () => {
+    if (++tries > 150) { clearInterval(unwatch); unwatch = null; return; }
+    try {
+      const list = await api.Programs();
+      if (!list.some(p => p.name === name)) { clearInterval(unwatch); unwatch = null; S.programs = list; if ($("#page-uninstall").classList.contains("active")) loadPrograms(); }
+    } catch (e) { /* try again */ }
+  }, 4000);
+}
+function renderLeftovers() {
+  const list = S.leftovers || [];
+  if (!list.length) return "";
+  return list.map(r => {
+    const pick = S.leftoverPick[r.program] || new Set();
+    const row = (it, isKey) => `<label class="lrow" style="cursor:pointer"><input type="checkbox" class="cb" data-lo="${esc(r.program)}" data-path="${esc(it.path)}" ${pick.has(it.path) ? "checked" : ""} aria-label="Leftover ${esc(it.path)}">
+      <div class="main"><b style="font-weight:400">${esc(it.path)}</b><small>${esc(it.why)}${isKey ? "" : ", " + files(it.files)}</small></div>${isKey ? "" : `<span class="meta">${fmtBytes(it.size)}</span>`}</label>`;
+    return `<div class="card" style="margin-bottom:14px"><div class="row"><div class="grow"><h3>Leftovers from ${esc(r.program)}</h3>
+        <p>The uninstaller finished but left these behind. Folders go to the Recycle Bin and registry keys are backed up first, so this can be undone.</p></div>
+        <button class="btn small ghost" data-lo-skip="${esc(r.program)}">Keep them</button><button class="btn primary small" data-lo-go="${esc(r.program)}" ${pick.size ? "" : "disabled"}>Remove leftovers (${pick.size})</button></div>
+      <div class="list" style="margin-top:12px">${r.folders.map(it => row(it, false)).join("")}${r.keys.map(it => row(it, true)).join("")}</div></div>`;
+  }).join("");
 }
 function renderPrograms() {
   const q = $("#progSearch").value.trim().toLowerCase();
@@ -1054,8 +1084,9 @@ function renderPrograms() {
   if (sort === "size") rows = rows.slice().sort((a, b) => b.sizeKB - a.sizeKB);
   if (sort === "date") rows = rows.slice().sort((a, b) => (Date.parse(b.installed) || 0) - (Date.parse(a.installed) || 0));
   $("#progCount").textContent = `${rows.length} of ${(S.programs || []).length} programs`;
-  if (!rows.length) { $("#progBody").innerHTML = '<div class="card"><p>No programs match.</p></div>'; return; }
-  $("#progBody").innerHTML = '<div class="list">' + rows.map(p => `
+  const lo = renderLeftovers();
+  if (!rows.length) { $("#progBody").innerHTML = lo + '<div class="card"><p>No programs match.</p></div>'; return; }
+  $("#progBody").innerHTML = lo + '<div class="list">' + rows.map(p => `
     <div class="lrow">
       <div class="avatar" style="background:${avatarColor(p.name)}">${esc((p.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase())}</div>
       <div class="main"><b>${esc(p.name)}</b><small>${esc([p.publisher, p.version].filter(Boolean).join("  ·  "))}</small></div>
@@ -1068,14 +1099,38 @@ function renderPrograms() {
 $("#progSearch").oninput = renderPrograms;
 $("#progSort").onchange = renderPrograms;
 $("#progRefresh").onclick = loadPrograms;
+$("#progBody").addEventListener("change", e => {
+  const cb = e.target;
+  if (cb.dataset.lo === undefined) return;
+  const pick = S.leftoverPick[cb.dataset.lo];
+  cb.checked ? pick.add(cb.dataset.path) : pick.delete(cb.dataset.path);
+  renderPrograms();
+});
 $("#progBody").addEventListener("click", async e => {
-  const u = e.target.dataset.uninstall, f = e.target.dataset.folder;
+  const u = e.target.dataset.uninstall, f = e.target.dataset.folder, skip = e.target.dataset.loSkip, go = e.target.dataset.loGo;
   if (f !== undefined) { api.ProgramFolder(+f).catch(err => toast(errText(err), true)); return; }
+  if (skip !== undefined) { api.DismissLeftovers(skip).catch(() => {}); S.leftovers = S.leftovers.filter(r => r.program !== skip); renderPrograms(); return; }
+  if (go !== undefined) {
+    const r = S.leftovers.find(x => x.program === go), pick = S.leftoverPick[go];
+    const folders = r.folders.filter(i => pick.has(i.path)).map(i => i.path), keys = r.keys.filter(i => pick.has(i.path)).map(i => i.path);
+    const what = [folders.length ? folders.length + " folder" + (folders.length === 1 ? "" : "s") : "", keys.length ? keys.length + " registry key" + (keys.length === 1 ? "" : "s") : ""].filter(Boolean).join(" and ");
+    if (!await confirmBox("Remove leftovers from " + go + "?", "Moves " + what + " out of the way. Folders go to the Recycle Bin and keys are exported to a backup first.", "Remove")) return;
+    try { await api.RemoveLeftovers(go, folders, keys); e.target.disabled = true; e.target.textContent = "Removing..."; } catch (err) { toast(errText(err), true); }
+    return;
+  }
   if (u === undefined) return;
   const p = S.programs.find(x => x.index === +u);
-  if (!await confirmBox("Uninstall " + p.name + "?", "The program's own uninstaller will open and walk you through it. Click <b>Refresh</b> when it's done.", "Uninstall")) return;
-  try { await api.Uninstall(+u); toast("Uninstaller started for " + p.name + "."); } catch (err) { toast(errText(err), true); }
+  if (!await confirmBox("Uninstall " + p.name + "?", "The program's own uninstaller will open and walk you through it. When it finishes, Kempt looks for folders and settings it left behind.", "Uninstall")) return;
+  try { await api.Uninstall(+u); toast("Uninstaller started for " + p.name + "."); watchUninstall(p.name); } catch (err) { toast(errText(err), true); }
 });
+function leftoversEvent(name, p) {
+  if (name !== "leftoversDone") return;
+  if (p.error) toast(p.error, true);
+  const bits = [p.folders ? p.folders + " folder" + (p.folders === 1 ? "" : "s") + " (" + fmtBytes(p.bytes) + ")" : "", p.keys ? p.keys + " registry key" + (p.keys === 1 ? "" : "s") : ""].filter(Boolean).join(" and ");
+  if (bits) toast("Removed " + bits + " left by " + p.program + ".");
+  S.leftovers = (S.leftovers || []).filter(r => r.program !== p.program);
+  renderPrograms();
+}
 
 // ---------------------------------------------------------------- duplicate finder
 const D = { folders: null, minKB: 1024, state: "setup", files: 0, path: "", result: null, picked: new Set(), last: null };
@@ -1495,7 +1550,7 @@ function renderHelp() {
     ["Health Check", "A quick scan using the Recommended items, plus a look at startup apps and free space. Fix it cleans only the Recommended items."],
     ["Custom Clean", "Pick exactly what to clean. Junk covers Windows, apps and system files. Browser covers caches, cookies, history, sessions and saved passwords. Scan first to see sizes. Every clean writes a log of each deleted file."],
     ["Registry", "Removes registry entries that point to files that are gone, usually left by uninstalled programs. Every fix is backed up and can be undone. This tidies things up but rarely makes a PC faster."],
-    ["Uninstaller", "Lists installed programs and runs each one's own uninstaller."],
+    ["Uninstaller", "Lists installed programs and runs each one's own uninstaller. When it finishes, Kempt looks for folders and registry keys named after the program that were left behind and offers to remove them. Folders go to the Recycle Bin and keys are backed up first."],
     ["Duplicate Finder", "Finds byte-for-byte identical files and moves the extra copies to the Recycle Bin. One copy of every file is always kept."],
     ["Disk Analyzer", "Measures a drive or folder and shows which folders take the space, the biggest files anywhere in it, and totals by kind of file. Tick files to move them to the Recycle Bin. Files inside Windows and Program Files are never offered."],
     ["Startup Manager", "Turns off startup apps, scheduled tasks from other programs and third-party background services. Nothing is deleted, so every change can be reversed."],
