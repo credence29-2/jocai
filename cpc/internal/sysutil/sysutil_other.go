@@ -35,3 +35,13 @@ func PickFolder(uintptr, string) string                      { return "" }
 func RecycleFiles([]string) error                            { return errNotWindows }
 func PowerShellJSON(string, any) error                       { return errNotWindows }
 func PowerShellJSONTimeout(string, time.Duration, any) error { return errNotWindows }
+
+// Drive is one fixed disk volume.
+type Drive struct {
+	Path  string `json:"path"`
+	Label string `json:"label"`
+	Total uint64 `json:"total"`
+	Free  uint64 `json:"free"`
+}
+
+func FixedDrives() []Drive { return nil }

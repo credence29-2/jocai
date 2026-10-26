@@ -182,6 +182,28 @@ if (Expect $win "(sets of duplicates|No duplicates found)" "duplicate search fin
     } else { Fail "planted duplicates were not found" }
 }
 
+# Disk Analyzer: measure Documents, find the planted big file, move it to the Recycle Bin.
+New-Item -ItemType Directory -Force "$docs\cpc-disk" | Out-Null
+[IO.File]::WriteAllBytes("$docs\cpc-disk\cpc-big-video.bin", (New-Object byte[] 6000000))
+Click $win "Disk Analyzer" | Out-Null
+if (Expect $win "Pick a drive" "Disk Analyzer rendered" 20) {
+    Click $win "Documents" | Out-Null
+    if (Expect $win "Documents: .* in [\d,]+ files" "disk scan of Documents finished" 180) {
+        Shot "6f-disk"
+        if ((Texts $win) -match "cpc-disk") { Pass "planted folder listed by size" } else { Fail "cpc-disk folder missing from Disk Analyzer" }
+        Click $win "Largest files" | Out-Null
+        if (Expect $win "cpc-big-video.bin" "largest files tab lists the planted file" 20) {
+            Click $win "Select cpc-big-video.bin" | Out-Null
+            Click $win "Move to Recycle Bin" | Out-Null
+            Click $win "Move files" | Out-Null
+            Start-Sleep 3
+            if (Test-Path "$docs\cpc-disk\cpc-big-video.bin") { Fail "Disk Analyzer did not move the file" } else { Pass "Disk Analyzer moved the file to the Recycle Bin" }
+        }
+        Click $win "By type" | Out-Null
+        Expect $win "Space by kind of file" "by type tab rendered" 20 | Out-Null
+    }
+}
+
 Click $win "Software Updater" | Out-Null
 if (Expect $win "(updates? available|Everything is up to date|winget isn't installed|Couldn't check)" "Software Updater finished checking" 240) { Shot "6d-updater"; Write-Host "Updater: $(Texts $win)" }
 

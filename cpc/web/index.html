@@ -69,7 +69,7 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn.primary { background: var(--grad); border-color: transparent; color: var(--on-accent); box-shadow: var(--glow); }
 .btn.primary:disabled { box-shadow: none; filter: saturate(.5); }
-.btn.primary:hover:not(:disabled) { filter: brightness(1.07); box-shadow: 0 12px 38px rgba(46,230,197,.32); }
+.btn.primary:hover:not(:disabled) { background: linear-gradient(135deg, #43efd1 0%, #62d3ff 100%); box-shadow: 0 12px 38px rgba(46,230,197,.32); }
 .btn.ghost { background: transparent; border-color: var(--line); }
 .btn.danger { background: linear-gradient(135deg, #ff6b6b, #ff8e53); border-color: transparent; color: #1a0808; box-shadow: 0 10px 30px rgba(255,107,107,.25); }
 .btn.small { height: 32px; padding: 0 13px; font-size: 13px; border-radius: 9px; }
@@ -169,8 +169,8 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 
 /* ---------- health ---------- */
 .hero { display: flex; align-items: center; gap: 34px; padding: 30px 32px; overflow: hidden; }
-.hero::after { content: ""; position: absolute; left: -60px; top: -80px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(46,230,197,.16), transparent 65%); pointer-events: none; }
-.hero > * { position: relative; }
+.hero::after { content: ""; position: absolute; left: -60px; top: -80px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(46,230,197,.16), transparent 65%); pointer-events: none; z-index: 0; }
+.hero > * { position: relative; z-index: 1; }
 .hero h2 { margin: 0 0 8px; font-size: 22px; }
 .hero p { max-width: 560px; }
 .hero .icon-ring { width: 84px; height: 84px; border-radius: 26px; display: grid; place-items: center; flex: none; background: linear-gradient(135deg, rgba(74,222,128,.16), rgba(76,201,255,.06)); border: 1px solid rgba(74,222,128,.25); }
@@ -186,6 +186,33 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .tile .meter { height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; }
 .tile .meter i { display: block; height: 100%; background: var(--grad); border-radius: 3px; }
 .status-good { color: var(--good); }
+.crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 13.5px; }
+.crumbs button { background: none; border: 0; padding: 4px 6px; border-radius: 7px; color: var(--sub); font-weight: 600; }
+.crumbs button:hover { background: var(--hover); color: var(--text); }
+.crumbs button.cur { color: var(--text); cursor: default; }
+.crumbs .sep { color: var(--dim); }
+.drow { display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--line); }
+.drow:first-child { border-top: 0; }
+.drow:hover { background: var(--hover); }
+.drow.dir { cursor: pointer; }
+.drow .ico { width: 20px; flex: none; color: var(--sub); display: grid; place-items: center; }
+.drow.dir .ico { color: var(--accent); }
+.drow .nm { flex: 1; min-width: 0; }
+.drow .nm b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drow .nm small { display: block; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drow .sz { width: 86px; text-align: right; flex: none; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13.5px; }
+.drow .pct { width: 46px; text-align: right; flex: none; color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.drow .bar { width: 140px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.07); overflow: hidden; flex: none; }
+.drow .bar i { display: block; height: 100%; background: var(--grad); border-radius: 4px; }
+.drow .bar.t i { background: var(--tc, var(--accent)); }
+.drives { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.drive { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; transition: border-color .15s, background .15s; }
+.drive:hover { border-color: var(--line2); background: var(--hover); }
+.drive b { font-size: 15px; }
+.drive small { color: var(--sub); font-size: 12.5px; }
+.drive .meter { height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; }
+.drive .meter i { display: block; height: 100%; background: var(--grad); border-radius: 3px; }
+.drive .meter.hot i { background: linear-gradient(90deg, #ffb347, #ff6b6b); }
 .status-warn { color: var(--warn); }
 
 /* ---------- lists ---------- */
@@ -240,6 +267,7 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
     <button data-page="health"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Health Check</button>
     <button data-page="clean"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Custom Clean</button>
     <button data-page="dupes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/></svg>Duplicate Finder</button>
+    <button data-page="disk"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 4"/></svg>Disk Analyzer</button>
   </nav>
   <div class="nav-label">Optimize</div>
   <nav class="nav">
@@ -341,6 +369,12 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
   <section class="page" id="page-dupes">
     <div class="page-head"><div class="grow"><h1>Duplicate Finder</h1><p>Find identical copies of files. Kempt compares the actual content, not just names, and moves extras to the Recycle Bin.</p></div></div>
     <div class="page-body" id="dupeBody"></div>
+  </section>
+
+  <!-- Disk Analyzer -->
+  <section class="page" id="page-disk">
+    <div class="page-head"><div class="grow"><h1>Disk Analyzer</h1><p>See what is filling the drive. Browse folders by size, jump to the biggest files, and move what you don't need to the Recycle Bin.</p></div></div>
+    <div class="page-body" id="diskBody"></div>
   </section>
 
   <!-- Software Updater -->
@@ -496,6 +530,7 @@ function show(page) {
   if (page === "uninstall") S.programs ? renderPrograms() : loadPrograms();
   if (page === "settings") renderSettings();
   if (page === "dupes") renderDupes();
+  if (page === "disk") renderDisk();
   if (page === "updater") S.updates ? renderUpdates() : loadUpdates();
   if (page === "drivers") S.drivers ? renderDrivers() : loadDrivers();
   if (page === "help") renderHelp();
@@ -791,6 +826,7 @@ window.cpcEvent = (name, p) => {
     return;
   }
   if (name.startsWith("dupe")) return dupeEvent(name, p);
+  if (name.startsWith("disk")) return diskEvent(name, p);
   if (name.startsWith("upd")) return updEvent(name, p);
   if (name.startsWith("drv")) return drvEvent(name, p);
   if (name.startsWith("repair")) return repairEvent(name, p);
@@ -889,7 +925,7 @@ function renderHealth() {
       <div class="s">${h.state === "done" ? files(h.summary.files) + " in the Recommended items." : "Temp files, caches, Recycle Bin and error reports."}</div>
       <div><button class="link" id="hCustom2">Open Custom Clean</button></div></div>
   </div>`;
-  const hh = S.health;
+  const hh = S.hw;
   const worst = hh && hh.disks.length ? hh.disks.reduce((a, d) => ({ bad: 2, warn: 1, good: 0 }[d.level] > ({ bad: 2, warn: 1, good: 0 }[a.level] || 0) ? d : a), hh.disks[0]) : null;
   const lvlColor = l => l === "bad" ? "var(--bad)" : l === "warn" ? "var(--warn)" : "var(--good)";
   const health = `<div class="tiles" style="margin-top:14px;grid-template-columns:repeat(2,minmax(0,1fr))">
@@ -900,7 +936,7 @@ function renderHealth() {
       <div class="v" style="color:${hh && hh.battery.present ? lvlColor(hh.battery.level) : "var(--text)"}">${!hh ? "..." : !hh.battery.present ? "None" : hh.battery.healthPercent ? hh.battery.healthPercent + "% health" : "Present"}</div>
       <div class="s">${!hh ? "" : esc(hh.battery.text)}${hh && hh.battery.present ? ` Now ${esc(hh.battery.status.toLowerCase())}, ${hh.battery.charge}% charged.` : ""}</div></div></div>`;
   el.innerHTML = hero + tiles + health;
-  if (!hh && !S.healthLoading) { S.healthLoading = true; slow(api.Health()).then(h => { S.health = h; }).catch(() => { S.health = { disks: [], battery: { present: false, text: "" } }; }).finally(() => { S.healthLoading = false; renderHealth(); }); }
+  if (!hh && !S.hwLoading) { S.hwLoading = true; slow(api.Health()).then(h => { S.hw = h; }).catch(() => { S.hw = { disks: [], battery: { present: false, text: "" } }; }).finally(() => { S.hwLoading = false; renderHealth(); }); }
   const on = (id, fn) => { const b = $("#" + id); if (b) b.onclick = fn; };
   on("hRun", runHealth); on("hAgain", runHealth); on("hFix", fixHealth);
   on("hCustom", () => show("clean")); on("hCustom2", () => show("clean")); on("hStartup", () => show("startup"));
@@ -1111,6 +1147,116 @@ function dupeEvent(name, p) {
     if (p.error) { toast(p.error, true); return; }
     D.last = { text: "Moved " + p.deleted + " file" + (p.deleted === 1 ? "" : "s") + " (" + fmtBytes(p.bytes) + ") to the Recycle Bin." };
     D.state = "setup"; D.result = null; D.picked = new Set(); renderDupes(); toast(D.last.text);
+  }
+}
+
+// ---------------------------------------------------------------- disk analyzer
+const DK = { drives: null, state: "pick", root: "", files: 0, bytes: 0, path: "", done: null, tab: "folders", node: null, largest: null, types: null, picked: new Set(), sizes: {}, last: null };
+const typeColors = { "Videos": "#c084fc", "Pictures": "#4cc9ff", "Music": "#f472b6", "Documents": "#2ee6c5", "Archives": "#fbbf24", "Programs and installers": "#fb923c", "Disc images and virtual disks": "#a3e635", "Code": "#60a5fa", "Backups": "#f87171", "System": "#94a3b8", "Other": "#64748b" };
+const dkIcons = {
+  dir: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  file: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>',
+  lock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+};
+async function renderDisk() {
+  const el = $("#diskBody");
+  if (DK.state === "scanning") {
+    el.innerHTML = `<div class="card hero"><div class="spinner"></div><div class="grow"><h2>Measuring ${esc(DK.root)}</h2>
+      <p id="diskCount">${DK.files.toLocaleString()} files, ${fmtBytes(DK.bytes)} so far.</p><div class="path" id="diskPath" style="text-align:left;direction:ltr">${esc(DK.path)}</div>
+      <div class="row" style="margin-top:14px"><button class="btn" id="diskStop">Stop and show what was found</button></div></div></div>`;
+    $("#diskStop").onclick = () => api.DiskCancel();
+    return;
+  }
+  if (DK.state === "results") return renderDiskResults(el);
+  if (!DK.drives) { try { DK.drives = await api.DiskDrives(); } catch (e) { DK.drives = { drives: [], folders: [] }; } }
+  const d = DK.drives.drives || [], f = DK.drives.folders || [];
+  el.innerHTML = `<div class="stack">
+    <div class="card stack"><div><h3>Pick a drive</h3><p>A full drive takes a minute or two. Kempt only reads; nothing changes until you choose to remove something.</p></div>
+      <div class="drives">${d.length ? d.map(x => { const used = x.total ? (x.total - x.free) / x.total : 0; return `<button class="drive" data-scan="${esc(x.path)}"><b>${esc(x.label || "Local Disk")} (${esc(x.path.replace(/\\$/, ""))})</b>
+        <div class="meter ${used > .9 ? "hot" : ""}"><i style="width:${Math.round(used * 100)}%"></i></div><small>${fmtBytes(x.free)} free of ${fmtBytes(x.total)}</small></button>`; }).join("") : '<p class="muted">No local drives found.</p>'}</div></div>
+    <div class="card stack"><div><h3>Or a folder</h3><p>Quicker when you already know roughly where the space went.</p></div>
+      <div class="row" style="flex-wrap:wrap">${f.map(x => `<button class="btn small" data-scan="${esc(x)}">${esc(x.split(/[\\/]/).pop())}</button>`).join("")}<button class="btn small ghost" id="diskPick">Choose a folder...</button></div></div>
+    ${DK.last ? `<div class="card"><p class="${DK.last.error ? "" : "status-good"}">${esc(DK.last.text)}</p></div>` : ""}</div>`;
+  el.querySelectorAll("[data-scan]").forEach(b => b.onclick = () => startDiskScan(b.dataset.scan));
+  $("#diskPick").onclick = async () => { const p = await api.PickFolder(); if (p) startDiskScan(p); };
+}
+async function startDiskScan(root) {
+  try { DK.state = "scanning"; DK.root = root; DK.files = 0; DK.bytes = 0; DK.path = ""; DK.last = null; DK.picked = new Set(); DK.sizes = {}; renderDisk(); await api.DiskScan(root); }
+  catch (e) { DK.state = "pick"; renderDisk(); toast(errText(e), true); }
+}
+async function renderDiskResults(el) {
+  const d = DK.done;
+  let sel = 0, selBytes = 0;
+  DK.picked.forEach(p => { sel++; selBytes += DK.sizes[p] || 0; });
+  el.innerHTML = `<div class="card"><div class="row"><div class="grow"><h3>${esc(d.root)}: ${fmtBytes(d.bytes)} in ${files(d.files)}</h3>
+      <p>${d.cancelled ? "Stopped early, so these numbers are partial. " : ""}${d.denied ? d.denied.toLocaleString() + " folder" + (d.denied === 1 ? "" : "s") + " could not be read" + (S.info && S.info.elevated ? "." : " (run as administrator to see them).") + " " : ""}${d.error ? esc(d.error) + " " : ""}Tick files to move them to the Recycle Bin. Folders open when clicked.</p></div>
+      <button class="btn small" id="diskBack">Scan something else</button></div>
+      <div class="row" style="margin-top:12px"><div class="tabs" style="margin:0">
+        <button data-dt="folders" class="${DK.tab === "folders" ? "active" : ""}">Folders</button><button data-dt="largest" class="${DK.tab === "largest" ? "active" : ""}">Largest files</button><button data-dt="types" class="${DK.tab === "types" ? "active" : ""}">By type</button></div>
+      <span class="grow"></span><b>${sel} selected (${fmtBytes(selBytes)})</b><button class="btn primary" id="diskDel" ${sel ? "" : "disabled"}>Move to Recycle Bin</button></div></div>
+    <div id="diskTab" style="margin-top:14px"></div>`;
+  $("#diskBack").onclick = () => { DK.state = "pick"; DK.node = null; DK.largest = null; DK.types = null; renderDisk(); };
+  el.querySelectorAll("[data-dt]").forEach(b => b.onclick = () => { DK.tab = b.dataset.dt; renderDisk(); });
+  $("#diskDel").onclick = async () => {
+    if (!await confirmBox("Move " + sel + " file" + (sel === 1 ? "" : "s") + " to the Recycle Bin?", "That frees about " + fmtBytes(selBytes) + " once the Recycle Bin is emptied. You can restore them from the Recycle Bin until then.", "Move files")) return;
+    try { await api.DiskDelete([...DK.picked]); } catch (e) { toast(errText(e), true); }
+  };
+  const tab = $("#diskTab");
+  try {
+    if (DK.tab === "folders") await renderDiskFolders(tab);
+    else if (DK.tab === "largest") await renderDiskLargest(tab);
+    else await renderDiskTypes(tab);
+  } catch (e) { tab.innerHTML = `<div class="card"><p>${esc(errText(e))}</p></div>`; }
+}
+function diskRow(x, denom, color) {
+  const pct = denom ? x.size / denom : 0, picked = DK.picked.has(x.path);
+  return `<div class="drow ${x.dir ? "dir" : ""}" data-p="${esc(x.path)}" ${x.dir ? "" : 'style="cursor:default"'}>
+    ${x.dir ? '<span class="ico"></span>' : `<input type="checkbox" class="cb" data-dk="${esc(x.path)}" data-sz="${x.size}" ${picked ? "checked" : ""} aria-label="Select ${esc(x.name)}">`}
+    <span class="ico">${x.dir ? (x.denied ? dkIcons.lock : dkIcons.dir) : dkIcons.file}</span>
+    <div class="nm"><b>${esc(x.name)}</b><small>${x.dir ? (x.denied ? "Could not be read" : files(x.files)) : esc(x.sub || "")}</small></div>
+    <span class="sz">${fmtBytes(x.size)}</span><div class="bar ${color ? "t" : ""}" ${color ? `style="--tc:${color}"` : ""}><i style="width:${Math.max(2, Math.round(pct * 100))}%"></i></div><span class="pct">${(pct * 100).toFixed(pct < .1 ? 1 : 0)}%</span>
+    ${x.dir ? "" : `<button class="link" data-show="${esc(x.path)}" style="font-size:13px">Show</button>`}</div>`;
+}
+function wireDiskRows(tab) {
+  tab.querySelectorAll("[data-dk]").forEach(cb => cb.onchange = () => { DK.sizes[cb.dataset.dk] = +cb.dataset.sz; cb.checked ? DK.picked.add(cb.dataset.dk) : DK.picked.delete(cb.dataset.dk); renderDisk(); });
+  tab.querySelectorAll("[data-show]").forEach(b => b.onclick = e => { e.stopPropagation(); api.ShowDiskPath(b.dataset.show).catch(err => toast(errText(err), true)); });
+  tab.querySelectorAll(".drow.dir").forEach(r => r.onclick = () => { DK.node = r.dataset.p; DK.tab = "folders"; renderDisk(); });
+}
+async function renderDiskFolders(tab) {
+  const n = await api.DiskNode(DK.node || "");
+  DK.node = n.path;
+  const items = n.items || [];
+  tab.innerHTML = `<div class="list"><div class="lrow head"><div class="crumbs">${n.crumbs.map((c, i) => `${i ? '<span class="sep">&rsaquo;</span>' : ""}<button data-crumb="${esc(c.path)}" class="${i === n.crumbs.length - 1 ? "cur" : ""}">${esc(c.name)}</button>`).join("")}</div>
+      <span class="grow"></span><span class="muted" style="font-size:13px">${fmtBytes(n.size)}, ${files(n.files)}</span><button class="link" data-open="${esc(n.path)}" style="font-size:13px;margin-left:12px">Open in Explorer</button></div>
+    ${items.length ? items.map(x => diskRow(x, n.size)).join("") : `<div class="drow"><div class="nm muted">${n.denied ? "Windows would not let Kempt read this folder." : "This folder is empty."}</div></div>`}</div>
+    ${items.some(x => !x.dir) ? '<p class="muted" style="margin:10px 4px 0">Showing subfolders and the 25 largest files directly in this folder.</p>' : ""}`;
+  tab.querySelectorAll("[data-crumb]").forEach(b => b.onclick = () => { DK.node = b.dataset.crumb; renderDisk(); });
+  tab.querySelector("[data-open]").onclick = e => { e.stopPropagation(); api.ShowDiskPath(e.target.dataset.open).catch(err => toast(errText(err), true)); };
+  wireDiskRows(tab);
+}
+async function renderDiskLargest(tab) {
+  if (!DK.largest) DK.largest = await api.DiskLargest(200);
+  const list = DK.largest, top = list.length ? list[0].size : 0;
+  tab.innerHTML = `<div class="list">${list.length ? list.map(f => diskRow({ name: f.path.split(/[\\/]/).pop(), path: f.path, size: f.size, sub: f.path + "  \u00b7  " + f.type + ", modified " + f.modified }, top)).join("") : '<div class="drow"><div class="nm muted">No files found.</div></div>'}</div>
+    <p class="muted" style="margin:10px 4px 0">The ${list.length} largest files in ${esc(DK.done.root)}. Bars compare each file to the largest one.</p>`;
+  wireDiskRows(tab);
+}
+async function renderDiskTypes(tab) {
+  if (!DK.types) DK.types = await api.DiskTypes();
+  const list = DK.types, total = DK.done.bytes || 1;
+  tab.innerHTML = `<div class="list">${list.map(t => diskRow({ name: t.type, path: "", size: t.size, dir: false, sub: files(t.count), noPick: true }, total, typeColors[t.type] || "#64748b")).join("")}</div>
+    <p class="muted" style="margin:10px 4px 0">Space by kind of file across the whole scan. Use the Largest files tab to pick what to remove.</p>`;
+  tab.querySelectorAll("[data-dk], [data-show]").forEach(x => x.remove());
+}
+function diskEvent(name, p) {
+  if (name === "diskProgress") { DK.files = p.files; DK.bytes = p.bytes; DK.path = p.path; const c = $("#diskCount"), e = $("#diskPath"); if (c) c.textContent = p.files.toLocaleString() + " files, " + fmtBytes(p.bytes) + " so far."; if (e) e.textContent = p.path; }
+  if (name === "diskDone") { DK.done = p; DK.state = p.files === undefined ? "pick" : "results"; DK.node = null; DK.largest = null; DK.types = null; DK.tab = "folders"; if (p.error && p.files === undefined) toast(p.error, true); renderDisk(); }
+  if (name === "diskDeleted") {
+    if (p.error) { toast(p.error, true); return; }
+    DK.last = { text: "Moved " + p.deleted + " file" + (p.deleted === 1 ? "" : "s") + " (" + fmtBytes(p.bytes) + ") to the Recycle Bin." };
+    DK.picked = new Set(); DK.largest = null; DK.types = null;
+    if (DK.done) { DK.done.bytes -= p.bytes; DK.done.files -= p.deleted; }
+    toast(DK.last.text); renderDisk(); refreshInfo();
   }
 }
 
@@ -1351,6 +1497,7 @@ function renderHelp() {
     ["Registry", "Removes registry entries that point to files that are gone, usually left by uninstalled programs. Every fix is backed up and can be undone. This tidies things up but rarely makes a PC faster."],
     ["Uninstaller", "Lists installed programs and runs each one's own uninstaller."],
     ["Duplicate Finder", "Finds byte-for-byte identical files and moves the extra copies to the Recycle Bin. One copy of every file is always kept."],
+    ["Disk Analyzer", "Measures a drive or folder and shows which folders take the space, the biggest files anywhere in it, and totals by kind of file. Tick files to move them to the Recycle Bin. Files inside Windows and Program Files are never offered."],
     ["Startup Manager", "Turns off startup apps, scheduled tasks from other programs and third-party background services. Nothing is deleted, so every change can be reversed."],
     ["Software Updater", "Uses winget, Microsoft's app installer, to update apps silently. Store apps update themselves."],
     ["Repair Tools", "One-click versions of the fixes techs run by hand: System File Checker, DISM, network stack reset, Windows Update reset, icon cache, Explorer restart, disk check, Store reset and print spooler restart. Output is shown live."],

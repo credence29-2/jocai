@@ -12,9 +12,13 @@ A CCleaner replacement for Windows by 804 Industries. One portable `Kempt.exe`, 
 | Custom Clean, Registry tab | Application paths, obsolete software, run at startup, MUI cache, shared DLLs, installer folders, help files, fonts, firewall rules and sound events. Every fix is backed up and can be undone. |
 | Uninstaller | Installed programs with size and install date. Runs each program's own uninstaller. |
 | Duplicate Finder | Byte-for-byte duplicate files in your folders, including OneDrive. Extras go to the Recycle Bin. One copy is always kept. |
+| Disk Analyzer | Where the space goes: folders by size, the largest files, and totals by file type. Move what you don't need to the Recycle Bin. Windows and program folders are read-only here. |
 | Startup Manager | Startup apps, scheduled tasks from other programs, and third-party background services. Nothing is deleted, so every change can be reversed. |
 | Software Updater | Lists and installs app updates silently through winget, which ships with Windows. |
-| Driver Check | Hardware with Device Manager errors, explained in plain words, plus the age of your key drivers and a shortcut to Windows Update's driver updates. |
+| Driver Updater | Driver updates from Windows Update's catalog, installed one at a time after an optional restore point, plus devices with Device Manager errors explained in plain words. |
+| Repair Tools | System File Checker, DISM, network reset, Windows Update reset, icon cache, Explorer restart, disk check, Store reset and print spooler restart, with live output. |
+| Bloatware | Preinstalled Store apps grouped as promotions, Microsoft extras, Xbox, PC maker and other. Windows' own apps are never offered. |
+| Tech Report | One-page HTML and text summary of the PC for a ticket. Also `Kempt.exe /report [folder or file]` from a script. |
 | Settings | Weekly automatic cleaning through Task Scheduler, folders to never clean, logs. |
 
 Nothing is deleted until you confirm. Every clean writes a log of each deleted file to `%LOCALAPPDATA%\Kempt\logs`. Registry backups go to `%LOCALAPPDATA%\Kempt\backups`.

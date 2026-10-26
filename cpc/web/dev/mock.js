@@ -82,6 +82,26 @@
       .map(([id,name,description,when,minutes,needsAdmin,reboot]) => ({ id, name, description, when, minutes, needsAdmin: !!needsAdmin, reboot: !!reboot, selectable: !needsAdmin || !!window.__mockAdmin })),
     cpcRunRepair: async id => { let i = 0; const lines = []; const tick = () => { i++; lines.push("Verification " + (i * 20) + "% complete."); if (i < 5) { emit("repairProgress", { id, step: 0, total: 1, lines: lines.slice(), pct: i * 20 }); setTimeout(tick, 80); } else emit("repairDone", { id, ok: true, text: "No damaged system files found.", output: lines.join("\n") + "\nWindows Resource Protection did not find any integrity violations.", reboot: false }); }; setTimeout(tick, 50); return null; },
     cpcStopRepair: async () => null,
+    cpcDiskDrives: async () => ({ drives: [{ path: "C:\\", label: "OS", total: 511e9, free: 96e9 }, { path: "D:\\", label: "Data", total: 2e12, free: 1.4e12 }], folders: ["C:\\Users\\Jacob\\Downloads", "C:\\Users\\Jacob\\Documents", "C:\\Users\\Jacob\\Videos"] }),
+    cpcDiskScan: async root => { window.__diskRoot = root; let f = 0; const tick = () => { f += 40000; if (f < 200000) { emit("diskProgress", { files: f, bytes: f * 9000, path: root + "Users\\Jacob\\AppData\\Local\\some\\deep\\folder\\file" + f + ".dat" }); setTimeout(tick, window.__mockFast ? 0 : 150); } else emit("diskDone", { root, files: 412880, bytes: 415e9, denied: 3, took: "48s", cancelled: false }); }; setTimeout(tick, 10); },
+    cpcDiskCancel: async () => null,
+    cpcDiskNode: async path => {
+      const root = window.__diskRoot || "C:\\";
+      if (!path || path === root) return { path: root, size: 415e9, files: 412880, root, crumbs: [{ name: root, path: root }], items: [
+        { name: "Users", path: root + "Users", size: 212e9, files: 301000, dir: true }, { name: "Windows", path: root + "Windows", size: 31e9, files: 98000, dir: true }, { name: "Program Files", path: root + "Program Files", size: 24e9, files: 12000, dir: true },
+        { name: "ProgramData", path: root + "ProgramData", size: 9e9, files: 1700, dir: true }, { name: "System Volume Information", path: root + "System Volume Information", size: 0, files: 0, dir: true, denied: true },
+        { name: "pagefile.sys", path: root + "pagefile.sys", size: 12.8e9, files: 1 }, { name: "hiberfil.sys", path: root + "hiberfil.sys", size: 6.4e9, files: 1 }] };
+      return { path, size: 212e9, files: 301000, root, crumbs: [{ name: root, path: root }, { name: "Users", path }], items: [
+        { name: "Jacob", path: path + "\\Jacob", size: 180e9, files: 280000, dir: true }, { name: "Public", path: path + "\\Public", size: 2e9, files: 400, dir: true },
+        { name: "big-backup.zip", path: path + "\\big-backup.zip", size: 28e9, files: 1 }] };
+    },
+    cpcDiskLargest: async () => [
+      { path: "C:\\Users\\Jacob\\Videos\\Toast training raw.mp4", size: 14.2e9, type: "Videos", modified: "Mar 3, 2025" }, { path: "C:\\pagefile.sys", size: 12.8e9, type: "System", modified: "Oct 26, 2026" },
+      { path: "C:\\Users\\Jacob\\Downloads\\Win11_24H2_English_x64.iso", size: 6.9e9, type: "Disc images and virtual disks", modified: "Jun 20, 2025" }, { path: "C:\\Users\\Jacob\\Downloads\\old-laptop-backup.zip", size: 4.3e9, type: "Archives", modified: "Jan 9, 2025" },
+      { path: "C:\\Users\\Jacob\\AppData\\Local\\Docker\\wsl\\data\\ext4.vhdx", size: 3.1e9, type: "Disc images and virtual disks", modified: "Oct 20, 2026" }],
+    cpcDiskTypes: async () => [{ type: "Videos", size: 96e9, count: 1200 }, { type: "Programs and installers", size: 88e9, count: 41000 }, { type: "System", size: 61e9, count: 90000 }, { type: "Documents", size: 44e9, count: 120000 }, { type: "Pictures", size: 39e9, count: 80000 }, { type: "Archives", size: 31e9, count: 900 }, { type: "Disc images and virtual disks", size: 22e9, count: 6 }, { type: "Other", size: 34e9, count: 79000 }],
+    cpcDiskDelete: async paths => setTimeout(() => emit("diskDeleted", { deleted: paths.length, bytes: paths.length * 4.3e9 }), 100),
+    cpcShowDiskPath: async () => null,
     cpcBloatList: async () => later({ elevated: !!window.__mockAdmin, groups: ["Promotions and games", "Microsoft extras", "Xbox", "PC maker apps", "Other Store apps"], apps: [
       { name: "king.com.CandyCrushSaga", label: "King games (Candy Crush and others)", publisher: "king.com", version: "1.2", size: 180e6, group: "Promotions and games", known: true, checked: true },
       { name: "Microsoft.BingNews", label: "Microsoft News", publisher: "Microsoft Corporation", version: "4.5", size: 40e6, group: "Promotions and games", known: true, checked: true },

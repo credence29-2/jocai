@@ -388,3 +388,38 @@ func PowerShellJSONTimeout(script string, limit time.Duration, out any) error {
 	}
 	return json.Unmarshal(b, out)
 }
+
+// Drive is one fixed disk volume.
+type Drive struct {
+	Path  string `json:"path"`
+	Label string `json:"label"`
+	Total uint64 `json:"total"`
+	Free  uint64 `json:"free"`
+}
+
+// FixedDrives lists local hard drives (not removable, network or optical).
+func FixedDrives() []Drive {
+	var out []Drive
+	mask, err := windows.GetLogicalDrives()
+	if err != nil {
+		return out
+	}
+	for i := 0; i < 26; i++ {
+		if mask&(1<<uint(i)) == 0 {
+			continue
+		}
+		root := string(rune('A'+i)) + `:\`
+		p, _ := windows.UTF16PtrFromString(root)
+		if windows.GetDriveType(p) != windows.DRIVE_FIXED {
+			continue
+		}
+		var label [261]uint16
+		_ = windows.GetVolumeInformation(p, &label[0], uint32(len(label)), nil, nil, nil, nil, 0)
+		total, free, err := DiskSpace(root)
+		if err != nil {
+			continue
+		}
+		out = append(out, Drive{Path: root, Label: windows.UTF16ToString(label[:]), Total: total, Free: free})
+	}
+	return out
+}
