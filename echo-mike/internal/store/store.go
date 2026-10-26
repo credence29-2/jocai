@@ -151,6 +151,11 @@ func (s *Store) Migrate() error {
 	})
 }
 
+// File returns the path of a file kept alongside the settings.
+func (s *Store) File(name string) string {
+	return filepath.Join(s.dir, name)
+}
+
 // Secret returns an account's saved refresh token.
 func (s *Store) Secret(accountID string) string {
 	s.mu.Lock()

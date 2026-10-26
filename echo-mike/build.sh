@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 VERSION="${1:-1.1.1}"
-LDFLAGS="-H windowsgui -s -w -X main.version=${VERSION}"
+LDFLAGS="-H windowsgui -s -w -X github.com/credence29-2/jocai/echo-mike/internal/app.Version=${VERSION}"
 
 go test ./...
 mkdir -p dist

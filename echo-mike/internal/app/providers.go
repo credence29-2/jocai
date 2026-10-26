@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 )
 
 // signIn returns the OAuth setup for a provider from the saved client IDs.
-func (a *app) signIn(provider string) (*oauth.Provider, error) {
+func (a *App) signIn(provider string) (*oauth.Provider, error) {
 	s := a.st.Get().Settings
 	switch provider {
 	case "gmail":
@@ -29,7 +29,7 @@ func (a *app) signIn(provider string) (*oauth.Provider, error) {
 	return nil, fmt.Errorf("unknown provider %q", provider)
 }
 
-func (a *app) build(provider, email string, src *oauth.Source) mail.Provider {
+func (a *App) build(provider, email string, src *oauth.Source) mail.Provider {
 	if provider == "gmail" {
 		return gmail.New(src)
 	}
@@ -37,7 +37,7 @@ func (a *app) build(provider, email string, src *oauth.Source) mail.Provider {
 }
 
 // openProvider connects to a saved account using its stored sign-in.
-func (a *app) openProvider(acct store.Account) (mail.Provider, error) {
+func (a *App) openProvider(acct store.Account) (mail.Provider, error) {
 	refresh := a.st.Secret(acct.ID)
 	if refresh == "" {
 		return nil, mail.ErrAuth
@@ -58,7 +58,7 @@ type connectOut struct {
 
 // connect signs an account in through the browser. With accountID it
 // refreshes an existing account's sign-in instead of adding one.
-func (a *app) connect(ctx context.Context, provider, accountID string) (any, error) {
+func (a *App) connect(ctx context.Context, provider, accountID string) (any, error) {
 	p, err := a.signIn(provider)
 	if err != nil {
 		return nil, err

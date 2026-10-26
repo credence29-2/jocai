@@ -15,6 +15,7 @@ import (
 	webview2 "github.com/jchv/go-webview2"
 	"golang.org/x/sys/windows"
 
+	"github.com/credence29-2/jocai/echo-mike/internal/app"
 	"github.com/credence29-2/jocai/echo-mike/internal/store"
 )
 
@@ -34,15 +35,15 @@ func main() {
 	flag.Parse()
 
 	dataDir := store.Dir()
-	st, err := openStore(dataDir, *demoMode)
+	st, err := app.OpenStore(dataDir, *demoMode)
 	if err != nil {
-		messageBox(appName, "Project Echo Mike couldn't load its settings:\n\n"+err.Error())
+		messageBox(app.Name, "Project Echo Mike couldn't load its settings:\n\n"+err.Error())
 		os.Exit(1)
 	}
-	a := newApp(st, *demoMode, shellOpen)
-	u, err := a.listen()
+	a := app.New(st, *demoMode, shellOpen)
+	u, err := a.Listen()
 	if err != nil {
-		messageBox(appName, "Could not start: "+err.Error())
+		messageBox(app.Name, "Could not start: "+err.Error())
 		os.Exit(1)
 	}
 
@@ -50,7 +51,7 @@ func main() {
 		AutoFocus: true,
 		DataPath:  dataDir + `\WebView2`,
 		WindowOptions: webview2.WindowOptions{
-			Title:  appName,
+			Title:  app.Name,
 			Width:  1320,
 			Height: 840,
 			IconId: 1,
@@ -58,7 +59,7 @@ func main() {
 		},
 	})
 	if w == nil {
-		messageBox(appName, "Project Echo Mike needs the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and updated Windows 10.\n\n"+
+		messageBox(app.Name, "Project Echo Mike needs the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and updated Windows 10.\n\n"+
 			"It wasn't found on this PC. Your browser will open the download page. Install it, then start Project Echo Mike again.")
 		shellOpen(webview2Download)
 		os.Exit(1)
@@ -70,13 +71,13 @@ func main() {
 
 	t := newTray(uintptr(w.Window()))
 	defer t.remove()
-	a.notify = t.notify
-	a.onNewMail = func() {
+	a.Notify = t.notify
+	a.OnNewMail = func() {
 		w.Dispatch(func() { w.Eval("window.onNewMail && window.onNewMail()") })
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
-	go a.watchMail(ctx, time.Minute)
+	go a.WatchMail(ctx, time.Minute)
 
 	w.Run()
 }

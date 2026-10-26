@@ -1,0 +1,75 @@
+name: Project Echo Mike Android
+
+on:
+  push:
+    paths:
+      - "echo-mike/**"
+      - ".github/workflows/echo-mike-android.yml"
+  pull_request:
+    paths:
+      - "echo-mike/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: echo-mike
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: echo-mike/go.mod
+          cache-dependency-path: echo-mike/go.sum
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build the Go engine for Android
+        env:
+          VERSION: "1.2.${{ github.run_number }}"
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          ./android/build-engine.sh "$VERSION"
+      - name: Test and build APK
+        working-directory: echo-mike/android
+        run: ./gradlew --no-daemon testReleaseUnitTest assembleRelease
+      - name: Rename APK
+        working-directory: echo-mike/android
+        run: cp app/build/outputs/apk/release/app-release.apk "ProjectEchoMike-1.2.${{ github.run_number }}.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Project-Echo-Mike-Android
+          path: echo-mike/android/ProjectEchoMike-*.apk
+
+  emulator:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Project-Echo-Mike-Android
+          path: echo-mike/android/apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          working-directory: echo-mike/android
+          script: bash scripts/smoke-test.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Project-Echo-Mike-Android-screenshots
+          path: echo-mike/android/smoke/
+          if-no-files-found: ignore

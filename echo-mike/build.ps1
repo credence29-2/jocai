@@ -2,7 +2,7 @@
 param([string]$Version = "1.1.1")
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
-$ldflags = "-H windowsgui -s -w -X main.version=$Version"
+$ldflags = "-H windowsgui -s -w -X github.com/credence29-2/jocai/echo-mike/internal/app.Version=$Version"
 
 go test ./...
 if ($LASTEXITCODE) { exit $LASTEXITCODE }

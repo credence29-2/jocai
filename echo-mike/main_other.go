@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/credence29-2/jocai/echo-mike/internal/app"
 	"github.com/credence29-2/jocai/echo-mike/internal/store"
 )
 
@@ -20,13 +21,13 @@ func main() {
 	noBrowser := flag.Bool("no-browser", false, "print the address instead of opening a browser")
 	flag.Parse()
 
-	st, err := openStore(*dataDir, *demoMode)
+	st, err := app.OpenStore(*dataDir, *demoMode)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	a := newApp(st, *demoMode, openBrowser)
-	u, err := a.listen()
+	a := app.New(st, *demoMode, openBrowser)
+	u, err := a.Listen()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

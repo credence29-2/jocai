@@ -1,9 +1,11 @@
-package main
+// Package app is Project Echo Mike itself: the local server the window talks
+// to, account sign-in, and the new-mail watcher. The Windows and Android apps
+// are thin shells around it.
+package app
 
 import (
 	"context"
 	"crypto/rand"
-	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -21,15 +23,13 @@ import (
 	"github.com/credence29-2/jocai/echo-mike/internal/mail"
 	"github.com/credence29-2/jocai/echo-mike/internal/oauth"
 	"github.com/credence29-2/jocai/echo-mike/internal/store"
+	"github.com/credence29-2/jocai/echo-mike/web"
 )
 
-const appName = "Project Echo Mike"
+const Name = "Project Echo Mike"
 
-// version is set at build time with -ldflags "-X main.version=...".
-var version = "1.0.0"
-
-//go:embed web/index.html
-var indexHTML []byte
+// Version is set at build time with -ldflags "-X .../internal/app.Version=...".
+var Version = "1.0.0"
 
 // pageSize is how many messages each account returns per page.
 const pageSize = 30
@@ -40,7 +40,7 @@ const maxSend = 40 << 20
 // app is the local HTTP server the window talks to. It listens on 127.0.0.1
 // only, and every API call must carry the random token handed to the window,
 // so other programs and web pages can't read mail through it.
-type app struct {
+type App struct {
 	st    *store.Store
 	token string
 	// openURL opens a link in the system browser.
@@ -52,16 +52,16 @@ type app struct {
 	flow      *oauth.Flow
 
 	// notify shows a desktop notification; nil where there's no desktop.
-	notify func(title, body string)
+	Notify func(title, body string)
 	// onNewMail tells the window to refresh; nil when there's no window.
-	onNewMail func()
+	OnNewMail func()
 	watch     watcher
 }
 
-func newApp(st *store.Store, demoMode bool, openURL func(string) error) *app {
+func New(st *store.Store, demoMode bool, openURL func(string) error) *App {
 	b := make([]byte, 24)
 	rand.Read(b)
-	a := &app{st: st, token: hex.EncodeToString(b), openURL: openURL, demo: demoMode, providers: map[string]mail.Provider{}}
+	a := &App{st: st, token: hex.EncodeToString(b), openURL: openURL, demo: demoMode, providers: map[string]mail.Provider{}}
 	if demoMode {
 		a.addDemoAccounts()
 	}
@@ -70,7 +70,7 @@ func newApp(st *store.Store, demoMode bool, openURL func(string) error) *app {
 }
 
 // addDemoAccounts puts two sample accounts in memory. Nothing is saved.
-func (a *app) addDemoAccounts() {
+func (a *App) addDemoAccounts() {
 	g, o := demo.Boxes(time.Now())
 	a.providers["demo-g"] = g
 	a.providers["demo-o"] = o
@@ -94,7 +94,7 @@ func (a *app) addDemoAccounts() {
 }
 
 // listen starts serving on a random loopback port and returns the window URL.
-func (a *app) listen() (string, error) {
+func (a *App) Listen() (string, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return "", err
@@ -104,12 +104,12 @@ func (a *app) listen() (string, error) {
 	return fmt.Sprintf("http://%s/#%s", ln.Addr(), a.token), nil
 }
 
-func (a *app) routes() http.Handler {
+func (a *App) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
-		w.Write(indexHTML)
+		w.Write(web.Index)
 	})
 	api := func(pattern string, h func(w http.ResponseWriter, r *http.Request) (any, error)) {
 		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +157,7 @@ func (a *app) routes() http.Handler {
 
 // guardHost refuses requests whose Host isn't the loopback address, which
 // stops DNS rebinding tricks from a web page.
-func (a *app) guardHost(next http.Handler) http.Handler {
+func (a *App) guardHost(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.Host)
 		if err != nil || (host != "127.0.0.1" && host != "localhost") {
@@ -171,7 +171,7 @@ func (a *app) guardHost(next http.Handler) http.Handler {
 // authorized checks the token. API calls send it as a header, which a web
 // page on another origin can't add without a CORS preflight we never allow.
 // Links that open downloads or the browser carry it in the query instead.
-func (a *app) authorized(r *http.Request) bool {
+func (a *App) authorized(r *http.Request) bool {
 	t := r.Header.Get("X-Echo-Token")
 	if t == "" && r.Method == http.MethodGet {
 		t = r.URL.Query().Get("t")
@@ -187,7 +187,7 @@ func decode(r *http.Request, v any) error {
 }
 
 // provider returns the live connection for an account, opening it if needed.
-func (a *app) provider(accountID string) (mail.Provider, store.Account, error) {
+func (a *App) provider(accountID string) (mail.Provider, store.Account, error) {
 	var acct store.Account
 	found := false
 	for _, ac := range a.st.Get().Accounts {
@@ -212,7 +212,7 @@ func (a *app) provider(accountID string) (mail.Provider, store.Account, error) {
 }
 
 // noteErr flags an account for reconnecting when its sign-in stopped working.
-func (a *app) noteErr(accountID string, err error) {
+func (a *App) noteErr(accountID string, err error) {
 	if !errors.Is(err, mail.ErrAuth) {
 		return
 	}
@@ -238,7 +238,7 @@ type stateOut struct {
 	Folders    []mail.Folder   `json:"folders"`
 }
 
-func (a *app) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
 	d := a.st.Get()
 	if d.Settings.GoogleClientSecret != "" {
 		d.Settings.GoogleClientSecret = "saved"
@@ -249,7 +249,7 @@ func (a *app) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
 	if d.Identities == nil {
 		d.Identities = []mail.Identity{}
 	}
-	return stateOut{Version: version, Demo: a.demo, Accounts: d.Accounts, Identities: d.Identities, Settings: d.Settings, Folders: mail.Folders}, nil
+	return stateOut{Version: Version, Demo: a.demo, Accounts: d.Accounts, Identities: d.Identities, Settings: d.Settings, Folders: mail.Folders}, nil
 }
 
 type listIn struct {
@@ -267,7 +267,7 @@ type listOut struct {
 	Errors   map[string]string `json:"errors"`
 }
 
-func (a *app) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in listIn
 	if err := decode(r, &in); err != nil {
 		return nil, err
@@ -317,7 +317,7 @@ func (a *app) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
 	return out, nil
 }
 
-func (a *app) handleMessage(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleMessage(w http.ResponseWriter, r *http.Request) (any, error) {
 	acct, id := r.URL.Query().Get("a"), r.URL.Query().Get("id")
 	p, _, err := a.provider(acct)
 	if err != nil {
@@ -332,7 +332,7 @@ func (a *app) handleMessage(w http.ResponseWriter, r *http.Request) (any, error)
 	return m, nil
 }
 
-func (a *app) handleApply(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleApply(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		AccountID string      `json:"accountId"`
 		IDs       []string    `json:"ids"`
@@ -354,7 +354,7 @@ func (a *app) handleApply(w http.ResponseWriter, r *http.Request) (any, error) {
 	return map[string]bool{"ok": true}, nil
 }
 
-func (a *app) handleAttachment(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleAttachment(w http.ResponseWriter, r *http.Request) (any, error) {
 	q := r.URL.Query()
 	p, _, err := a.provider(q.Get("a"))
 	if err != nil {
@@ -380,7 +380,7 @@ func (a *app) handleAttachment(w http.ResponseWriter, r *http.Request) (any, err
 	return nil, nil
 }
 
-func (a *app) handleDraft(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleDraft(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		AccountID string         `json:"accountId"`
 		ID        string         `json:"id"`
@@ -422,7 +422,7 @@ type sendIn struct {
 	ReplyAccountID string `json:"replyAccountId"`
 }
 
-func (a *app) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in sendIn
 	if err := decode(r, &in); err != nil {
 		return nil, err
@@ -479,7 +479,7 @@ func (a *app) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
 	return map[string]bool{"ok": true}, nil
 }
 
-func (a *app) handleIdentity(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleIdentity(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in mail.Identity
 	if err := decode(r, &in); err != nil {
 		return nil, err
@@ -540,7 +540,7 @@ func (a *app) handleIdentity(w http.ResponseWriter, r *http.Request) (any, error
 	return in, nil
 }
 
-func (a *app) handleIdentityDelete(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleIdentityDelete(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		ID string `json:"id"`
 	}
@@ -577,7 +577,7 @@ func (a *app) handleIdentityDelete(w http.ResponseWriter, r *http.Request) (any,
 
 // handlePullSignature fetches one address's current signature from the
 // provider without saving it, so the alias editor can show it before Save.
-func (a *app) handlePullSignature(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handlePullSignature(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		AccountID string `json:"accountId"`
 		Email     string `json:"email"`
@@ -606,7 +606,7 @@ func (a *app) handlePullSignature(w http.ResponseWriter, r *http.Request) (any, 
 	return nil, fmt.Errorf("Gmail doesn't list %s as a verified send-as address on this account", in.Email)
 }
 
-func (a *app) handleImport(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleImport(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		AccountID string `json:"accountId"`
 	}
@@ -619,7 +619,7 @@ func (a *app) handleImport(w http.ResponseWriter, r *http.Request) (any, error) 
 
 // importAliases adds the provider's send-as addresses as identities. Ones
 // already there keep the person's edits; only blank fields are filled in.
-func (a *app) importAliases(ctx context.Context, accountID string) (int, error) {
+func (a *App) importAliases(ctx context.Context, accountID string) (int, error) {
 	p, acct, err := a.provider(accountID)
 	if err != nil {
 		return 0, err
@@ -689,7 +689,7 @@ func (a *app) importAliases(ctx context.Context, accountID string) (int, error) 
 	return added, err
 }
 
-func (a *app) handleSettings(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in store.Settings
 	if err := decode(r, &in); err != nil {
 		return nil, err
@@ -707,7 +707,7 @@ func (a *app) handleSettings(w http.ResponseWriter, r *http.Request) (any, error
 	return map[string]bool{"ok": err == nil}, err
 }
 
-func (a *app) handleConnect(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleConnect(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		Provider string `json:"provider"`
 		// AccountID reconnects an existing account.
@@ -724,7 +724,7 @@ func (a *app) handleConnect(w http.ResponseWriter, r *http.Request) (any, error)
 	return a.connect(r.Context(), in.Provider, in.AccountID)
 }
 
-func (a *app) handleConnectCancel(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleConnectCancel(w http.ResponseWriter, r *http.Request) (any, error) {
 	a.mu.Lock()
 	f := a.flow
 	a.mu.Unlock()
@@ -734,7 +734,7 @@ func (a *app) handleConnectCancel(w http.ResponseWriter, r *http.Request) (any, 
 	return map[string]bool{"ok": true}, nil
 }
 
-func (a *app) handleAccountUpdate(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleAccountUpdate(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in store.Account
 	if err := decode(r, &in); err != nil {
 		return nil, err
@@ -752,7 +752,7 @@ func (a *app) handleAccountUpdate(w http.ResponseWriter, r *http.Request) (any, 
 	return map[string]bool{"ok": err == nil}, err
 }
 
-func (a *app) handleAccountRemove(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleAccountRemove(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		ID string `json:"id"`
 	}
@@ -787,7 +787,7 @@ func (a *app) handleAccountRemove(w http.ResponseWriter, r *http.Request) (any, 
 	return map[string]bool{"ok": true}, a.st.SetSecret(in.ID, "")
 }
 
-func (a *app) handleUnread(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleUnread(w http.ResponseWriter, r *http.Request) (any, error) {
 	out := map[string]int{}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -817,7 +817,7 @@ func (a *app) handleUnread(w http.ResponseWriter, r *http.Request) (any, error) 
 
 // handleOpen opens a link from a message in the system browser. Links in the
 // message frame point here; the 204 leaves the frame where it was.
-func (a *app) handleOpen(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) handleOpen(w http.ResponseWriter, r *http.Request) (any, error) {
 	u, err := url.Parse(r.URL.Query().Get("u"))
 	if err == nil && (u.Scheme == "http" || u.Scheme == "https" || u.Scheme == "mailto") {
 		a.openURL(u.String())

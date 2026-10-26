@@ -64,14 +64,32 @@ Windows shows a SmartScreen warning the first time because the exe isn't code-si
 
 To try it without signing in to anything, run `ProjectEchoMike.exe -demo`. It opens with two sample accounts and three aliases. Nothing is sent and nothing is saved.
 
+New-mail notifications come from a small icon in the notification area while the app is open. Turn them off with the bell at the bottom of the sidebar.
+
+## Android
+
+Project Echo Mike for Android is the same app on your phone: the same accounts, aliases, signatures and dark mode, plus a notification for new mail.
+
+1. Download the APK from the latest **Project Echo Mike Android** run under the repo's Actions tab. It's in the **Project-Echo-Mike-Android** artifact, zipped.
+2. Open it on the phone and allow "Install unknown apps" when Android asks.
+3. Open Project Echo Mike, go to **Settings > Sign-in setup**, and paste the same Google client ID and secret you use on Windows. No new Google setup is needed.
+4. Add your accounts the same way. Sign-in opens in Chrome; when it says you're signed in, tap back.
+
+Your phone and PC each keep their own settings, so add your aliases and signatures on the phone too, or use **Sync from Gmail**.
+
+Notifications: while the app is open, it checks every minute. In the background, Android lets it check about every 15 minutes, or less often in battery saver. The bell in the menu turns them off. Pressing back on the inbox sends the app to the background instead of closing it, so the checks keep going.
+
+Every build installs over the previous one because they share the same signing key. Android 10 or newer is required.
+
 ## How it works
 
 The window is a WebView2 page served by a small web server inside the exe. The server only listens on 127.0.0.1. Every request has to carry a random key handed to the window at startup and a loopback Host header, so web pages and other programs can't use it. Sign-in uses OAuth with PKCE through your normal browser and a one-time local redirect.
 
 | Folder | What's in it |
 | --- | --- |
-| `server.go`, `providers.go` | The local API and account sign-in |
-| `web/index.html` | The interface, embedded in the exe |
+| `internal/app` | The local API, account sign-in and the new-mail watcher |
+| `web/index.html` | The interface, embedded in the exe and the Android app |
+| `mobile`, `android/` | The Android app: a gomobile-bound engine and a WebView shell |
 | `internal/gmail` | Gmail API client |
 | `internal/outlook` | Microsoft Graph client and SMTP sending |
 | `internal/mail` | Message building, reply rules, picking the From address |
@@ -81,7 +99,7 @@ The window is a WebView2 page served by a small web server inside the exe. The s
 
 ## Building
 
-You need Go 1.24 or newer. Go builds the Windows exe from Windows, Mac or Linux.
+You need Go 1.26 or newer. Go builds the Windows exe from Windows, Mac or Linux.
 
 ```
 ./build.sh        # Mac or Linux
@@ -91,6 +109,13 @@ You need Go 1.24 or newer. Go builds the Windows exe from Windows, Mac or Linux.
 Output goes to `dist\ProjectEchoMike.exe` and `dist\ProjectEchoMike-arm64.exe`.
 
 To work on the interface outside Windows, run `go run . -demo`. It serves the same page to your browser.
+
+The Android app needs the Android SDK and NDK as well:
+
+```
+android/build-engine.sh          # Go engine -> android/app/libs/echomike.aar
+cd android && ./gradlew assembleRelease
+```
 
 The icon, manifest and version info are pre-built into `rsrc_windows_*.syso`. To change them, edit `winres/winres.json` and run:
 
@@ -108,6 +133,5 @@ go-winres make --in winres/winres.json --arch amd64,arm64
 
 - Conversation view. Messages are listed one by one, not grouped into threads.
 - Offline mode and a local mail cache.
-- Desktop notifications. The window title and sidebar show unread counts, refreshed every 2 minutes.
 - Drafts that sync to the server. Closing the compose window asks before discarding.
 - Other providers like Yahoo, iCloud or plain IMAP.

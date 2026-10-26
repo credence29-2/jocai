@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 
 type harness struct {
 	t      *testing.T
-	a      *app
+	a      *App
 	h      http.Handler
 	opened []string
 }
@@ -26,7 +26,7 @@ func newHarness(t *testing.T) *harness {
 		t.Fatal(err)
 	}
 	hs := &harness{t: t}
-	hs.a = newApp(st, true, func(u string) error { hs.opened = append(hs.opened, u); return nil })
+	hs.a = New(st, true, func(u string) error { hs.opened = append(hs.opened, u); return nil })
 	hs.h = hs.a.routes()
 	return hs
 }

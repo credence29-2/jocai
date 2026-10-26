@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 
 // openStore opens the saved settings, or a throwaway folder in demo mode so
 // sample accounts never mix with real ones.
-func openStore(dir string, demoMode bool) (*store.Store, error) {
+func OpenStore(dir string, demoMode bool) (*store.Store, error) {
 	if demoMode {
 		tmp, err := os.MkdirTemp("", "echo-mike-demo-")
 		if err != nil {

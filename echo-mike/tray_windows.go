@@ -6,6 +6,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/credence29-2/jocai/echo-mike/internal/app"
 )
 
 // The tray icon is how a desktop app without a Store package raises Windows
@@ -112,7 +114,7 @@ func newTray(hwnd uintptr) *tray {
 	d.UFlags = nifMessage | nifIcon | nifTip | nifShowTip
 	d.UCallbackMessage = trayMsg
 	d.HIcon = t.small
-	copy(d.SzTip[:], windows.StringToUTF16(appName))
+	copy(d.SzTip[:], windows.StringToUTF16(app.Name))
 	if r, _, _ := procShellNotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(d))); r != 0 {
 		t.added = true
 		d.UVersion = notifyIconVersion4

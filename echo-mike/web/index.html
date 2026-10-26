@@ -189,6 +189,64 @@ select.input { padding-right: 6px; }
 .spin { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent-hi); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .demo-flag { margin: 0 12px 10px; padding: 8px 10px; border-radius: 8px; background: #3a2f22; color: #f6d4a1; font-size: 12px; line-height: 1.4; }
+
+/* ---------- phones (the Android app) ---------- */
+.phone-only { display: none !important; }
+@media (max-width: 760px) {
+  :root { font-size: 15px; }
+  .phone-only { display: inline-flex !important; }
+  .desk-only { display: none !important; }
+  body { display: block; background: var(--bg); }
+  /* The sidebar becomes a drawer. */
+  .sidebar { position: fixed; z-index: 25; inset: 0 auto 0 0; width: min(300px, 86vw); background: var(--side); transform: translateX(-102%); transition: transform .2s ease; overflow-y: auto; box-shadow: 0 0 40px rgba(0,0,0,.5); }
+  body.drawer .sidebar { transform: none; }
+  #scrim { position: fixed; inset: 0; z-index: 24; background: rgba(0,0,0,.5); }
+  body:not(.drawer) #scrim { display: none; }
+  .side-spacer { min-height: 16px; }
+  main { margin: 0; border-radius: 0; height: 100%; }
+  .list-pane { width: 100%; border-right: 0; }
+  .read-pane { display: none; }
+  body.reading .list-pane { display: none; }
+  body.reading .read-pane { display: flex; width: 100%; }
+  .searchbar { padding: 10px 10px 10px 6px; gap: 4px; align-items: center; }
+  .icon-btn { width: 42px; height: 42px; border: 0; background: none; color: var(--text); border-radius: 10px; display: grid; place-items: center; flex: none; }
+  .icon-btn:active { background: var(--card2); }
+  .search { height: 42px; border-radius: 21px; }
+  .row { padding: 12px 14px 12px 12px; }
+  .list { padding-bottom: 90px; }
+  #fab { position: fixed; right: 18px; bottom: 18px; z-index: 5; height: 54px; padding: 0 20px; border-radius: 16px; border: 0; background: var(--accent); color: #fff; font-weight: 600; align-items: center; gap: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+  body.reading #fab { display: none !important; }
+  .toolbar { padding: 6px 8px; gap: 0; min-height: 54px; flex-wrap: nowrap; }
+  .toolbar .tb { padding: 0 9px; height: 42px; }
+  .reader { padding: 14px 14px 30px; }
+  .reader h1 { font-size: 19px; }
+  .hdr .when { display: none; }
+  .reply-bar { display: flex; gap: 8px; margin-top: 18px; }
+  .reply-bar .btn { flex: 1; height: 44px; padding: 0 8px; }
+  .att { max-width: 100%; }
+  .toast { left: 16px; right: 16px; transform: none; bottom: 84px; }
+  /* Dialogs fill the screen. */
+  .overlay { padding: 0; }
+  .dialog, .dialog.compose, .dialog.wide, .dialog.small { max-width: none; height: 100%; max-height: none; border-radius: 0; border: 0; }
+  .dialog.small { height: auto; margin: auto 16px; border-radius: 12px; border: 1px solid var(--line); }
+  .dlg-head { padding: 8px 8px 8px 16px; min-height: 56px; }
+  .x { width: 42px; height: 42px; }
+  .dlg-body { padding: 14px 16px; }
+  .dlg-foot { padding: 10px 12px; flex-wrap: wrap; }
+  #cVia { display: none; }
+  .cfield { padding: 2px 14px; }
+  .cfield label { width: 50px; }
+  .cfield input, .cfield select { height: 40px; font-size: 16px; }
+  .editor { padding: 14px 16px; font-size: 16px; }
+  .tabs { overflow-x: auto; padding: 0 8px; scrollbar-width: none; }
+  .tabs button { white-space: nowrap; flex: none; }
+  .card-row { flex-wrap: wrap; }
+  .card-row .grow { flex-basis: calc(100% - 30px); }
+  .card-row .grow .muted { overflow-wrap: anywhere; }
+  .ident { flex-wrap: wrap; }
+  .id-grid { grid-template-columns: 1fr !important; }
+  .input { height: 42px; font-size: 16px; }
+}
 </style>
 </head>
 <body>
@@ -213,6 +271,7 @@ select.input { padding-right: 6px; }
 <main>
   <section class="list-pane">
     <div class="searchbar">
+      <button class="icon-btn phone-only" id="menuBtn" title="Menu" aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dim"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="search" placeholder="Search all mail" autocomplete="off"></label>
       <button class="btn small ghost" id="refreshBtn" title="Refresh"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg></button>
@@ -224,6 +283,8 @@ select.input { padding-right: 6px; }
   <section class="read-pane" id="readPane"></section>
 </main>
 
+<div id="scrim"></div>
+<button id="fab" class="phone-only"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Compose</button>
 <div id="modal"></div>
 <div id="toast" class="toast" hidden></div>
 
@@ -262,6 +323,7 @@ const ICON = {
   unread: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
   clip: '<path d="m21.4 11-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  back: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
   bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-2"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -324,11 +386,12 @@ function renderSidebar() {
 $("#folders").onclick = e => {
   const b = e.target.closest("[data-folder]"); if (!b) return;
   S.folder = b.dataset.folder; S.query = ""; $("#search").value = "";
+  setDrawer(false); closeReader();
   loadList();
 };
 $("#accounts").onclick = e => {
   const b = e.target.closest("[data-acct]"); if (!b) return;
-  S.account = b.dataset.acct; loadList();
+  S.account = b.dataset.acct; setDrawer(false); closeReader(); loadList();
 };
 
 /* ---------- list ---------- */
@@ -423,6 +486,7 @@ function renderEmptyReader() {
 async function openMessage(m) {
   if (!m) return;
   S.sel = { accountId: m.accountId, id: m.id };
+  document.body.classList.add("reading");
   S.showImages = !!S.settings.loadImages;
   S.lightMsg = false;
   renderList();
@@ -447,9 +511,10 @@ function renderReader() {
   const files = (m.attachments || []).filter(x => !x.inline || !(m.html || "").includes("cid:" + x.contentId));
   $("#readPane").innerHTML = `
     <div class="toolbar">
-      <button class="tb" data-act="reply" title="Reply (R)">${icon("reply")}Reply</button>
-      <button class="tb" data-act="replyAll" title="Reply all (A)">${icon("replyAll")}Reply all</button>
-      <button class="tb" data-act="forward" title="Forward (F)">${icon("forward")}Forward</button>
+      <button class="tb phone-only" data-act="back" title="Back" aria-label="Back">${icon("back", 22)}</button>
+      <button class="tb desk-only" data-act="reply" title="Reply (R)">${icon("reply")}Reply</button>
+      <button class="tb desk-only" data-act="replyAll" title="Reply all (A)">${icon("replyAll")}Reply all</button>
+      <button class="tb desk-only" data-act="forward" title="Forward (F)">${icon("forward")}Forward</button>
       <span class="grow"></span>
       ${inTrash || inSpam ? `<button class="tb" data-act="inbox" title="Move to Inbox">${icon("inbox")}Not ${inSpam ? "spam" : "deleted"}</button>` :
         `<button class="tb" data-act="archive" title="Archive (E)">${icon("archive")}Archive</button>`}
@@ -472,6 +537,11 @@ function renderReader() {
       <div id="imgBanner"></div>
       <div class="paper"><iframe id="msgFrame" sandbox="allow-same-origin" referrerpolicy="no-referrer" title="Message"></iframe></div>
       ${files.length ? `<div class="atts">${files.map(f => `<a class="att" href="${esc(dl("/api/attachment", { a: m.accountId, m: m.id, att: f.id, name: f.name, type: f.mimeType }))}" title="Download ${esc(f.name)}">${icon("clip", 15)}<span>${esc(f.name)}</span><small>${fmtSize(f.size)}</small></a>`).join("")}</div>` : ""}
+      <div class="reply-bar phone-only">
+        <button class="btn" data-act="reply">${icon("reply", 16)}Reply</button>
+        <button class="btn" data-act="replyAll">${icon("replyAll", 16)}All</button>
+        <button class="btn" data-act="forward">${icon("forward", 16)}Forward</button>
+      </div>
     </div>`;
   renderBody();
 }
@@ -530,6 +600,7 @@ async function act(kind) {
   if (!m) return;
   if (kind === "reply" || kind === "replyAll" || kind === "forward") return replyTo(m, kind);
   if (kind === "light") { S.lightMsg = !S.lightMsg; return renderReader(); }
+  if (kind === "back") return closeReader();
   const summary = S.messages.find(x => x.accountId === m.accountId && x.id === m.id);
   let change = kind;
   if (kind === "star") change = m.starred ? "unstar" : "star";
@@ -564,8 +635,32 @@ function removeFromList(m) {
   const next = S.messages[Math.min(i, S.messages.length - 1)];
   S.sel = null; S.msg = null;
   renderList();
-  if (next && i >= 0) openMessage(next); else renderEmptyReader();
+  // On a phone, go back to the list like other mail apps do.
+  if (next && i >= 0 && !PHONE.matches) openMessage(next); else { closeReader(); renderEmptyReader(); }
 }
+
+const PHONE = matchMedia("(max-width: 760px)");
+function closeReader() { document.body.classList.remove("reading"); }
+function setDrawer(open) { document.body.classList.toggle("drawer", open); }
+$("#menuBtn").onclick = () => setDrawer(true);
+$("#scrim").onclick = () => setDrawer(false);
+$("#fab").onclick = () => compose();
+
+// The Android back button: close whatever is on top. Returns false when
+// there's nothing left to close, so the app can go to the background.
+window.onBack = () => {
+  const top = [...document.querySelectorAll("#modal .overlay")].pop();
+  if (top) {
+    const btn = top.querySelector("[data-x]") || top.querySelector("[data-close]");
+    if (btn) btn.click(); else top.parentElement.remove();
+    return true;
+  }
+  if (document.body.classList.contains("drawer")) { setDrawer(false); return true; }
+  if (document.body.classList.contains("reading")) { closeReader(); return true; }
+  if (S.query) { $("#search").value = ""; S.query = ""; loadList(); return true; }
+  if (S.folder !== "inbox" || S.account) { S.folder = "inbox"; S.account = ""; loadList(); return true; }
+  return false;
+};
 
 /* ---------- compose ---------- */
 const FMT = [
@@ -724,7 +819,7 @@ function compose(d = {}) {
   if (isReply && d.kind !== "forward") { const r = document.createRange(); r.setStart(body.firstChild, 0); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); }
 }
 const b64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = () => bad(r.error); r.readAsDataURL(f); });
-$("#composeBtn").onclick = () => compose();
+$("#composeBtn").onclick = () => { setDrawer(false); compose(); };
 
 /* ---------- settings ---------- */
 let settingsTab = "accounts";
@@ -871,7 +966,7 @@ function editIdentity(i) {
   box.innerHTML = `<div class="overlay"><div class="dialog" style="max-width:680px">
     <div class="dlg-head"><h3>${isNew ? "Add alias" : "Edit " + esc(i.email)}</h3><button class="x" data-x>${icon("x")}</button></div>
     <div class="dlg-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+      <div class="id-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
         <label class="field"><span>Email address</span><input class="input" id="iEmail" value="${esc(i.email)}" ${i.imported ? "readonly" : ""} spellcheck="false"></label>
         <label class="field"><span>Name people see</span><input class="input" id="iName" value="${esc(i.name)}"></label>
       </div>
@@ -977,7 +1072,7 @@ function renderGeneral() {
   };
 }
 
-$("#settingsBtn").onclick = () => openSettings();
+$("#settingsBtn").onclick = () => { setDrawer(false); openSettings(); };
 
 function renderMute() {
   const off = !!S.settings.muteNotifications;
