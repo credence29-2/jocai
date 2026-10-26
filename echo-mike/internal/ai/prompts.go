@@ -3,6 +3,7 @@ package ai
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 const voice = "You help with email for a busy support operations manager. Write in plain, direct English. No corporate jargon, no filler, no em dashes. Never invent facts that aren't in the material you're given. Output only the requested text, with no preamble, no labels and no explanation."
@@ -68,4 +69,25 @@ func Rewrite(mode, text string) (system, prompt string, ok bool) {
 	}
 	return voice + " You edit the user's own draft. Keep their voice; don't replace it with a template.",
 		fmt.Sprintf("%s Keep the same paragraph breaks where they make sense. Return only the rewritten text.\n\nText:\n\n%s", ask, clip(text)), true
+}
+
+// Search turns a plain-English request into the search box's operators.
+// today anchors words like "yesterday" and "last month"; labels are the
+// user's label names, so "tagged clients" can become label:Clients.
+func Search(ask string, today time.Time, labels []string) (system, prompt string) {
+	lb := "The user has no labels."
+	if len(labels) > 0 {
+		lb = "The user's labels are: " + strings.Join(labels, ", ") + ". Use label:<name> only when the request names one of them."
+	}
+	return "You translate what someone wants to find in their email into a search query. Output only the query on one line, nothing else: no quotes around it, no explanation.",
+		fmt.Sprintf(`Today is %s. Search syntax, the same as Gmail's:
+- plain words match anywhere (subject, sender, body)
+- from:<name or address>   to:<name or address>   subject:<words, quoted if more than one word>
+- has:attachment
+- after:YYYY-MM-DD   before:YYYY-MM-DD   (before is exclusive; "last month" is the whole previous calendar month; "last week" is the previous Monday through Sunday; "this week" starts last Monday; "yesterday" is after:yesterday before:today; "recent" or "lately" means the last 14 days)
+- label:<name>
+%s
+Keep the words that carry meaning (invoice, printer, refund) as plain words. Don't invent names or dates the user didn't imply. If the request is already a query, return it unchanged.
+
+Request: %s`, today.Format("Monday, January 2, 2006"), lb, strings.TrimSpace(ask))
 }

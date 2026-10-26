@@ -428,6 +428,7 @@ body.cal .cal-pane { display: flex; }
       <button class="icon-btn phone-only" id="menuBtn" title="Menu" aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dim"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="search" placeholder="Search all mail" autocomplete="off">
+        <button class="icon-btn" id="askBtn" title="Ask in plain English (Ctrl+Enter). The AI turns it into search filters." aria-label="AI search" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></button>
         <button class="icon-btn" id="filterBtn" title="Search filters" aria-label="Search filters"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></label>
       <button class="btn small ghost" id="refreshBtn" title="Refresh"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg></button>
     </div>
@@ -846,7 +847,26 @@ document.addEventListener("click", e => {
 });
 
 let searchTimer;
+// AI search: plain English in the box becomes the operators, which stay
+// visible in the box so it's clear what ran.
+async function aiSearch() {
+  if (!S.settings.aiEngine) { toast("Turn on AI under Settings > AI to search in plain English.", 5000); return openSettings("ai"); }
+  let text = $("#search").value.trim();
+  if (!text) { text = await ask("What are you looking for?", { ok: "Search", input: "" }); if (!text) return; }
+  const btn = $("#askBtn"); btn.disabled = true; btn.classList.add("on");
+  $("#search").value = text; $("#search").placeholder = "Thinking...";
+  try {
+    const q = (await aiRun({ task: "search", text }, () => {})).split("\n")[0].trim().replace(/^["'`]+|["'`]+$/g, "");
+    if (!q) throw new Error("the model gave nothing back");
+    showMail(); clearTimeout(searchTimer);
+    $("#search").value = q; S.query = q; loadList();
+    toast("Searching: " + q, 4000);
+  } catch (e) { toast("Couldn't turn that into a search: " + e.message, 6000); }
+  btn.disabled = false; btn.classList.remove("on"); $("#search").placeholder = "Search all mail";
+}
+$("#askBtn").onclick = aiSearch;
 $("#search").addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); clearTimeout(searchTimer); return aiSearch(); }
   if (e.key === "Enter") { clearTimeout(searchTimer); S.query = e.target.value.trim(); loadList(); }
   if (e.key === "Escape") { e.target.value = ""; if (S.query) { S.query = ""; loadList(); } e.target.blur(); }
 });
@@ -2269,6 +2289,7 @@ async function refreshState() {
   const st = await api("/api/state");
   Object.assign(S, { accounts: st.accounts, identities: st.identities, settings: st.settings, demo: st.demo, version: st.version, updates: !!st.updates, exe: st.exe || "" });
   $("#demoFlag").hidden = !S.demo;
+  $("#askBtn").hidden = !S.settings.aiEngine;
   renderMute();
   document.body.classList.toggle("dark-mail", !S.settings.lightMessages);
   renderSidebar();

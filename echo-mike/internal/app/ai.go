@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/credence29-2/jocai/echo-mike/internal/ai"
 	"github.com/credence29-2/jocai/echo-mike/internal/mail"
@@ -97,6 +98,23 @@ func (a *App) handleAIRun(w http.ResponseWriter, r *http.Request) (any, error) {
 		if system, prompt, ok = ai.Rewrite(in.Mode, in.Text); !ok {
 			return nil, fmt.Errorf("unknown rewrite %q", in.Mode)
 		}
+	case "search":
+		if strings.TrimSpace(in.Text) == "" {
+			return nil, fmt.Errorf("say what you're looking for first")
+		}
+		var names []string
+		for _, ac := range a.st.Get().Accounts {
+			if p, _, err := a.provider(ac.ID); err == nil {
+				if lb, ok := p.(mail.Labeler); ok {
+					if labels, err := lb.Labels(r.Context()); err == nil {
+						for _, l := range labels {
+							names = append(names, l.Name)
+						}
+					}
+				}
+			}
+		}
+		system, prompt = ai.Search(in.Text, time.Now(), names)
 	default:
 		return nil, fmt.Errorf("unknown task %q", in.Task)
 	}

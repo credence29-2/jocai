@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func fakeOllama(t *testing.T, models []string) *httptest.Server {
@@ -130,6 +131,18 @@ func TestAnthropic(t *testing.T) {
 	}
 	if _, err := New(Config{}).Stream(context.Background(), "s", "p", nil); err != ErrOff {
 		t.Fatalf("off: %v", err)
+	}
+}
+
+func TestSearchPrompt(t *testing.T) {
+	sys, p := Search("invoices from derek last month", time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), []string{"Clients", "Billing"})
+	for _, want := range []string{"Monday, October 26, 2026", "label:<name>", "Clients, Billing", "invoices from derek last month", "after:YYYY-MM-DD"} {
+		if !strings.Contains(p, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	if !strings.Contains(sys, "Output only the query") {
+		t.Fatal(sys)
 	}
 }
 
