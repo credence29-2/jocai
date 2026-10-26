@@ -47,7 +47,12 @@ svg { flex: none; }
 
 /* ---------- main layout ---------- */
 main { flex: 1; min-width: 0; display: flex; background: var(--panel); margin: 10px 10px 10px 0; border-radius: 10px; overflow: hidden; }
-.list-pane { width: 400px; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--bg); }
+.list-pane { width: var(--list-w, 400px); min-width: 280px; max-width: 70vw; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--bg); position: relative; }
+/* Drag the edge between the list and the message to resize them. */
+.splitter { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 3; }
+.splitter:hover, body.resizing .splitter { background: linear-gradient(to right, transparent 3px, var(--accent) 3px, var(--accent) 5px, transparent 5px); }
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing iframe { pointer-events: none; }
 .read-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .searchbar { padding: 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
 .search { flex: 1; display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; height: 36px; }
@@ -269,7 +274,8 @@ select.input { padding-right: 6px; }
   body:not(.drawer) #scrim { display: none; }
   .side-spacer { min-height: 16px; }
   main { margin: 0; border-radius: 0; height: 100%; }
-  .list-pane { width: 100%; border-right: 0; }
+  .list-pane { width: 100%; max-width: none; border-right: 0; }
+  .splitter { display: none; }
   .read-pane { display: none; }
   body.reading .list-pane { display: none; }
   body.reading .read-pane { display: flex; width: 100%; }
@@ -356,6 +362,7 @@ select.input { padding-right: 6px; }
     <div id="acctErrors"></div>
     <div class="list-head" id="listHead"><h2 id="listTitle">Inbox</h2><span class="dim" id="listSub"></span></div>
     <div class="list" id="list"></div>
+    <div class="splitter" id="splitter" title="Drag to resize. Double-click to reset."></div>
   </section>
   <section class="read-pane" id="readPane"></section>
 </main>
@@ -1725,6 +1732,30 @@ function renderGeneral() {
 }
 
 $("#settingsBtn").onclick = () => { setDrawer(false); openSettings(); };
+
+// The list's width is remembered on this PC.
+{
+  const sp = $("#splitter"), pane = $(".list-pane");
+  const setW = w => { w = Math.max(280, Math.min(w, innerWidth * 0.7)); document.documentElement.style.setProperty("--list-w", w + "px"); return w; };
+  try { const saved = +localStorage.getItem("listWidth"); if (saved) setW(saved); } catch {}
+  sp.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    sp.setPointerCapture(e.pointerId);
+    document.body.classList.add("resizing");
+    const left = pane.getBoundingClientRect().left;
+    let w = pane.offsetWidth;
+    const move = ev => { w = setW(ev.clientX - left); };
+    const up = () => {
+      sp.removeEventListener("pointermove", move);
+      document.body.classList.remove("resizing");
+      try { localStorage.setItem("listWidth", String(w)); } catch {}
+    };
+    sp.addEventListener("pointermove", move);
+    sp.addEventListener("pointerup", up, { once: true });
+    sp.addEventListener("pointercancel", up, { once: true });
+  });
+  sp.addEventListener("dblclick", () => { document.documentElement.style.removeProperty("--list-w"); try { localStorage.removeItem("listWidth"); } catch {} });
+}
 
 // Updates: the app checks on its own once a day and the desktop calls
 // onUpdate; Settings has a button too.

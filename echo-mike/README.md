@@ -16,6 +16,8 @@ One window for all your Gmail and Outlook accounts. Send from any of your aliase
 | Attachments | Attach by button or drag and drop. Forwards carry the original's attachments. Click an attachment to save it. |
 | AI, optional | **Summarize** on a conversation, and an **AI** button in compose that writes a message from a short note or rewrites what you typed (shorter, more professional, friendlier, fix grammar). Runs on your own PC with Ollama, or through Anthropic's or OpenAI's API with your key, chosen per account. Off until you set it up, and nothing is sent to a model until you click. |
 
+Drag the edge between the list and the message to resize them; double-click it to reset.
+
 Keyboard: C new, R reply, A reply all, F forward, E archive, Del delete, S star, U unread, J/K next and previous, / search, Ctrl+Enter send.
 
 ## One-time setup
