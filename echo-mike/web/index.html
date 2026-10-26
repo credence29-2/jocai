@@ -239,6 +239,18 @@ select.input { padding-right: 6px; }
 .color-pick button.on { border-color: #fff; }
 
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #11141a; color: #fff; padding: 10px 16px; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.4); z-index: 30; display: flex; gap: 14px; align-items: center; }
+.ai-box { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 12px 14px; margin: 0 0 14px; font-size: 14px; }
+.ai-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.ai-head .grow { flex: 1; }
+.ai-head .spin, .ai-out .spin { width: 14px; height: 14px; }
+.ai-text { white-space: pre-wrap; line-height: 1.55; }
+.ai-wrap { position: relative; }
+.ai-menu { position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 250px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.45); padding: 6px; z-index: 6; }
+.ai-menu button { display: block; width: 100%; text-align: left; border: 0; background: none; color: inherit; padding: 9px 10px; border-radius: 6px; font-size: 14px; }
+.ai-menu button:hover { background: var(--card2); }
+.ai-menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+.ai-out { border-top: 1px solid var(--line); background: var(--panel); padding: 10px 18px 12px; max-height: 42%; overflow: auto; flex: none; }
+.ai-out .ai-text { margin: 4px 0 10px; font-size: 14px; }
 .spin { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent-hi); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .demo-flag { margin: 0 12px 10px; padding: 8px 10px; border-radius: 8px; background: #3a2f22; color: #f6d4a1; font-size: 12px; line-height: 1.4; }
@@ -375,6 +387,38 @@ async function api(path, body) {
 }
 const dl = (path, params) => path + "?" + new URLSearchParams({ ...params, t: TOKEN });
 
+// AI. aiRun streams a model answer as JSON lines; onText gets the text so
+// far each time more arrives. Nothing goes to the model until a button
+// calls this.
+const aiOn = () => !!S.settings.aiEngine;
+const aiWhere = () => S.settings.aiEngine === "ollama" ? "on this PC" : "by Anthropic";
+async function aiRun(body, onText) {
+  if (window.__previewAi) return window.__previewAi(body, onText);
+  const r = await fetch("/api/ai/run", { method: "POST", headers: { "X-Echo-Token": TOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) { let d = null; try { d = await r.json(); } catch {} throw new Error((d && d.error) || r.statusText); }
+  const rd = r.body.getReader(), dec = new TextDecoder();
+  let buf = "", all = "";
+  for (;;) {
+    const { value, done } = await rd.read();
+    if (!done) buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = done ? "" : lines.pop();
+    for (const l of lines) {
+      if (!l.trim()) continue;
+      const j = JSON.parse(l);
+      if (j.error) throw new Error(j.error);
+      if (j.t) { all += j.t; onText(all); }
+    }
+    if (done) break;
+  }
+  return all;
+}
+const AI_MODES = [["shorter", "Make it shorter"], ["professional", "More professional"], ["friendlier", "Friendlier"], ["grammar", "Fix spelling and grammar"]];
+// plain turns editor HTML into text with line breaks kept, for the model.
+const plain = h => { const t = document.createElement("div"); t.innerHTML = h.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(div|p|li|tr|h\d)>/gi, "$&\n"); return t.textContent.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); };
+// paras turns model text back into editor HTML.
+const paras = t => t.trim().split(/\n\s*\n/).map(p => `<div>${p.split("\n").map(esc).join("<br>")}</div>`).join("<div><br></div>");
+
 const ICON = {
   inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
   starred: '<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>',
@@ -393,6 +437,7 @@ const ICON = {
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
   pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 17h1.5a1.5 1.5 0 0 0 0-3H8zM13 17v-3h1.5a1.5 1.5 0 0 1 0 3zM18 14h-1v3"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  sparkle: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
   bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-2"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -408,6 +453,8 @@ const S = {
   folder: "inbox", account: "", query: "",
   messages: [], cursors: {}, errors: {}, loading: false,
   sel: null, msg: null, showImages: false, unread: {},
+  // aiSum is the summary of the open conversation, if asked for.
+  aiSum: null,
   // checked holds the row keys ticked for a bulk action.
   checked: new Set(),
 };
@@ -781,6 +828,7 @@ function renderReader() {
       <button class="tb desk-only" data-act="reply" title="Reply (R)">${icon("reply")}Reply</button>
       <button class="tb desk-only" data-act="replyAll" title="Reply all (A)">${icon("replyAll")}Reply all</button>
       <button class="tb desk-only" data-act="forward" title="Forward (F)">${icon("forward")}Forward</button>
+      ${aiOn() ? `<button class="tb" data-act="summarize" title="Summarize this conversation with AI, ${aiWhere()}">${icon("sparkle")}<span class="desk-only">Summarize</span></button>` : ""}
       <span class="grow"></span>
       ${inTrash || inSpam ? `<button class="tb" data-act="inbox" title="Move to Inbox">${icon("inbox")}Not ${inSpam ? "spam" : "deleted"}</button>` :
         `<button class="tb" data-act="archive" title="Archive (E)">${icon("archive")}Archive</button>`}
@@ -793,6 +841,7 @@ function renderReader() {
     <div class="reader ${S.lightMsg ? "light-msg" : ""}">
       <div class="thread-head"><h1>${esc(m.subject || "(no subject)")}</h1>
         <span class="chip"><span class="acct-dot" style="background:${esc(a.color)};width:8px;height:8px"></span>${esc(a.name || a.email || "")}${many ? ` · ${S.thread.length} messages` : ""}</span></div>
+      ${aiSumBox(m)}
       ${S.thread.map((x, i) => msgCard(x, i, S.open.has(x.id))).join("")}
       <div class="reply-bar phone-only">
         <button class="btn" data-act="reply">${icon("reply", 16)}Reply</button>
@@ -801,6 +850,23 @@ function renderReader() {
       </div>
     </div>`;
   S.thread.forEach((x, i) => { if (S.open.has(x.id)) renderBody(x, i); });
+}
+
+const sumKey = m => m.accountId + "/" + (m.threadId || m.id);
+function aiSumBox(m) {
+  const s = S.aiSum;
+  if (!s || s.key !== sumKey(m)) return "";
+  return `<div class="ai-box" id="aiSum"><div class="ai-head">${icon("sparkle", 14)}Summary<span class="dim" style="text-transform:none;font-weight:400;letter-spacing:0">${s.running ? "" : "written " + aiWhere()}</span><span class="grow"></span>${s.running ? '<span class="spin"></span>' : '<button class="link" data-ai-close type="button">Hide</button>'}</div><div class="ai-text">${esc(s.text || (s.running ? "Reading the conversation..." : ""))}</div></div>`;
+}
+async function summarize(m) {
+  const key = sumKey(m);
+  S.aiSum = { key, text: "", running: true };
+  renderReader();
+  const show = t => { S.aiSum.text = t; const el = $("#aiSum .ai-text"); if (el) el.textContent = t; };
+  try { await aiRun({ task: "summarize", accountId: m.accountId, threadId: m.threadId || "", id: m.id }, show); }
+  catch (e) { show("Couldn't summarize: " + e.message); }
+  S.aiSum.running = false;
+  if (S.msg && sumKey(S.msg) === key) renderReader();
 }
 
 function msgCard(x, i, open) {
@@ -939,6 +1005,7 @@ $("#readPane").addEventListener("click", e => {
     const files = (x.attachments || []).filter(f => !f.inline || !(x.html || "").includes("cid:" + f.contentId));
     return previewAttachment(x, files[j]);
   }
+  if (e.target.closest("[data-ai-close]")) { S.aiSum = null; return renderReader(); }
   if (e.target.closest("[data-show-imgs]")) { S.showImages = true; S.thread.forEach((x, i) => { if (S.open.has(x.id)) renderBody(x, i); }); return; }
   const one = e.target.closest("[data-reply-one]");
   if (one) { e.stopPropagation(); return replyTo(S.thread[+one.dataset.replyOne], "reply"); }
@@ -957,6 +1024,7 @@ async function act(kind) {
   if (!m) return;
   if (kind === "reply" || kind === "replyAll" || kind === "forward") return replyTo(m, kind);
   if (kind === "light") { S.lightMsg = !S.lightMsg; return renderReader(); }
+  if (kind === "summarize") return summarize(m);
   if (kind === "back") return closeReader();
   const summary = S.messages.find(x => rowKey(x) === S.sel.key);
   let change = kind;
@@ -1091,10 +1159,12 @@ function compose(d = {}) {
     <div class="cfield"><label>Subject</label><input id="cSubject" value="${esc(d.subject || "")}"></div>
     ${fmtBar()}
     <div class="editor-wrap"><div class="editor" id="cBody" contenteditable="true"></div></div>
+    <div class="ai-out" id="cAIOut" hidden></div>
     <div class="files" id="cFiles"></div>
     <div class="dlg-foot">
       <button class="btn primary" id="cSend" title="Send (Ctrl+Enter)">${icon("sent", 16)}Send</button>
       <label class="btn ghost" title="Attach files">${icon("clip", 16)}Attach<input type="file" id="cAttach" multiple hidden></label>
+      ${aiOn() ? `<span class="ai-wrap"><button class="btn ghost" id="cAI" type="button" title="Write or rewrite with AI, ${aiWhere()}">${icon("sparkle", 16)}AI</button></span>` : ""}
       <span class="err" id="cErr"></span><span class="grow"></span>
       <span class="dim" id="cSaved"></span>
       <span class="dim" id="cVia"></span>
@@ -1189,6 +1259,59 @@ function compose(d = {}) {
   root.addEventListener("input", touched);
   $("#cFrom").addEventListener("change", touched);
   $("#cFiles").addEventListener("click", touched);
+
+  // AI: write the message from a note, or rewrite what's typed. Only the
+  // part above the signature and the quoted mail is touched.
+  if ($("#cAI")) {
+    const out = $("#cAIOut");
+    const canReply = isReply && d.kind !== "forward" && d.forwardFrom && !d.draft;
+    const userNodes = () => { const l = []; for (const n of body.childNodes) { if (n.nodeType === 1 && (n.classList.contains("cm-signature") || n.classList.contains("cm-quote"))) break; l.push(n); } return l; };
+    const userHTML = () => userNodes().map(n => n.outerHTML || esc(n.textContent)).join("");
+    const setUser = text => {
+      const first = body.querySelector(".cm-signature, .cm-quote");
+      userNodes().forEach(n => n.remove());
+      const t = document.createElement("template");
+      t.innerHTML = paras(text) + "<div><br></div>";
+      body.insertBefore(t.content, first);
+    };
+    const labels = Object.fromEntries(AI_MODES);
+    const aiGo = async mode => {
+      let req;
+      if (mode === "note") {
+        const note = await ask(canReply ? "What should the reply say? A few words is enough." : "What should the message say? A few words is enough.", { ok: "Write it", input: "" });
+        if (!note) return;
+        req = { task: "draft", note, name: (ident.name || "").split(" ")[0], ...(canReply ? { accountId: d.forwardFrom.accountId, id: d.forwardFrom.msgId, threadId: d.threadId || "" } : {}) };
+      } else {
+        const text = plain(userHTML());
+        if (!text) return toast("Write something first, then pick a rewrite.");
+        req = { task: "rewrite", mode, text };
+      }
+      out.hidden = false;
+      out.innerHTML = `<div class="ai-head">${icon("sparkle", 14)}${esc(labels[mode] || (canReply ? "Reply from your note" : "Message from your note"))}<span class="grow"></span><span class="spin"></span></div>
+        <div class="ai-text">Working...</div>
+        <div style="display:flex;gap:8px"><button class="btn small primary" id="aiUse" type="button" disabled>Use it</button><button class="btn small ghost" id="aiDrop" type="button">Discard</button></div>`;
+      const txt = out.querySelector(".ai-text");
+      $("#aiDrop").onclick = () => { out.hidden = true; out.innerHTML = ""; };
+      let result;
+      try { result = await aiRun(req, t => { txt.textContent = t; }); }
+      catch (e) { txt.textContent = "Couldn't do that: " + e.message; }
+      out.querySelector(".spin")?.remove();
+      if (result === undefined || !result.trim()) return;
+      $("#aiUse").disabled = false;
+      $("#aiUse").onclick = () => { setUser(result); out.hidden = true; out.innerHTML = ""; touched(); body.focus(); };
+    };
+    $("#cAI").onclick = e => {
+      e.stopPropagation();
+      let menu = root.querySelector(".ai-menu");
+      if (menu) return menu.remove();
+      menu = document.createElement("div");
+      menu.className = "ai-menu";
+      menu.innerHTML = `<button type="button" data-ai="note">${canReply ? "Write a reply from a note" : "Write it from a note"}</button><hr>` + AI_MODES.map(([k, l]) => `<button type="button" data-ai="${k}">${l}</button>`).join("");
+      $("#cAI").parentNode.append(menu);
+      menu.onclick = ev => { const b = ev.target.closest("[data-ai]"); if (!b) return; menu.remove(); aiGo(b.dataset.ai); };
+      setTimeout(() => document.addEventListener("click", () => menu.remove(), { once: true }), 0);
+    };
+  }
   const finish = () => { closed = true; clearTimeout(timer); root.innerHTML = ""; };
   const close = async () => {
     if (!dirty) return finish();
@@ -1285,13 +1408,13 @@ function openSettings(tab) {
   if (tab) settingsTab = tab;
   $("#modal").innerHTML = `<div class="overlay"><div class="dialog wide">
     <div class="dlg-head"><h3>Settings</h3><button class="x" data-close title="Close">${icon("x")}</button></div>
-    <div class="tabs">${[["accounts", "Accounts"], ["identities", "From addresses and signatures"], ["setup", "Sign-in setup"], ["general", "General"]].map(([k, l]) =>
+    <div class="tabs">${[["accounts", "Accounts"], ["identities", "From addresses and signatures"], ["setup", "Sign-in setup"], ["ai", "AI"], ["general", "General"]].map(([k, l]) =>
       `<button data-tab="${k}" class="${settingsTab === k ? "active" : ""}">${l}</button>`).join("")}</div>
     <div class="dlg-body" id="setBody"></div></div></div>`;
   const root = $("#modal");
   root.querySelector("[data-close]").onclick = () => { root.innerHTML = ""; };
   root.querySelector(".tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if (b) openSettings(b.dataset.tab); };
-  ({ accounts: renderAccounts, identities: renderIdentities, setup: renderSetup, general: renderGeneral })[settingsTab]();
+  ({ accounts: renderAccounts, identities: renderIdentities, setup: renderSetup, ai: renderAI, general: renderGeneral })[settingsTab]();
 }
 
 function renderAccounts() {
@@ -1503,6 +1626,48 @@ function renderSetup() {
       await refreshState();
       $("#setupMsg").textContent = "Saved. Add your accounts on the Accounts tab.";
     } catch (e) { $("#setupMsg").textContent = e.message; }
+  };
+}
+
+function renderAI() {
+  const st = S.settings, eng = st.aiEngine || "";
+  const radio = (v, label) => `<label class="check" style="margin:0 0 8px"><input type="radio" name="aiEng" value="${v}" ${eng === v ? "checked" : ""}><b>${label}</b></label>`;
+  $("#setBody").innerHTML = `
+    <p class="muted" style="line-height:1.55;margin-top:0;max-width:760px">AI adds a <b>Summarize</b> button to conversations and an <b>AI</b> button to the compose window that writes a message from a short note or rewrites what you typed. Nothing is sent to a model until you click one of those buttons, and you always see the result before it goes into your message. Pick where the model runs.</p>
+    <div class="card">${radio("", "Off")}</div>
+    <div class="card">${radio("ollama", "On this PC with Ollama")}
+      <p class="muted" style="margin:0 0 10px 26px;line-height:1.5">Free and private. Your email never leaves the computer. Needs a graphics card with 8 GB or more of memory; an RTX 4070 handles the default model easily.</p>
+      <ol class="steps">
+        <li>Download Ollama from <button class="link" data-open="https://ollama.com/download/windows">ollama.com/download</button> and install it. It runs quietly in the background and starts with Windows.</li>
+        <li>Open a terminal (press <b>Win+R</b>, type <code>cmd</code>, press Enter) and run <code>ollama pull llama3.1:8b</code>. That downloads the model once, about 5 GB.</li>
+        <li>Click <b>Test</b> below. The first answer after a restart takes a few seconds longer while the model loads.</li>
+      </ol>
+      <p class="muted" style="line-height:1.5">Other models to try: <code>qwen2.5:14b</code> writes better and needs about 10 GB of video memory, <code>llama3.2:3b</code> is faster and weaker. Pull one the same way, then put its name below.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><label class="field"><span>Ollama address</span><input class="input" id="aiUrl" value="${esc(st.ollamaUrl || "http://127.0.0.1:11434")}" spellcheck="false"></label><label class="field"><span>Model</span><input class="input" id="aiModel" value="${esc(st.ollamaModel || "llama3.1:8b")}" spellcheck="false"></label></div>
+    </div>
+    <div class="card">${radio("anthropic", "Anthropic's Claude, with your own API key")}
+      <p class="muted" style="margin:0 0 10px 26px;line-height:1.5">Stronger writing, pay per use, no graphics card needed. The text of the email you're working on is sent to Anthropic when you click a button.</p>
+      <ol class="steps">
+        <li>Go to <button class="link" data-open="https://console.anthropic.com/settings/keys">console.anthropic.com</button>, sign in and create an API key.</li>
+        <li>Add a payment method under <b>Billing</b> there. Email-sized requests cost very little.</li>
+        <li>Paste the key below and click <b>Test</b>.</li>
+      </ol>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><label class="field"><span>API key</span><input class="input" id="aiKey" type="password" value="${esc(st.anthropicKey || "")}" spellcheck="false" placeholder="sk-ant-..."></label><label class="field"><span>Model</span><input class="input" id="aiAModel" value="${esc(st.anthropicModel || "claude-opus-5-5")}" spellcheck="false"></label></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="aiSave">Save</button><button class="btn" id="aiTest">Test</button><span class="muted" id="aiMsg" style="line-height:1.4"></span></div>`;
+  $("#setBody").onclick = e => { if (e.target.dataset.open) api(dl("/open", { u: e.target.dataset.open })).catch(() => {}); };
+  const gather = () => ({ ...S.settings, aiEngine: $("input[name=aiEng]:checked").value, ollamaUrl: $("#aiUrl").value.trim(), ollamaModel: $("#aiModel").value.trim(), anthropicKey: $("#aiKey").value.trim(), anthropicModel: $("#aiAModel").value.trim() });
+  $("#aiSave").onclick = async () => {
+    try { await api("/api/settings", gather()); await refreshState(); $("#aiMsg").textContent = aiOn() ? "Saved. Open a conversation and click Summarize to try it." : "Saved. The AI buttons are hidden."; if (S.msg) renderReader(); }
+    catch (e) { $("#aiMsg").textContent = e.message; }
+  };
+  $("#aiTest").onclick = async () => {
+    const cfg = gather();
+    if (!cfg.aiEngine) { $("#aiMsg").textContent = "Pick Ollama or Anthropic first."; return; }
+    $("#aiTest").disabled = true; $("#aiMsg").textContent = "Testing...";
+    try { const r = await api("/api/ai/test", cfg); $("#aiMsg").textContent = "Works. " + r.message; }
+    catch (e) { $("#aiMsg").textContent = e.message; }
+    $("#aiTest").disabled = false;
   };
 }
 

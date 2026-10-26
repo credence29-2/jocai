@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/credence29-2/jocai/echo-mike/internal/ai"
 	"github.com/credence29-2/jocai/echo-mike/internal/mail"
 )
 
@@ -41,6 +42,8 @@ type Settings struct {
 	LightMessages bool `json:"lightMessages"`
 	// MuteNotifications stops new-mail notifications.
 	MuteNotifications bool `json:"muteNotifications"`
+	// AI picks the engine behind the Summarize and writing buttons.
+	ai.Config
 }
 
 // Data is everything in config.json.

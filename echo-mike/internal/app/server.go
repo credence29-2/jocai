@@ -168,6 +168,8 @@ func (a *App) routes() http.Handler {
 	api("GET /api/update", a.handleUpdateStatus)
 	api("POST /api/update/check", a.handleUpdateCheck)
 	api("POST /api/update/install", a.handleUpdateInstall)
+	api("POST /api/ai/test", a.handleAITest)
+	api("POST /api/ai/run", a.handleAIRun)
 	api("GET /open", a.handleOpen)
 	return a.guardHost(mux)
 }
@@ -261,6 +263,9 @@ func (a *App) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
 	d := a.st.Get()
 	if d.Settings.GoogleClientSecret != "" {
 		d.Settings.GoogleClientSecret = "saved"
+	}
+	if d.Settings.AnthropicKey != "" {
+		d.Settings.AnthropicKey = "saved"
 	}
 	if d.Accounts == nil {
 		d.Accounts = []store.Account{}
@@ -899,6 +904,10 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) (any, error
 		if in.GoogleClientSecret == "saved" {
 			in.GoogleClientSecret = d.Settings.GoogleClientSecret
 		}
+		if in.AnthropicKey == "saved" {
+			in.AnthropicKey = d.Settings.AnthropicKey
+		}
+		in.AnthropicKey = strings.TrimSpace(in.AnthropicKey)
 		in.GoogleClientID = strings.TrimSpace(in.GoogleClientID)
 		in.GoogleClientSecret = strings.TrimSpace(in.GoogleClientSecret)
 		in.MicrosoftClientID = strings.TrimSpace(in.MicrosoftClientID)

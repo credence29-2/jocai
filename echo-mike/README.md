@@ -14,6 +14,7 @@ One window for all your Gmail and Outlook accounts. Send from any of your aliase
 | Smart From | Replying to mail sent to sales@ goes out from sales@, with that signature, through the account it belongs to. New messages use the default you pick. |
 | Privacy | Remote images are blocked until you click Show images, so tracking pixels can't report when you opened something. Scripts in email never run. Links open in your normal browser. |
 | Attachments | Attach by button or drag and drop. Forwards carry the original's attachments. Click an attachment to save it. |
+| AI, optional | **Summarize** on a conversation, and an **AI** button in compose that writes a message from a short note or rewrites what you typed (shorter, more professional, friendlier, fix grammar). Runs on your own PC with Ollama, or through Anthropic's API with your key. Off until you set it up, and nothing is sent to a model until you click. |
 
 Keyboard: C new, R reply, A reply all, F forward, E archive, Del delete, S star, U unread, J/K next and previous, / search, Ctrl+Enter send.
 
@@ -38,6 +39,20 @@ Google and Microsoft only let an app read mail once it's registered with them. B
 5. Paste the **Application (client) ID** into Project Echo Mike. No secret is needed.
 
 Then go to **Settings > Accounts** and add each account. Your browser opens for sign-in.
+
+## AI
+
+Settings > AI has two ways to run it. Both show the result before anything goes into your message.
+
+**On this PC with Ollama** (free, private; needs a graphics card with 8 GB or more of memory):
+
+1. Install Ollama from [ollama.com/download](https://ollama.com/download/windows). It runs in the background.
+2. In a terminal, run `ollama pull llama3.1:8b` (about 5 GB, once).
+3. In Project Echo Mike, pick **On this PC with Ollama** and click **Test**.
+
+Other models work too: `qwen2.5:14b` writes better and needs about 10 GB of video memory. On the Android app, point the Ollama address at your PC's IP; Ollama only listens on the PC itself unless you set `OLLAMA_HOST=0.0.0.0` in its environment.
+
+**Anthropic's Claude with your key:** create a key at [console.anthropic.com](https://console.anthropic.com/settings/keys), add billing, paste the key under Settings > AI and click **Test**. The text of the email you're working on goes to Anthropic when you click an AI button. The key is kept in `config.json` next to your other settings.
 
 ## Sending from aliases
 
@@ -89,7 +104,8 @@ The window is a WebView2 page served by a small web server inside the exe. The s
 
 | Folder | What's in it |
 | --- | --- |
-| `internal/app` | The local API, account sign-in and the new-mail watcher |
+| `internal/app` | The local API, account sign-in, the new-mail watcher and the AI endpoints |
+| `internal/ai` | Ollama and Anthropic clients and the prompts behind the AI buttons |
 | `web/index.html` | The interface, embedded in the exe and the Android app |
 | `mobile`, `android/` | The Android app: a gomobile-bound engine and a WebView shell |
 | `internal/gmail` | Gmail API client |
@@ -128,7 +144,7 @@ go-winres make --in winres/winres.json --arch amd64,arm64
 
 ## Testing
 
-- `go test ./...` runs the unit tests. The Gmail and Outlook clients are tested against fake Google, Microsoft and SMTP servers, including the STARTTLS and XOAUTH2 sign-in, alias From headers, Bcc handling, and the Outlook fallback rules.
+- `go test ./...` runs the unit tests. The Gmail, Outlook and AI clients are tested against fake Google, Microsoft, SMTP, Ollama and Anthropic servers, including the STARTTLS and XOAUTH2 sign-in, alias From headers, Bcc handling, and the Outlook fallback rules.
 - The **Project Echo Mike build** GitHub workflow runs the tests on Linux and on Windows (for DPAPI), and produces the exes as a downloadable artifact on every push.
 
 ## Not in this version

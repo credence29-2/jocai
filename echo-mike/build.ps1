@@ -1,5 +1,5 @@
 # Builds ProjectEchoMike.exe. Usage: .\build.ps1 [version]
-param([string]$Version = "1.3.0")
+param([string]$Version = "1.4.0")
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $ldflags = "-H windowsgui -s -w -X github.com/credence29-2/jocai/echo-mike/internal/app.Version=$Version"
