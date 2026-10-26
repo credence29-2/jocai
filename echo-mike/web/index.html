@@ -105,6 +105,15 @@ main { flex: 1; min-width: 0; display: flex; background: var(--panel); margin: 1
 .msgcard .mhead .tb { height: 30px; padding: 0 8px; margin: -4px 0 0 4px; }
 .msgcard .mbody { padding: 12px 14px 14px; }
 .msgcard .avatar { width: 34px; height: 34px; font-size: 13px; }
+.row .chk { width: 18px; display: flex; align-items: center; flex: none; opacity: 0; transition: opacity .1s; }
+.row .chk input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.row:hover .chk, .list.has-checked .chk, .row.checked .chk { opacity: 1; }
+.row.checked { background: #2a3550; }
+.bulk { display: flex; align-items: center; gap: 4px; padding: 8px 10px 6px 14px; flex-wrap: wrap; }
+.bulk .chk input { width: 16px; height: 16px; margin: 0 8px 0 0; accent-color: var(--accent); cursor: pointer; }
+.bulk b { margin-right: 6px; }
+.bulk .tb { height: 32px; padding: 0 9px; }
+.list-head .link { font-size: 13px; }
 .row .count { font-size: 11px; font-weight: 600; color: var(--sub); background: var(--card2); border-radius: 9px; padding: 1px 6px; margin-left: 6px; }
 .thread-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; }
 .thread-head h1 { margin: 0; flex: 1; }
@@ -229,6 +238,7 @@ select.input { padding-right: 6px; }
   .icon-btn:active { background: var(--card2); }
   .search { height: 42px; border-radius: 21px; }
   .row { padding: 12px 14px 12px 12px; }
+  .row .chk { opacity: 1; }
   .list { padding-bottom: 90px; }
   #fab { position: fixed; right: 18px; bottom: 18px; z-index: 5; height: 54px; padding: 0 20px; border-radius: 16px; border: 0; background: var(--accent); color: #fff; font-weight: 600; align-items: center; gap: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
   body.reading #fab { display: none !important; }
@@ -293,7 +303,7 @@ select.input { padding-right: 6px; }
       <button class="btn small ghost" id="refreshBtn" title="Refresh"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg></button>
     </div>
     <div id="acctErrors"></div>
-    <div class="list-head"><h2 id="listTitle">Inbox</h2><span class="dim" id="listSub"></span></div>
+    <div class="list-head" id="listHead"><h2 id="listTitle">Inbox</h2><span class="dim" id="listSub"></span></div>
     <div class="list" id="list"></div>
   </section>
   <section class="read-pane" id="readPane"></section>
@@ -356,6 +366,8 @@ const S = {
   folder: "inbox", account: "", query: "",
   messages: [], cursors: {}, errors: {}, loading: false,
   sel: null, msg: null, showImages: false, unread: {},
+  // checked holds the row keys ticked for a bulk action.
+  checked: new Set(),
 };
 const acctById = id => S.accounts.find(a => a.id === id);
 const identById = id => S.identities.find(i => i.id === id);
@@ -420,13 +432,13 @@ function renderSidebar() {
 }
 $("#folders").onclick = e => {
   const b = e.target.closest("[data-folder]"); if (!b) return;
-  S.folder = b.dataset.folder; S.query = ""; $("#search").value = "";
+  S.folder = b.dataset.folder; S.query = ""; $("#search").value = ""; S.checked.clear();
   setDrawer(false); closeReader();
   loadList();
 };
 $("#accounts").onclick = e => {
   const b = e.target.closest("[data-acct]"); if (!b) return;
-  S.account = b.dataset.acct; setDrawer(false); closeReader(); loadList();
+  S.account = b.dataset.acct; S.checked.clear(); setDrawer(false); closeReader(); loadList();
 };
 
 /* ---------- list ---------- */
@@ -454,9 +466,29 @@ async function loadList(more) {
 }
 
 function renderList() {
-  $("#listTitle").textContent = S.query ? "Search results" : FOLDER_NAMES[S.folder];
+  // Drop ticks for rows that are gone.
+  const keys = new Set(S.messages.map(rowKey));
+  for (const k of S.checked) if (!keys.has(k)) S.checked.delete(k);
   const acct = acctById(S.account);
-  $("#listSub").textContent = acct ? acct.name || acct.email : S.accounts.length > 1 ? "All accounts" : "";
+  const head = $("#listHead");
+  if (S.checked.size) {
+    const inTrash = S.folder === "trash" && !S.query, inSpam = S.folder === "spam" && !S.query;
+    head.className = "bulk";
+    head.innerHTML = `<label class="chk"><input type="checkbox" id="chkAll" ${S.checked.size === S.messages.length ? "checked" : ""} title="Select all"></label>
+      <b>${S.checked.size} selected</b>
+      ${inTrash || inSpam ? `<button class="tb" data-bulk="inbox" title="Move to Inbox">${icon("inbox", 16)}Inbox</button>` : `<button class="tb" data-bulk="archive" title="Archive">${icon("archive", 16)}Archive</button>`}
+      ${inTrash ? "" : `<button class="tb" data-bulk="trash" title="Delete">${icon("trash", 16)}</button>`}
+      ${inSpam || inTrash ? "" : `<button class="tb" data-bulk="spam" title="Report spam">${icon("spam", 16)}</button>`}
+      <button class="tb" data-bulk="read" title="Mark read">${icon("unread", 16)}Read</button>
+      <button class="tb" data-bulk="unread" title="Mark unread">Unread</button>
+      <button class="tb" data-bulk="star" title="Star">${icon("starred", 16)}</button>
+      <span class="grow"></span><button class="tb" data-bulk="clear" title="Clear selection">${icon("x", 16)}</button>`;
+  } else {
+    head.className = "list-head";
+    const unread = S.messages.filter(m => m.unread).length;
+    head.innerHTML = `<h2 id="listTitle">${esc(S.query ? "Search results" : FOLDER_NAMES[S.folder])}</h2><span class="dim" id="listSub">${esc(acct ? acct.name || acct.email : S.accounts.length > 1 ? "All accounts" : "")}</span>
+      <span class="grow"></span>${unread && !S.query ? `<button class="link" data-bulk="allread" title="Mark every message shown as read">Mark all read</button>` : ""}`;
+  }
   const errs = Object.entries(S.errors);
   $("#acctErrors").innerHTML = errs.length ? `<div class="acct-errors">${errs.map(([id, e]) => {
     const a = acctById(id);
@@ -474,12 +506,14 @@ function renderList() {
     return;
   }
   const multi = S.accounts.length > 1;
+  list.classList.toggle("has-checked", S.checked.size > 0);
   list.innerHTML = S.messages.map((m, i) => {
     const a = acctById(m.accountId) || {};
     const who = m.draftId ? "Draft" + ((m.to || []).length ? " to " + m.to.map(t => t.name || t.email).join(", ") : "")
       : S.folder === "sent" && !S.query ? "To: " + ((m.to || []).map(t => t.name || t.email).join(", ") || "(no recipients)") : (m.participants || [m.from.name || m.from.email]).join(", ");
-    const sel = S.sel && S.sel.key === rowKey(m);
-    return `<div class="row ${m.unread ? "unread" : ""} ${sel ? "sel" : ""}" data-i="${i}">
+    const sel = S.sel && S.sel.key === rowKey(m), checked = S.checked.has(rowKey(m));
+    return `<div class="row ${m.unread ? "unread" : ""} ${sel ? "sel" : ""} ${checked ? "checked" : ""}" data-i="${i}">
+      <label class="chk" title="Select"><input type="checkbox" data-chk="${i}" ${checked ? "checked" : ""}></label>
       ${multi ? `<span class="bar" style="background:${esc(a.color)}" title="${esc(a.email)}"></span>` : ""}
       <div class="body">
         <div class="top"><span class="from">${esc(who)}${m.count > 1 ? `<span class="count">${m.count}</span>` : ""}</span>
@@ -490,13 +524,81 @@ function renderList() {
       </div></div>`;
   }).join("") + (Object.keys(S.cursors || {}).length ? `<div class="list-more"><button class="btn small" id="moreBtn" ${S.loading ? "disabled" : ""}>${S.loading ? "Loading..." : "Load more"}</button></div>` : "");
 }
+let lastChk = -1;
 $("#list").onclick = e => {
   if (e.target.id === "moreBtn") return loadList(true);
+  const chk = e.target.closest("[data-chk]");
+  if (chk) {
+    const i = +chk.dataset.chk;
+    // Shift-click ticks the whole range from the last tick.
+    const from = e.shiftKey && lastChk >= 0 ? Math.min(lastChk, i) : i, to = e.shiftKey && lastChk >= 0 ? Math.max(lastChk, i) : i;
+    for (let j = from; j <= to; j++) { const k = rowKey(S.messages[j]); if (chk.checked) S.checked.add(k); else S.checked.delete(k); }
+    lastChk = i;
+    renderList();
+    return;
+  }
+  if (e.target.closest(".chk")) return;
   const row = e.target.closest(".row");
   if (!row) return;
   const m = S.messages[+row.dataset.i];
   if (m.draftId) openDraft(m); else openMessage(m);
 };
+$(".list-pane").addEventListener("click", e => {
+  if (e.target.id === "chkAll") {
+    if (e.target.checked) S.messages.forEach(m => S.checked.add(rowKey(m))); else S.checked.clear();
+    return renderList();
+  }
+  const b = e.target.closest("[data-bulk]");
+  if (b) bulk(b.dataset.bulk);
+});
+
+// bulk applies a change to the ticked rows, or to every unread row shown
+// for "allread". Rows are grouped by account because each account is its
+// own mailbox.
+async function bulk(kind) {
+  if (kind === "clear") { S.checked.clear(); return renderList(); }
+  const rows = kind === "allread" ? S.messages.filter(m => m.unread) : S.messages.filter(m => S.checked.has(rowKey(m)));
+  if (!rows.length) return;
+  const change = kind === "allread" ? "read" : kind;
+  const move = ["archive", "trash", "spam", "inbox"].includes(change);
+  const groups = {};
+  for (const m of rows) {
+    const g = groups[m.accountId] = groups[m.accountId] || { threads: [], ids: [], drafts: [] };
+    if (m.draftId) g.drafts.push(m.draftId); else if (m.threadId) g.threads.push(m.threadId); else g.ids.push(m.id);
+  }
+  const calls = [];
+  for (const [accountId, g] of Object.entries(groups)) {
+    if (g.threads.length || g.ids.length) calls.push(api("/api/apply", { accountId, threads: g.threads, ids: g.ids, change }));
+    // A draft can only be deleted; other changes don't apply to it.
+    if (change === "trash") g.drafts.forEach(d => calls.push(api("/api/draft/delete", { accountId, draftId: d })));
+  }
+  try { await Promise.all(calls); } catch (e) { toast(e.message, 6000); loadList(); return; }
+  const keys = new Set(rows.map(rowKey));
+  if (move) {
+    if (S.sel && keys.has(S.sel.key)) { S.sel = null; S.msg = null; closeReader(); renderEmptyReader(); }
+    S.messages = S.messages.filter(m => !keys.has(rowKey(m)));
+  } else {
+    for (const m of rows) {
+      if (change === "read") m.unread = false;
+      if (change === "unread") m.unread = true;
+      if (change === "star") m.starred = true;
+    }
+  }
+  S.checked.clear();
+  renderList();
+  pollUnread();
+  const n = rows.length, what = n === 1 ? "1 conversation" : n + " conversations";
+  const label = { archive: "Archived", trash: "Deleted", spam: "Reported as spam", inbox: "Moved to Inbox", read: "Marked read", unread: "Marked unread", star: "Starred" }[change];
+  const undo = { archive: "inbox", trash: "inbox", spam: "inbox" }[change];
+  toast(`${label} ${what}`, 5000, undo && {
+    label: "Undo", run: async () => {
+      try {
+        await Promise.all(Object.entries(groups).map(([accountId, g]) => (g.threads.length || g.ids.length) && api("/api/apply", { accountId, threads: g.threads, ids: g.ids, change: undo })));
+        loadList(); pollUnread();
+      } catch (e) { toast(e.message); }
+    }
+  });
+}
 
 // openDraft reopens a saved draft in the compose window.
 async function openDraft(m) {
@@ -1219,7 +1321,7 @@ function renderGeneral() {
     <div class="muted" style="line-height:1.9">
       <span class="code">C</span> new message &nbsp; <span class="code">R</span> reply &nbsp; <span class="code">A</span> reply all &nbsp; <span class="code">F</span> forward<br>
       <span class="code">E</span> archive &nbsp; <span class="code">Del</span> delete &nbsp; <span class="code">S</span> star &nbsp; <span class="code">U</span> mark unread<br>
-      <span class="code">J</span> / <span class="code">K</span> next and previous &nbsp; <span class="code">/</span> search &nbsp; <span class="code">Ctrl+Enter</span> send
+      <span class="code">J</span> / <span class="code">K</span> next and previous &nbsp; <span class="code">X</span> select &nbsp; <span class="code">/</span> search &nbsp; <span class="code">Ctrl+Enter</span> send
     </div>
     <p class="dim" style="margin-top:24px">Project Echo Mike ${esc(S.version)}</p>`;
   $("#gNotify").onchange = e => setMute(!e.target.checked);
@@ -1267,7 +1369,8 @@ document.addEventListener("keydown", e => {
   const map = { c: () => compose(), r: () => act("reply"), a: () => act("replyAll"), f: () => act("forward"), e: () => act("archive"),
     delete: () => act("trash"), "#": () => act("trash"), s: () => act("star"), u: () => act("unread"),
     j: () => openMessage(S.messages[idx + 1]), k: () => idx > 0 && openMessage(S.messages[idx - 1]),
-    "/": () => $("#search").focus() };
+    "/": () => $("#search").focus(),
+    x: () => { if (idx >= 0) { const k = rowKey(S.messages[idx]); S.checked.has(k) ? S.checked.delete(k) : S.checked.add(k); renderList(); } } };
   if (map[k]) { e.preventDefault(); map[k](); }
 });
 
