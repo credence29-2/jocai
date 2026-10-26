@@ -1672,7 +1672,9 @@ function renderCal() {
   const legend = S.accounts.map(a => {
     const err = c.errors[a.id];
     return `<label title="${esc(a.email)}"><input type="checkbox" data-cal-acct="${esc(a.id)}" ${c.off.has(a.id) ? "" : "checked"} style="accent-color:${esc(a.color)}">${esc(a.name || a.email)}</label>` +
-      (err === "needs-reconnect" ? `<span class="warn">needs calendar access: <button class="link" data-cal-reconnect="${esc(a.id)}">Reconnect</button></span>` : err ? `<span class="warn" title="${esc(err)}">couldn't load</span>` : "");
+      (err === "needs-reconnect" ? `<span class="warn">needs calendar access: <button class="link" data-cal-reconnect="${esc(a.id)}">Reconnect</button></span>`
+        : err === "needs-api" ? `<span class="warn">the Calendar API is off in Google Cloud: <button class="link" data-open="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com">turn it on</button>, wait a minute, then refresh</span>`
+        : err ? `<span class="warn" title="${esc(err)}">couldn't load: ${esc(err.length > 120 ? err.slice(0, 120) + "..." : err)}</span>` : "");
   }).join("") + (c.errors[""] ? `<span class="warn">${esc(c.errors[""])}</span>` : "");
   $("#calPane").innerHTML = `
     <div class="cal-head">
@@ -1751,6 +1753,7 @@ function agendaHTML(from, to, today) {
 
 $("#calPane").addEventListener("click", async e => {
   const t = e.target;
+  if (t.dataset.open) return api(dl("/open", { u: t.dataset.open })).catch(() => {});
   if (t.closest("#calMenu")) return setDrawer(true);
   if (t.closest("#calRefresh")) return loadCal(true);
   if (t.closest("#calNew")) return editEvent(null, S.cal.date);

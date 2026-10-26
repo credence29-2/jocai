@@ -120,11 +120,22 @@ func (a *App) eachCalendar(ctx context.Context, fn func(store.Account, mail.Cale
 	wg.Wait()
 }
 
+// calErr turns an error into something the page can act on: the account
+// needs reconnecting for the calendar scope, the Calendar API is still off
+// in Google Cloud, or a plain message.
 func calErr(err error) string {
 	if errors.Is(err, mail.ErrCalendarScope) {
 		return "needs-reconnect"
 	}
-	return err.Error()
+	msg := err.Error()
+	low := strings.ToLower(msg)
+	if strings.Contains(low, "has not been used in project") || strings.Contains(low, "it is disabled") || strings.Contains(low, "accessnotconfigured") || strings.Contains(low, "api not enabled") {
+		return "needs-api"
+	}
+	if strings.Contains(low, "insufficient") && strings.Contains(low, "scope") || strings.Contains(low, "insufficient permission") {
+		return "needs-reconnect"
+	}
+	return msg
 }
 
 func parseWhen(s string) (time.Time, error) {

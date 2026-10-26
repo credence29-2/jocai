@@ -29,8 +29,11 @@ func (c *Client) calBase() string {
 func (c *Client) calDo(ctx context.Context, method, path string, body any, out any) error {
 	err := c.doURL(ctx, method, c.calBase()+path, body, out)
 	var api *oauth.APIError
-	if errors.As(err, &api) && (api.Status == 403 && strings.Contains(strings.ToLower(api.Msg), "insufficient") || api.Status == 403 && strings.Contains(api.Msg, "scope")) {
-		return cm.ErrCalendarScope
+	if errors.As(err, &api) && (api.Status == 403 || api.Status == 401) {
+		low := strings.ToLower(api.Msg)
+		if strings.Contains(low, "insufficient") || strings.Contains(low, "scope") {
+			return cm.ErrCalendarScope
+		}
 	}
 	return err
 }
