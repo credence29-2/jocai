@@ -158,7 +158,7 @@ func offerInstall(exe, dataDir string) string {
 	t, _ := windows.UTF16PtrFromString(app.Name)
 	m, _ := windows.UTF16PtrFromString("Install Project Echo Mike on this PC?\n\nIt copies itself to " + install.Dir() + ", adds a Start menu and desktop shortcut, and shows up in Apps & features. Updates then always replace that one copy.\n\nChoose No to keep running it from where it is now.")
 	r, _, _ := procMessageBoxW.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), 0x40|0x4) // MB_ICONINFORMATION | MB_YESNO
-	if r != 6 { // IDYES
+	if r != 6 {                                                                                          // IDYES
 		os.MkdirAll(dataDir, 0o755)
 		os.WriteFile(marker, []byte("Delete this file to be offered the install again.\n"), 0o644)
 		return ""
