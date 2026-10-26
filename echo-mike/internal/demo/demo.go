@@ -4,6 +4,7 @@ package demo
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"sort"
 	"strconv"
@@ -96,11 +97,27 @@ func (b *Box) seed(now time.Time, list []seed) {
 			HTML:      s.body,
 		}
 		if s.file != "" {
-			m.files["f1"] = []byte("Sample attachment " + s.file + "\n")
+			m.files["f1"] = sampleFile(s.file)
 			m.m.Attachments = []mail.Attachment{{ID: "f1", Name: s.file, MIMEType: mimeFor(s.file), Size: int64(len(m.files["f1"]))}}
 		}
 		b.msgs = append(b.msgs, m)
 	}
+}
+
+// sampleFile returns something that opens for the sample attachments: a
+// one-page PDF, a small PNG, or plain text.
+func sampleFile(name string) []byte {
+	switch {
+	case strings.HasSuffix(name, ".pdf"):
+		return []byte("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" +
+			"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n" +
+			"4 0 obj<</Length 96>>stream\nBT /F1 24 Tf 72 700 Td (Missed calls report, draft) Tj 0 -40 Td /F1 14 Tf (Callback rate: 91%) Tj ET\nendstream\nendobj\n" +
+			"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n")
+	case strings.HasSuffix(name, ".png"):
+		b, _ := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+		return b
+	}
+	return []byte("Sample attachment " + name + "\n")
 }
 
 func mimeFor(name string) string {
@@ -109,6 +126,8 @@ func mimeFor(name string) string {
 		return "application/pdf"
 	case strings.HasSuffix(name, ".csv"):
 		return "text/csv"
+	case strings.HasSuffix(name, ".png"):
+		return "image/png"
 	}
 	return "application/octet-stream"
 }

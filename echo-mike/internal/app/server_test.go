@@ -320,3 +320,22 @@ func TestDraftsSaveListResendDelete(t *testing.T) {
 		t.Fatal("draft not deleted")
 	}
 }
+
+func TestAttachmentPreviewTypes(t *testing.T) {
+	hs := newHarness(t)
+	get := func(typ, inline string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", "http://127.0.0.1:5555/api/attachment?t="+hs.a.token+"&a=demo-g&m=5&att=f1&name=x&type="+typ+"&inline="+inline, nil)
+		rec := httptest.NewRecorder()
+		hs.h.ServeHTTP(rec, req)
+		return rec
+	}
+	if r := get("application/pdf", "1"); r.Header().Get("Content-Type") != "application/pdf" || !strings.HasPrefix(r.Header().Get("Content-Disposition"), "inline") || !strings.Contains(r.Header().Get("Content-Security-Policy"), "default-src 'none'") {
+		t.Fatalf("pdf preview headers: %v", r.Header())
+	}
+	if r := get("image/svg%2Bxml", "1"); r.Header().Get("Content-Type") != "application/octet-stream" {
+		t.Fatal("svg must not be previewed inline")
+	}
+	if r := get("application/pdf", "0"); !strings.HasPrefix(r.Header().Get("Content-Disposition"), "attachment") {
+		t.Fatal("download must stay a download")
+	}
+}

@@ -461,9 +461,14 @@ func (a *App) handleAttachment(w http.ResponseWriter, r *http.Request) (any, err
 	}
 	typ := q.Get("type")
 	disp := "attachment"
-	// Inline images are shown in the message; everything else downloads.
-	if q.Get("inline") == "1" && strings.HasPrefix(typ, "image/") && typ != "image/svg+xml" {
+	// Inline images are shown in the message, and images and PDFs can be
+	// previewed; everything else downloads.
+	previewable := (strings.HasPrefix(typ, "image/") && typ != "image/svg+xml") || typ == "application/pdf"
+	if q.Get("inline") == "1" && previewable {
 		disp = "inline"
+		// Nothing in a previewed file may load anything else. (A sandbox
+		// directive would also stop the browser's PDF viewer.)
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
 	} else {
 		typ = "application/octet-stream"
 	}
