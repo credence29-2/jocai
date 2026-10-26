@@ -1654,7 +1654,10 @@ function renderAI() {
       </ol>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><label class="field"><span>API key</span><input class="input" id="aiKey" type="password" value="${esc(st.anthropicKey || "")}" spellcheck="false" placeholder="sk-ant-..."></label><label class="field"><span>Model</span><input class="input" id="aiAModel" value="${esc(st.anthropicModel || "claude-opus-5-5")}" spellcheck="false"></label></div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="aiSave">Save</button><button class="btn" id="aiTest">Test</button><span class="muted" id="aiMsg" style="line-height:1.4"></span></div>`;
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="aiSave">Save</button><button class="btn" id="aiTest">Test</button><span class="muted" id="aiMsg" style="line-height:1.4"></span></div>
+    ${ANDROID ? "" : `<h4 style="margin:24px 0 6px">Claude Desktop</h4>
+    <p class="muted" style="line-height:1.55;margin-top:0;max-width:760px">If you have the Claude desktop app, it can read your mail and leave drafts through Project Echo Mike (it never sends). Add this to Claude Desktop under <b>Settings, Developer, Edit Config</b> and restart Claude. Don't move the exe afterwards, or update the path here.</p>
+    <pre class="code" style="white-space:pre-wrap;padding:10px 12px;user-select:all;line-height:1.5;font-size:12.5px">${esc(JSON.stringify({ mcpServers: { "project-echo-mike": { command: S.exe || "C:\\path\\to\\ProjectEchoMike.exe", args: ["-mcp"] } } }, null, 2))}</pre>`}`;
   $("#setBody").onclick = e => { if (e.target.dataset.open) api(dl("/open", { u: e.target.dataset.open })).catch(() => {}); };
   const gather = () => ({ ...S.settings, aiEngine: $("input[name=aiEng]:checked").value, ollamaUrl: $("#aiUrl").value.trim(), ollamaModel: $("#aiModel").value.trim(), anthropicKey: $("#aiKey").value.trim(), anthropicModel: $("#aiAModel").value.trim() });
   $("#aiSave").onclick = async () => {
@@ -1772,7 +1775,7 @@ document.addEventListener("keydown", e => {
 /* ---------- startup ---------- */
 async function refreshState() {
   const st = await api("/api/state");
-  Object.assign(S, { accounts: st.accounts, identities: st.identities, settings: st.settings, demo: st.demo, version: st.version, updates: !!st.updates });
+  Object.assign(S, { accounts: st.accounts, identities: st.identities, settings: st.settings, demo: st.demo, version: st.version, updates: !!st.updates, exe: st.exe || "" });
   $("#demoFlag").hidden = !S.demo;
   renderMute();
   document.body.classList.toggle("dark-mail", !S.settings.lightMessages);

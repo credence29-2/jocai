@@ -35,6 +35,7 @@ var (
 
 func main() {
 	demoMode := flag.Bool("demo", false, "use sample accounts instead of real ones")
+	mcpMode := flag.Bool("mcp", false, "serve the MCP tools over stdin/stdout for Claude Desktop, no window")
 	flag.Parse()
 
 	dataDir := store.Dir()
@@ -44,6 +45,14 @@ func main() {
 		os.Exit(1)
 	}
 	a := app.New(st, *demoMode, shellOpen)
+	if *mcpMode {
+		// Claude Desktop starts the exe with pipes on stdin and stdout and
+		// talks MCP over them. No window, no tray.
+		if err := a.ServeMCP(context.Background()); err != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	if exe, err := os.Executable(); err == nil && !*demoMode {
 		update.Cleanup(exe)
 		a.Updater = update.New(app.Version, exe)

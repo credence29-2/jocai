@@ -54,6 +54,23 @@ Other models work too: `qwen2.5:14b` writes better and needs about 10 GB of vide
 
 **Anthropic's Claude with your key:** create a key at [console.anthropic.com](https://console.anthropic.com/settings/keys), add billing, paste the key under Settings > AI and click **Test**. The text of the email you're working on goes to Anthropic when you click an AI button. The key is kept in `config.json` next to your other settings.
 
+## Claude Desktop
+
+Project Echo Mike is also an MCP server, so the Claude desktop app can look through your mail and leave drafts for you to send. Run with `-mcp` it talks MCP over stdin and stdout instead of opening a window. Settings > AI shows the snippet with your exe's path; it goes in Claude Desktop under **Settings > Developer > Edit Config**:
+
+```json
+{
+  "mcpServers": {
+    "project-echo-mike": {
+      "command": "C:\\Users\\you\\Apps\\ProjectEchoMike.exe",
+      "args": ["-mcp"]
+    }
+  }
+}
+```
+
+Tools: `list_accounts`, `list_mail` (folder or search, every account at once), `read_mail` (one message or the whole conversation) and `draft_mail` (a new message or a reply, saved to Drafts with the right signature and threading). Nothing sends; you send from the app. It uses the same settings and sign-ins as the window, so the app and Claude Desktop can run at the same time.
+
 ## Sending from aliases
 
 - **Gmail:** the alias has to be set up and verified in Gmail first, under **Settings > Accounts > Send mail as**. Click **Sync from Gmail** in Project Echo Mike to pull it in with its signature. If an address isn't verified, Gmail replaces it with your main address.
@@ -104,7 +121,7 @@ The window is a WebView2 page served by a small web server inside the exe. The s
 
 | Folder | What's in it |
 | --- | --- |
-| `internal/app` | The local API, account sign-in, the new-mail watcher and the AI endpoints |
+| `internal/app` | The local API, account sign-in, the new-mail watcher, the AI endpoints and the MCP server |
 | `internal/ai` | Ollama and Anthropic clients and the prompts behind the AI buttons |
 | `web/index.html` | The interface, embedded in the exe and the Android app |
 | `mobile`, `android/` | The Android app: a gomobile-bound engine and a WebView shell |

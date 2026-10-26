@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -257,6 +258,8 @@ type stateOut struct {
 	Folders    []mail.Folder   `json:"folders"`
 	// Updates says whether this build can update itself.
 	Updates bool `json:"updates"`
+	// Exe is this program's path, for the Claude Desktop setup snippet.
+	Exe string `json:"exe,omitempty"`
 }
 
 func (a *App) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
@@ -273,7 +276,8 @@ func (a *App) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
 	if d.Identities == nil {
 		d.Identities = []mail.Identity{}
 	}
-	return stateOut{Version: Version, Demo: a.demo, Accounts: d.Accounts, Identities: d.Identities, Settings: d.Settings, Folders: mail.Folders, Updates: a.Updater != nil}, nil
+	exe, _ := os.Executable()
+	return stateOut{Version: Version, Demo: a.demo, Accounts: d.Accounts, Identities: d.Identities, Settings: d.Settings, Folders: mail.Folders, Updates: a.Updater != nil, Exe: exe}, nil
 }
 
 type listIn struct {
@@ -298,6 +302,11 @@ func (a *App) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
 	if err := decode(r, &in); err != nil {
 		return nil, err
 	}
+	return a.list(r.Context(), in)
+}
+
+// list asks every account (or one) for a page of a folder or search.
+func (a *App) list(ctx context.Context, in listIn) (listOut, error) {
 	var ids []string
 	for _, ac := range a.st.Get().Accounts {
 		if in.AccountID != "" && ac.ID != in.AccountID {
@@ -311,7 +320,7 @@ func (a *App) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
 	out := listOut{Messages: []mail.Summary{}, Cursors: map[string]string{}, Errors: map[string]string{}}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	for _, id := range ids {
 		wg.Add(1)

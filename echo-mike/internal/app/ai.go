@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -58,7 +59,7 @@ func (a *App) handleAIRun(w http.ResponseWriter, r *http.Request) (any, error) {
 	var system, prompt string
 	switch in.Task {
 	case "summarize":
-		text, err := a.mailText(r, in)
+		text, err := a.mailText(r.Context(), in.AccountID, in.ID, in.ThreadID)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +72,7 @@ func (a *App) handleAIRun(w http.ResponseWriter, r *http.Request) (any, error) {
 			system, prompt = ai.DraftNew(in.Note, in.Name)
 			break
 		}
-		text, err := a.mailText(r, in)
+		text, err := a.mailText(r.Context(), in.AccountID, in.ID, in.ThreadID)
 		if err != nil {
 			return nil, err
 		}
@@ -110,24 +111,24 @@ func (a *App) handleAIRun(w http.ResponseWriter, r *http.Request) (any, error) {
 
 // mailText renders a message, or its whole conversation, as plain text for
 // the model: headers first, then the body with quoted replies left in.
-func (a *App) mailText(r *http.Request, in aiRunIn) (string, error) {
-	if in.AccountID == "" || (in.ID == "" && in.ThreadID == "") {
+func (a *App) mailText(ctx context.Context, accountID, id, threadID string) (string, error) {
+	if accountID == "" || (id == "" && threadID == "") {
 		return "", fmt.Errorf("open a message first")
 	}
-	p, _, err := a.provider(in.AccountID)
+	p, _, err := a.provider(accountID)
 	if err != nil {
 		return "", err
 	}
 	var msgs []*mail.Message
-	if in.ThreadID != "" {
-		msgs, err = p.Thread(r.Context(), in.ThreadID)
+	if threadID != "" {
+		msgs, err = p.Thread(ctx, threadID)
 	} else {
 		var m *mail.Message
-		m, err = p.Get(r.Context(), in.ID)
+		m, err = p.Get(ctx, id)
 		msgs = []*mail.Message{m}
 	}
 	if err != nil {
-		a.noteErr(in.AccountID, err)
+		a.noteErr(accountID, err)
 		return "", err
 	}
 	var b strings.Builder
