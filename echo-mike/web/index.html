@@ -93,6 +93,22 @@ main { flex: 1; min-width: 0; display: flex; background: var(--panel); margin: 1
 .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--card2); color: var(--sub); }
 .banner { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: var(--card); color: var(--sub); margin-bottom: 12px; font-size: 13px; }
 .paper { background: #fff; color: #222; border-radius: 8px; overflow: hidden; }
+.msgcard { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; background: var(--card); }
+.msgcard .mhead { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; cursor: pointer; }
+.msgcard .mhead:hover { background: var(--card2); }
+.msgcard.open .mhead { cursor: default; border-bottom: 1px solid var(--line); }
+.msgcard.open .mhead:hover { background: none; }
+.msgcard .mhead .who { flex: 1; min-width: 0; line-height: 1.45; }
+.msgcard .mhead .who .snip { color: var(--dim); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msgcard .mhead .who .small { font-size: 13px; color: var(--sub); word-break: break-word; }
+.msgcard .mhead .when { font-size: 13px; color: var(--sub); text-align: right; flex: none; }
+.msgcard .mhead .tb { height: 30px; padding: 0 8px; margin: -4px 0 0 4px; }
+.msgcard .mbody { padding: 12px 14px 14px; }
+.msgcard .avatar { width: 34px; height: 34px; font-size: 13px; }
+.row .count { font-size: 11px; font-weight: 600; color: var(--sub); background: var(--card2); border-radius: 9px; padding: 1px 6px; margin-left: 6px; }
+.thread-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; }
+.thread-head h1 { margin: 0; flex: 1; }
+.thread-head .chip { flex: none; }
 .paper iframe { width: 100%; border: 0; display: block; min-height: 120px; background: #fff; }
 .atts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .att { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); color: var(--text); text-decoration: none; max-width: 280px; }
@@ -343,6 +359,24 @@ const S = {
 const acctById = id => S.accounts.find(a => a.id === id);
 const identById = id => S.identities.find(i => i.id === id);
 
+// ask shows a small in-app question and resolves with true for the main
+// button. The browser's own confirm() would show the app's local address.
+function ask(text, { ok = "OK", cancel = "Cancel", danger = false, input = null } = {}) {
+  return new Promise(resolve => {
+    const box = document.createElement("div");
+    box.innerHTML = `<div class="overlay"><div class="dialog small">
+      <div class="dlg-body" style="padding:20px 18px 6px;line-height:1.5">${esc(text)}${input !== null ? `<input class="input" id="askInput" style="margin-top:12px" value="${esc(input)}" spellcheck="false">` : ""}</div>
+      <div class="dlg-foot" style="border-top:0"><span class="grow"></span>
+        <button class="btn ghost" data-x>${esc(cancel)}</button><button class="btn ${danger ? "" : "primary"} ${danger ? "danger" : ""}" id="askOk">${esc(ok)}</button></div></div></div>`;
+    $("#modal").append(box);
+    const done = v => { box.remove(); resolve(v); };
+    box.querySelector("[data-x]").onclick = () => done(input !== null ? null : false);
+    box.querySelector("#askOk").onclick = () => done(input !== null ? box.querySelector("#askInput").value.trim() : true);
+    box.querySelector(".dialog").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); box.querySelector("#askOk").click(); } });
+    (box.querySelector("#askInput") || box.querySelector("#askOk")).focus();
+  });
+}
+
 function toast(text, ms = 3500, action) {
   const t = $("#toast");
   t.innerHTML = `<span>${esc(text)}</span>`;
@@ -396,7 +430,7 @@ $("#accounts").onclick = e => {
 
 /* ---------- list ---------- */
 async function loadList(more) {
-  const req = { folder: S.query ? "all" : S.folder, query: S.query, accountId: S.account };
+  const req = { folder: S.query ? "all" : S.folder, query: S.query, accountId: S.account, group: true };
   if (more) req.cursors = S.cursors;
   const ticket = loadList.ticket = (loadList.ticket || 0) + 1;
   S.loading = true;
@@ -405,8 +439,8 @@ async function loadList(more) {
   try {
     const r = await api("/api/list", req);
     if (ticket !== loadList.ticket) return;
-    const seen = new Set(S.messages.map(m => m.accountId + "/" + m.id));
-    S.messages = S.messages.concat(r.messages.filter(m => !seen.has(m.accountId + "/" + m.id)));
+    const seen = new Set(S.messages.map(rowKey));
+    S.messages = S.messages.concat(r.messages.filter(m => !seen.has(rowKey(m))));
     S.messages.sort((a, b) => new Date(b.date) - new Date(a.date));
     S.cursors = r.cursors; S.errors = r.errors;
   } catch (e) {
@@ -441,12 +475,12 @@ function renderList() {
   const multi = S.accounts.length > 1;
   list.innerHTML = S.messages.map((m, i) => {
     const a = acctById(m.accountId) || {};
-    const who = S.folder === "sent" && !S.query ? "To: " + ((m.to || []).map(t => t.name || t.email).join(", ") || "(no recipients)") : (m.from.name || m.from.email);
-    const sel = S.sel && S.sel.accountId === m.accountId && S.sel.id === m.id;
+    const who = S.folder === "sent" && !S.query ? "To: " + ((m.to || []).map(t => t.name || t.email).join(", ") || "(no recipients)") : (m.participants || [m.from.name || m.from.email]).join(", ");
+    const sel = S.sel && S.sel.key === rowKey(m);
     return `<div class="row ${m.unread ? "unread" : ""} ${sel ? "sel" : ""}" data-i="${i}">
       ${multi ? `<span class="bar" style="background:${esc(a.color)}" title="${esc(a.email)}"></span>` : ""}
       <div class="body">
-        <div class="top"><span class="from">${esc(who)}</span>
+        <div class="top"><span class="from">${esc(who)}${m.count > 1 ? `<span class="count">${m.count}</span>` : ""}</span>
           <span class="icons">${m.hasAttachments ? icon("clip", 13) : ""}${m.starred ? icon("starred", 13, 'class="on" fill="currentColor"') : ""}</span>
           <span class="date">${esc(fmtDate(m.date))}</span></div>
         <div class="subj">${esc(m.subject || "(no subject)")}</div>
@@ -483,32 +517,51 @@ function renderEmptyReader() {
      <button class="btn primary" data-go="accounts">Add an account</button></div>`;
 }
 
+// rowKey identifies a list row: a conversation, or a lone message.
+const rowKey = m => m.accountId + "/" + (m.threadId || "msg:" + m.id);
+
+// openMessage opens the conversation a row stands for. S.thread holds its
+// messages oldest first, S.msg the newest one (what the toolbar acts on),
+// and S.open the ids shown expanded.
 async function openMessage(m) {
   if (!m) return;
-  S.sel = { accountId: m.accountId, id: m.id };
+  const key = rowKey(m);
+  S.sel = { accountId: m.accountId, key, threadId: m.threadId || "" };
   document.body.classList.add("reading");
   S.showImages = !!S.settings.loadImages;
   S.lightMsg = false;
   renderList();
   $("#readPane").innerHTML = `<div class="empty"><div class="spin"></div></div>`;
   try {
-    const full = await api(dl("/api/message", { a: m.accountId, id: m.id }));
-    if (!S.sel || S.sel.id !== m.id || S.sel.accountId !== m.accountId) return;
-    S.msg = full;
+    let msgs;
+    if (m.threadId) {
+      msgs = await api(dl("/api/thread", { a: m.accountId, id: m.threadId }));
+    } else {
+      msgs = [await api(dl("/api/message", { a: m.accountId, id: m.id }))];
+    }
+    if (!S.sel || S.sel.key !== key) return;
+    // Trashed or spam messages in the conversation stay out of the way
+    // unless that's the folder being looked at.
+    const inBin = (S.folder === "trash" || S.folder === "spam") && !S.query;
+    const shown = inBin ? msgs : msgs.filter(x => !x.hidden);
+    S.thread = shown.length ? shown : msgs;
+    S.msg = S.thread[S.thread.length - 1];
+    S.open = new Set(S.thread.filter(x => x.unread || x === S.msg).map(x => x.id));
     renderReader();
-    if (m.unread) {
-      m.unread = false; renderList();
-      api("/api/apply", { accountId: m.accountId, ids: [m.id], change: "read" }).then(pollUnread).catch(() => {});
+    const unread = S.thread.filter(x => x.unread);
+    if (unread.length || m.unread) {
+      m.unread = false; unread.forEach(x => (x.unread = false)); renderList();
+      api("/api/apply", { accountId: m.accountId, ids: unread.map(x => x.id), change: "read" }).then(pollUnread).catch(() => {});
     }
   } catch (e) {
-    $("#readPane").innerHTML = `<div class="empty"><h2>Couldn't open that message</h2><p>${esc(e.message)}</p></div>`;
+    $("#readPane").innerHTML = `<div class="empty"><h2>Couldn't open that conversation</h2><p>${esc(e.message)}</p></div>`;
   }
 }
 
 function renderReader() {
   const m = S.msg, a = acctById(m.accountId) || {};
   const inTrash = S.folder === "trash" && !S.query, inSpam = S.folder === "spam" && !S.query;
-  const files = (m.attachments || []).filter(x => !x.inline || !(m.html || "").includes("cid:" + x.contentId));
+  const many = S.thread.length > 1;
   $("#readPane").innerHTML = `
     <div class="toolbar">
       <button class="tb phone-only" data-act="back" title="Back" aria-label="Back">${icon("back", 22)}</button>
@@ -521,37 +574,48 @@ function renderReader() {
       ${inSpam ? "" : `<button class="tb" data-act="spam" title="Report spam">${icon("spam")}</button>`}
       ${inTrash ? "" : `<button class="tb" data-act="trash" title="Delete (Del)">${icon("trash")}</button>`}
       <button class="tb" data-act="unread" title="Mark unread (U)">${icon("unread")}</button>
-      ${S.settings.lightMessages ? "" : `<button class="tb ${S.lightMsg ? "on-light" : ""}" data-act="light" title="${S.lightMsg ? "Show this message dark" : "Show this message on white, for emails that look wrong in dark"}">${icon(S.lightMsg ? "moon" : "sun")}</button>`}
+      ${S.settings.lightMessages ? "" : `<button class="tb ${S.lightMsg ? "on-light" : ""}" data-act="light" title="${S.lightMsg ? "Show this conversation dark" : "Show this conversation on white, for emails that look wrong in dark"}">${icon(S.lightMsg ? "moon" : "sun")}</button>`}
       <button class="tb ${m.starred ? "on" : ""}" data-act="star" title="${m.starred ? "Unstar" : "Star"} (S)">${icon("starred")}</button>
     </div>
     <div class="reader ${S.lightMsg ? "light-msg" : ""}">
-      <h1>${esc(m.subject || "(no subject)")}</h1>
-      <div class="hdr">
-        <div class="avatar" style="background:${hue(m.from.email)}">${esc(initials(m.from))}</div>
-        <div class="who">
-          <div><b>${esc(m.from.name || m.from.email)}</b> ${m.from.name ? `<span class="addr">&lt;${esc(m.from.email)}&gt;</span>` : ""}</div>
-          <div class="small">To: ${esc(addrList(m.to)) || "(undisclosed)"}${m.cc && m.cc.length ? "<br>Cc: " + esc(addrList(m.cc)) : ""}</div>
-        </div>
-        <div class="when">${esc(fmtDate(m.date, true))}<br><span class="chip"><span class="acct-dot" style="background:${esc(a.color)};width:8px;height:8px"></span>${esc(a.name || a.email || "")}</span></div>
-      </div>
-      <div id="imgBanner"></div>
-      <div class="paper"><iframe id="msgFrame" sandbox="allow-same-origin" referrerpolicy="no-referrer" title="Message"></iframe></div>
-      ${files.length ? `<div class="atts">${files.map(f => `<a class="att" href="${esc(dl("/api/attachment", { a: m.accountId, m: m.id, att: f.id, name: f.name, type: f.mimeType }))}" title="Download ${esc(f.name)}">${icon("clip", 15)}<span>${esc(f.name)}</span><small>${fmtSize(f.size)}</small></a>`).join("")}</div>` : ""}
+      <div class="thread-head"><h1>${esc(m.subject || "(no subject)")}</h1>
+        <span class="chip"><span class="acct-dot" style="background:${esc(a.color)};width:8px;height:8px"></span>${esc(a.name || a.email || "")}${many ? ` · ${S.thread.length} messages` : ""}</span></div>
+      ${S.thread.map((x, i) => msgCard(x, i, S.open.has(x.id))).join("")}
       <div class="reply-bar phone-only">
         <button class="btn" data-act="reply">${icon("reply", 16)}Reply</button>
         <button class="btn" data-act="replyAll">${icon("replyAll", 16)}All</button>
         <button class="btn" data-act="forward">${icon("forward", 16)}Forward</button>
       </div>
     </div>`;
-  renderBody();
+  S.thread.forEach((x, i) => { if (S.open.has(x.id)) renderBody(x, i); });
+}
+
+function msgCard(x, i, open) {
+  const files = (x.attachments || []).filter(f => !f.inline || !(x.html || "").includes("cid:" + f.contentId));
+  return `<div class="msgcard ${open ? "open" : ""}" data-i="${i}">
+    <div class="mhead" data-expand="${i}">
+      <div class="avatar" style="background:${hue(x.from.email)}">${esc(initials(x.from))}</div>
+      <div class="who">
+        <div><b>${esc(x.from.name || x.from.email)}</b> ${open && x.from.name ? `<span class="addr">&lt;${esc(x.from.email)}&gt;</span>` : ""}</div>
+        ${open ? `<div class="small">To: ${esc(addrList(x.to)) || "(undisclosed)"}${x.cc && x.cc.length ? "<br>Cc: " + esc(addrList(x.cc)) : ""}</div>`
+               : `<div class="snip">${esc(x.snippet || "")}</div>`}
+      </div>
+      <div class="when">${esc(fmtDate(x.date, open))}</div>
+      ${open && S.thread.length > 1 ? `<button class="tb" data-reply-one="${i}" title="Reply to this message">${icon("reply", 16)}</button>` : ""}
+    </div>
+    ${open ? `<div class="mbody">
+      <div class="imgBanner" data-banner="${i}"></div>
+      <div class="paper"><iframe id="frame-${i}" sandbox="allow-same-origin" referrerpolicy="no-referrer" title="Message"></iframe></div>
+      ${files.length ? `<div class="atts">${files.map(f => `<a class="att" href="${esc(dl("/api/attachment", { a: x.accountId, m: x.id, att: f.id, name: f.name, type: f.mimeType }))}" title="Download ${esc(f.name)}">${icon("clip", 15)}<span>${esc(f.name)}</span><small>${fmtSize(f.size)}</small></a>`).join("")}</div>` : ""}
+    </div>` : ""}
+  </div>`;
 }
 
 // renderBody writes the message into a sandboxed frame. Scripts never run
 // there. Links go to /open so they open in your browser, cid: images come
 // from the attachment endpoint, and remote images stay blocked until you ask,
 // so tracking pixels can't report that you read it.
-function renderBody() {
-  const m = S.msg;
+function renderBody(m, i) {
   const dark = !S.settings.lightMessages && !S.lightMsg;
   const doc = new DOMParser().parseFromString(m.html || `<div style="white-space:pre-wrap;font-family:inherit">${esc(m.text || "")}</div>`, "text/html");
   doc.querySelectorAll("script,iframe,frame,frameset,object,embed,base,meta,link[rel=import],form button[type=submit]").forEach(n => n.remove());
@@ -577,7 +641,8 @@ function renderBody() {
   const head = doc.head || doc.documentElement.insertBefore(doc.createElement("head"), doc.body);
   head.insertAdjacentHTML("afterbegin", `<meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_self">
     <style>html,body{margin:0}${dark ? "html{background:#cdd1da}img,video,picture{filter:invert(1) hue-rotate(180deg)}" : ""}body{padding:18px 20px;font:14px/1.5 "Segoe UI",system-ui,sans-serif;color:#222;word-wrap:break-word;color-scheme:light}img{max-width:100%;height:auto}blockquote{margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex}pre{white-space:pre-wrap}</style>`);
-  const f = $("#msgFrame");
+  const f = $("#frame-" + i);
+  if (!f) return;
   f.onload = () => {
     const d = f.contentDocument;
     if (!d) return;
@@ -587,12 +652,20 @@ function renderBody() {
     d.querySelectorAll("img").forEach(i => i.addEventListener("load", fit));
   };
   f.srcdoc = "<!doctype html>" + doc.documentElement.outerHTML;
-  $("#imgBanner").innerHTML = remote && !S.showImages ? `<div class="banner">${icon("spam", 16)}<span>Remote images are hidden so the sender can't tell you opened this.</span><button class="link" id="showImgs">Show images</button></div>` : "";
+  $(`[data-banner="${i}"]`).innerHTML = remote && !S.showImages ? `<div class="banner">${icon("spam", 16)}<span>Remote images are hidden so the sender can't tell you opened this.</span><button class="link" data-show-imgs>Show images</button></div>` : "";
 }
 $("#readPane").addEventListener("click", e => {
-  if (e.target.id === "showImgs") { S.showImages = true; renderBody(); return; }
+  if (e.target.closest("[data-show-imgs]")) { S.showImages = true; S.thread.forEach((x, i) => { if (S.open.has(x.id)) renderBody(x, i); }); return; }
+  const one = e.target.closest("[data-reply-one]");
+  if (one) { e.stopPropagation(); return replyTo(S.thread[+one.dataset.replyOne], "reply"); }
   const b = e.target.closest("[data-act]");
-  if (b) act(b.dataset.act);
+  if (b) return act(b.dataset.act);
+  const h = e.target.closest("[data-expand]");
+  if (h && !e.target.closest("a")) {
+    const x = S.thread[+h.dataset.expand];
+    if (S.open.has(x.id) && S.thread.length > 1) S.open.delete(x.id); else S.open.add(x.id);
+    renderReader();
+  }
 });
 
 async function act(kind) {
@@ -601,11 +674,15 @@ async function act(kind) {
   if (kind === "reply" || kind === "replyAll" || kind === "forward") return replyTo(m, kind);
   if (kind === "light") { S.lightMsg = !S.lightMsg; return renderReader(); }
   if (kind === "back") return closeReader();
-  const summary = S.messages.find(x => x.accountId === m.accountId && x.id === m.id);
+  const summary = S.messages.find(x => rowKey(x) === S.sel.key);
   let change = kind;
   if (kind === "star") change = m.starred ? "unstar" : "star";
+  // Star and unread apply to the newest message; moves apply to the whole
+  // conversation.
+  const target = (change === "star" || change === "unstar" || change === "unread" || !S.sel.threadId)
+    ? { ids: [m.id] } : { threads: [S.sel.threadId] };
   try {
-    await api("/api/apply", { accountId: m.accountId, ids: [m.id], change });
+    await api("/api/apply", { accountId: m.accountId, ...target, change });
   } catch (e) { return toast(e.message, 6000); }
   if (change === "star" || change === "unstar") {
     m.starred = change === "star";
@@ -624,13 +701,13 @@ async function act(kind) {
   const undo = { archive: "inbox", trash: "inbox", spam: "inbox" }[change];
   toast(label, 5000, undo && {
     label: "Undo", run: async () => {
-      try { await api("/api/apply", { accountId: m.accountId, ids: [m.id], change: undo }); loadList(); pollUnread(); } catch (e) { toast(e.message); }
+      try { await api("/api/apply", { accountId: m.accountId, ...target, change: undo }); loadList(); pollUnread(); } catch (e) { toast(e.message); }
     }
   });
 }
 
 function removeFromList(m) {
-  const i = S.messages.findIndex(x => x.accountId === m.accountId && x.id === m.id);
+  const i = S.messages.findIndex(x => rowKey(x) === (S.sel ? S.sel.key : rowKey(m)));
   if (i >= 0) S.messages.splice(i, 1);
   const next = S.messages[Math.min(i, S.messages.length - 1)];
   S.sel = null; S.msg = null;
@@ -677,8 +754,13 @@ function wireFmt(root, editor) {
     e.preventDefault();
     editor.focus();
     if (b.dataset.cmd === "createLink") {
-      const u = prompt("Link address", "https://");
-      if (u && u !== "https://") document.execCommand("createLink", false, u);
+      const sel = getSelection().rangeCount ? getSelection().getRangeAt(0) : null;
+      ask("Link address", { ok: "Add link", input: "https://" }).then(u => {
+        if (!u || u === "https://") return;
+        editor.focus();
+        if (sel) { getSelection().removeAllRanges(); getSelection().addRange(sel); }
+        document.execCommand("createLink", false, u);
+      });
     } else document.execCommand(b.dataset.cmd);
   });
 }
@@ -778,8 +860,8 @@ function compose(d = {}) {
 
   let dirty = false;
   root.addEventListener("input", () => (dirty = true));
-  const close = () => {
-    if (dirty && !confirm("Discard this message?")) return;
+  const close = async () => {
+    if (dirty && !(await ask("Discard this message?", { ok: "Discard", danger: true, cancel: "Keep writing" }))) return;
     root.innerHTML = "";
   };
   root.querySelectorAll("[data-close]").forEach(b => (b.onclick = close));
@@ -788,7 +870,7 @@ function compose(d = {}) {
     const btn = $("#cSend");
     $("#cErr").textContent = "";
     if (!$("#cTo").value.trim() && !$("#cCc").value.trim() && !$("#cBcc").value.trim()) { $("#cErr").textContent = "Add at least one recipient."; return $("#cTo").focus(); }
-    if (!$("#cSubject").value.trim() && !confirm("Send without a subject?")) return;
+    if (!$("#cSubject").value.trim() && !(await ask("Send without a subject?", { ok: "Send anyway" }))) return;
     const total = files.reduce((n, f) => n + f.size, 0) + fwd.reduce((n, f) => n + f.size, 0);
     if (total > 25 * 1048576) { $("#cErr").textContent = "Attachments are over 25 MB. Most mail servers won't accept that."; return; }
     btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Sending';
@@ -861,7 +943,7 @@ function renderAccounts() {
     if (t.dataset.reconnect) { const a = acctById(t.dataset.reconnect); return connect(a.provider, a.id); }
     if (t.dataset.remove) {
       const a = acctById(t.dataset.remove);
-      if (!confirm(`Remove ${a.email} from Project Echo Mike? Its mail stays on ${a.provider === "gmail" ? "Gmail" : "Outlook"}. Its aliases and signatures here are deleted.`)) return;
+      if (!(await ask(`Remove ${a.email} from Project Echo Mike? Its mail stays on ${a.provider === "gmail" ? "Gmail" : "Outlook"}. Its aliases and signatures here are deleted.`, { ok: "Remove", danger: true }))) return;
       try { await api("/api/account/remove", { id: a.id }); } catch (err) { return toast(err.message); }
       if (S.account === a.id) S.account = "";
       await refreshState(); renderAccounts(); loadList();
@@ -1006,7 +1088,7 @@ function editIdentity(i) {
   };
   const del = box.querySelector("#iDel");
   if (del) del.onclick = async () => {
-    if (!confirm(`Delete ${i.email} and its signature from Project Echo Mike?`)) return;
+    if (!(await ask(`Delete ${i.email} and its signature from Project Echo Mike?`, { ok: "Delete", danger: true }))) return;
     try { await api("/api/identity/delete", { id: i.id }); } catch (e) { box.querySelector("#iErr").textContent = e.message; return; }
     box.remove(); await refreshState(); renderIdentities();
   };
@@ -1065,7 +1147,7 @@ function renderGeneral() {
     <p class="dim" style="margin-top:24px">Project Echo Mike ${esc(S.version)}</p>`;
   $("#gNotify").onchange = e => setMute(!e.target.checked);
   $("#gDark").onchange = async e => {
-    try { await api("/api/settings", { ...S.settings, lightMessages: !e.target.checked }); await refreshState(); if (S.msg) renderReader(); } catch (err) { toast(err.message); }
+    try { await api("/api/settings", { ...S.settings, lightMessages: !e.target.checked }); await refreshState(); if (S.msg) { S.lightMsg = false; renderReader(); } } catch (err) { toast(err.message); }
   };
   $("#gImages").onchange = async e => {
     try { await api("/api/settings", { ...S.settings, loadImages: e.target.checked }); await refreshState(); } catch (err) { toast(err.message); }
@@ -1104,7 +1186,7 @@ document.addEventListener("keydown", e => {
   if ($("#modal").innerHTML || e.ctrlKey || e.metaKey || e.altKey) return;
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.activeElement.isContentEditable) return;
   const k = e.key.toLowerCase();
-  const idx = S.sel ? S.messages.findIndex(m => m.accountId === S.sel.accountId && m.id === S.sel.id) : -1;
+  const idx = S.sel ? S.messages.findIndex(m => rowKey(m) === S.sel.key) : -1;
   const map = { c: () => compose(), r: () => act("reply"), a: () => act("replyAll"), f: () => act("forward"), e: () => act("archive"),
     delete: () => act("trash"), "#": () => act("trash"), s: () => act("star"), u: () => act("unread"),
     j: () => openMessage(S.messages[idx + 1]), k: () => idx > 0 && openMessage(S.messages[idx - 1]),
@@ -1140,7 +1222,7 @@ async function pollUnread() {
 // quiet reloads the list without clearing it first, for the background check.
 loadList.quiet = async () => {
   try {
-    const r = await api("/api/list", { folder: "inbox", query: "", accountId: S.account });
+    const r = await api("/api/list", { folder: "inbox", query: "", accountId: S.account, group: true });
     if (S.folder !== "inbox" || S.query) return;
     S.messages = r.messages; S.cursors = r.cursors; S.errors = r.errors;
     renderList();

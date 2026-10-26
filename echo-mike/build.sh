@@ -2,7 +2,7 @@
 # Builds ProjectEchoMike.exe for Windows from any OS. Usage: ./build.sh [version]
 set -euo pipefail
 cd "$(dirname "$0")"
-VERSION="${1:-1.1.2}"
+VERSION="${1:-1.2.0}"
 LDFLAGS="-H windowsgui -s -w -X github.com/credence29-2/jocai/echo-mike/internal/app.Version=${VERSION}"
 
 go test ./...
