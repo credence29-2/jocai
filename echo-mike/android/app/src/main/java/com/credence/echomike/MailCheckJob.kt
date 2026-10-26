@@ -36,15 +36,21 @@ class MailCheckJob : JobService() {
         private const val JOB_ID = 1
 
         fun schedule(context: Context) {
-            val js = context.getSystemService(JobScheduler::class.java)
-            if (js.getPendingJob(JOB_ID) != null) return
-            js.schedule(
-                JobInfo.Builder(JOB_ID, ComponentName(context, MailCheckJob::class.java))
-                    .setPeriodic(15 * 60 * 1000L)
-                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                    .setPersisted(true)
-                    .build()
-            )
+            // Background checks are a bonus; never let them stop the app
+            // from opening.
+            try {
+                val js = context.getSystemService(JobScheduler::class.java)
+                if (js.getPendingJob(JOB_ID) != null) return
+                js.schedule(
+                    JobInfo.Builder(JOB_ID, ComponentName(context, MailCheckJob::class.java))
+                        .setPeriodic(15 * 60 * 1000L)
+                        .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                        .setPersisted(true)
+                        .build()
+                )
+            } catch (e: Exception) {
+                Log.w("EchoMike", "couldn't schedule background mail checks", e)
+            }
         }
     }
 }

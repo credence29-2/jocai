@@ -3,6 +3,8 @@
 
     <!-- Talks to Gmail and Microsoft. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Lets the background mail check wait until there's a connection. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- New-mail notifications (asked for on first start, Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Keeps the background mail check scheduled after a restart. -->
