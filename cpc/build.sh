@@ -2,7 +2,7 @@
 # Builds Kempt.exe for Windows from any OS. Usage: ./build.sh [version]
 set -euo pipefail
 cd "$(dirname "$0")"
-VERSION="${1:-1.4.0}"
+VERSION="${1:-1.5.0}"
 LDFLAGS="-H windowsgui -s -w -X main.version=${VERSION}"
 
 go test ./...

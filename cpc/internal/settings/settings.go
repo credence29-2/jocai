@@ -4,6 +4,7 @@ package settings
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,6 +20,69 @@ type Settings struct {
 	Selected map[string]bool `json:"selected"`
 	// Exclude lists folders the cleaner must never touch.
 	Exclude []string `json:"exclude,omitempty"`
+	// Theme is "dark" (default) or "light".
+	Theme string `json:"theme,omitempty"`
+	// TechMode hides the beginner explanations and tightens the lists.
+	TechMode bool `json:"techMode,omitempty"`
+	// Tray keeps Kempt in the notification area when the window is closed.
+	Tray bool `json:"tray,omitempty"`
+	// NoUpdateCheck turns off the once-a-day check for a new version.
+	NoUpdateCheck bool `json:"noUpdateCheck,omitempty"`
+	// LastUpdateCheck is when the version check last ran (RFC 3339).
+	LastUpdateCheck string `json:"lastUpdateCheck,omitempty"`
+}
+
+// Export is the portable form written by Export settings. It carries the
+// settings plus enough context to recognise the file.
+type Export struct {
+	App      string    `json:"app"`
+	Version  string    `json:"version"`
+	Exported time.Time `json:"exported"`
+	Settings Settings  `json:"settings"`
+}
+
+// ErrNotKempt is returned when an imported file is not a Kempt export.
+var ErrNotKempt = errors.New("that file is not a Kempt settings export")
+
+// Encode renders settings as a portable export file.
+func Encode(app, version string, s Settings) ([]byte, error) {
+	s.LastUpdateCheck = ""
+	return json.MarshalIndent(Export{App: app, Version: version, Exported: time.Now().UTC().Round(time.Second), Settings: s}, "", "  ")
+}
+
+// Decode reads an export file. Unknown fields are ignored so newer exports
+// load into older versions.
+func Decode(b []byte) (Export, error) {
+	var e Export
+	if err := json.Unmarshal(b, &e); err != nil {
+		return e, ErrNotKempt
+	}
+	if e.App == "" || e.Settings.Selected == nil && e.Settings.Exclude == nil && e.Settings.Theme == "" {
+		// Accept a bare settings.json too.
+		var s Settings
+		if err := json.Unmarshal(b, &s); err != nil || s.Selected == nil {
+			return e, ErrNotKempt
+		}
+		e = Export{App: "Kempt", Settings: s}
+	}
+	if e.Settings.Selected == nil {
+		e.Settings.Selected = map[string]bool{}
+	}
+	if e.Settings.Theme != "" && e.Settings.Theme != "light" && e.Settings.Theme != "dark" {
+		e.Settings.Theme = ""
+	}
+	return e, nil
+}
+
+// Merge applies an imported export onto current settings, keeping the
+// current update-check timestamp.
+func Merge(cur Settings, e Export) Settings {
+	out := e.Settings
+	out.LastUpdateCheck = cur.LastUpdateCheck
+	if out.Selected == nil {
+		out.Selected = map[string]bool{}
+	}
+	return out
 }
 
 // Dir returns Kempt's data folder, creating it if needed.

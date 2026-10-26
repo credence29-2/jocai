@@ -6,14 +6,15 @@
 <title>Kempt</title>
 <style>
 :root {
-  --bg: #0a0d12; --side: #0d1117; --panel: #0f131a; --card: #141a22; --card2: #1a212b; --hover: rgba(255,255,255,.055);
-  --line: rgba(255,255,255,.075); --line2: rgba(255,255,255,.12);
+  --bg: #0a0d12; --side: #0d1117; --panel: #0f131a; --card: #141a22; --card2: #1a212b; --hover: rgba(var(--ink),.055);
+  --line: rgba(var(--ink),.075); --line2: rgba(var(--ink),.12);
   --text: #eef2f6; --sub: #9ba6b4; --dim: #65717f;
   --accent: #2ee6c5; --accent2: #4cc9ff; --on-accent: #04141a;
   --grad: linear-gradient(135deg, #2ee6c5 0%, #4cc9ff 100%);
   --glow: 0 10px 34px rgba(46,230,197,.22);
   --good: #4ade80; --warn: #f6b94a; --bad: #ff6b6b;
   --radius: 14px;
+  --ink: 255,255,255; --track: rgba(255,255,255,.07);
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px; color: var(--text); background: var(--bg);
   color-scheme: dark;
@@ -64,8 +65,8 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .page-body { flex: 1; min-height: 0; overflow: auto; padding: 6px 32px 32px; }
 
 /* ---------- buttons ---------- */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 18px; border-radius: 11px; border: 1px solid var(--line2); background: rgba(255,255,255,.05); font-weight: 600; white-space: nowrap; transition: background .15s, transform .08s, box-shadow .15s; }
-.btn:hover:not(:disabled) { background: rgba(255,255,255,.09); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 18px; border-radius: 11px; border: 1px solid var(--line2); background: rgba(var(--ink),.05); font-weight: 600; white-space: nowrap; transition: background .15s, transform .08s, box-shadow .15s; }
+.btn:hover:not(:disabled) { background: rgba(var(--ink),.09); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn.primary { background: var(--grad); border-color: transparent; color: var(--on-accent); box-shadow: var(--glow); }
 .btn.primary:disabled { box-shadow: none; filter: saturate(.5); }
@@ -78,7 +79,7 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .link:hover { text-decoration: underline; }
 
 /* ---------- checkbox and switch ---------- */
-.cb { appearance: none; width: 18px; height: 18px; margin: 0; border: 1.5px solid #4b5664; border-radius: 6px; display: inline-grid; place-content: center; background: rgba(255,255,255,.03); cursor: pointer; flex: none; transition: all .12s; }
+.cb { appearance: none; width: 18px; height: 18px; margin: 0; border: 1.5px solid #4b5664; border-radius: 6px; display: inline-grid; place-content: center; background: rgba(var(--ink),.03); cursor: pointer; flex: none; transition: all .12s; }
 .cb:hover { border-color: #7b8794; }
 .cb:checked, .cb:indeterminate { background: var(--grad); border-color: transparent; box-shadow: 0 0 0 3px rgba(46,230,197,.15); }
 .cb:checked::after { content: ""; width: 9px; height: 5px; border: 2.2px solid var(--on-accent); border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
@@ -94,7 +95,7 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .switch input:disabled + span { opacity: .35; }
 
 /* ---------- segmented tabs ---------- */
-.tabs { display: inline-flex; gap: 2px; padding: 4px; margin: 0 32px 14px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--line); align-self: flex-start; }
+.tabs { display: inline-flex; gap: 2px; padding: 4px; margin: 0 32px 14px; border-radius: 12px; background: rgba(var(--ink),.05); border: 1px solid var(--line); align-self: flex-start; }
 .tabs button { display: flex; align-items: center; gap: 8px; border: 0; border-radius: 9px; background: transparent; padding: 8px 16px; color: var(--sub); font-weight: 600; font-size: 14px; transition: all .15s; }
 .tabs button:hover { color: var(--text); }
 .tabs button.active { background: var(--card2); color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.35), inset 0 0 0 1px var(--line2); }
@@ -107,8 +108,8 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .select-row label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; }
 .select-row .grow { flex: 1; }
 .groups { flex: 1; overflow: auto; padding: 8px; }
-.group { border-radius: 12px; margin-bottom: 6px; background: rgba(255,255,255,.025); border: 1px solid transparent; overflow: hidden; position: relative; }
-.group.some { border-color: var(--line); background: rgba(255,255,255,.04); }
+.group { border-radius: 12px; margin-bottom: 6px; background: rgba(var(--ink),.025); border: 1px solid transparent; overflow: hidden; position: relative; }
+.group.some { border-color: var(--line); background: rgba(var(--ink),.04); }
 .group.some::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--grad); }
 .group-head { display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; height: 50px; cursor: pointer; }
 .group-head:hover { background: var(--hover); }
@@ -133,7 +134,7 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .empty p { margin: 0; color: var(--sub); max-width: 440px; line-height: 1.55; }
 .empty .lead { color: var(--text); margin-bottom: 12px; }
 .empty .icon-ring { width: 84px; height: 84px; border-radius: 26px; display: grid; place-items: center; color: var(--accent); background: linear-gradient(135deg, rgba(46,230,197,.16), rgba(76,201,255,.08)); border: 1px solid rgba(46,230,197,.25); box-shadow: 0 0 40px rgba(46,230,197,.12); }
-.res-head { padding: 22px 24px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,.03), transparent); }
+.res-head { padding: 22px 24px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(var(--ink),.03), transparent); }
 .res-head .big { font-size: 30px; font-weight: 800; letter-spacing: -.6px; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; }
 .res-head .big.good { color: var(--good); }
 .res-head .msg { color: var(--sub); margin-top: 6px; }
@@ -141,15 +142,15 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .res-group { padding: 12px 24px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); font-weight: 700; }
 .res-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 5px 12px; align-items: center; padding: 8px 24px; }
 .res-row .size { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.res-row .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.06); overflow: hidden; }
+.res-row .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: rgba(var(--ink),.06); overflow: hidden; }
 .res-row .bar i { display: block; height: 100%; background: var(--grad); border-radius: 2px; }
 .res-row .note { grid-column: 1 / -1; font-size: 12px; color: var(--dim); }
 .res-row .note.err { color: var(--bad); }
 .res-zero { padding: 12px 24px; color: var(--dim); font-size: 13px; }
-.progress { width: 100%; max-width: 420px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; margin: 18px 0 10px; }
+.progress { width: 100%; max-width: 420px; height: 6px; border-radius: 3px; background: rgba(var(--ink),.07); overflow: hidden; margin: 18px 0 10px; }
 .progress i { display: block; height: 100%; width: 0; background: var(--grad); transition: width .2s; border-radius: 3px; }
 .path { font-size: 12px; color: var(--dim); max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: center; }
-.spinner { width: 56px; height: 56px; border-radius: 50%; border: 4px solid rgba(255,255,255,.07); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+.spinner { width: 56px; height: 56px; border-radius: 50%; border: 4px solid rgba(var(--ink),.07); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .actionbar { display: flex; align-items: center; gap: 12px; margin: 0 32px 18px; padding: 12px 14px 12px 22px; border-radius: 16px; background: rgba(20,26,34,.85); border: 1px solid var(--line2); backdrop-filter: blur(14px); box-shadow: 0 14px 40px rgba(0,0,0,.45); }
@@ -158,8 +159,8 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .actionbar .btn { height: 40px; padding: 0 22px; font-size: 14.5px; }
 
 /* ---------- cards ---------- */
-.card { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; position: relative; }
-.card::before { content: ""; position: absolute; left: 20px; right: 20px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent); }
+.card { background: linear-gradient(180deg, rgba(var(--ink),.035), rgba(var(--ink),.015)); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; position: relative; }
+.card::before { content: ""; position: absolute; left: 20px; right: 20px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ink),.14), transparent); }
 .card.warn { border-color: rgba(246,185,74,.35); }
 .card h3 { margin: 0 0 6px; font-size: 15.5px; }
 .card p { margin: 0; color: var(--sub); line-height: 1.55; }
@@ -179,11 +180,11 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .gauge .val { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 12.5px; color: var(--sub); }
 .gauge .val b { display: block; font-size: 23px; color: var(--text); font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -.5px; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.tile { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+.tile { background: linear-gradient(180deg, rgba(var(--ink),.035), rgba(var(--ink),.015)); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
 .tile .k { display: flex; align-items: center; gap: 8px; color: var(--sub); font-weight: 600; font-size: 13px; letter-spacing: .3px; text-transform: uppercase; }
 .tile .v { font-size: 26px; font-weight: 800; letter-spacing: -.6px; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; }
 .tile .s { color: var(--sub); font-size: 13px; flex: 1; line-height: 1.5; }
-.tile .meter { height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; }
+.tile .meter { height: 6px; border-radius: 3px; background: rgba(var(--ink),.07); overflow: hidden; }
 .tile .meter i { display: block; height: 100%; background: var(--grad); border-radius: 3px; }
 .status-good { color: var(--good); }
 .crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 13.5px; }
@@ -202,7 +203,7 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .drow .nm small { display: block; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .drow .sz { width: 86px; text-align: right; flex: none; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13.5px; }
 .drow .pct { width: 46px; text-align: right; flex: none; color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
-.drow .bar { width: 140px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.07); overflow: hidden; flex: none; }
+.drow .bar { width: 140px; height: 7px; border-radius: 4px; background: rgba(var(--ink),.07); overflow: hidden; flex: none; }
 .drow .bar i { display: block; height: 100%; background: var(--grad); border-radius: 4px; }
 .drow .bar.t i { background: var(--tc, var(--accent)); }
 .drives { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
@@ -210,7 +211,7 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .drive:hover { border-color: var(--line2); background: var(--hover); }
 .drive b { font-size: 15px; }
 .drive small { color: var(--sub); font-size: 12.5px; }
-.drive .meter { height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; }
+.drive .meter { height: 6px; border-radius: 3px; background: rgba(var(--ink),.07); overflow: hidden; }
 .drive .meter i { display: block; height: 100%; background: var(--grad); border-radius: 3px; }
 .drive .meter.hot i { background: linear-gradient(90deg, #ffb347, #ff6b6b); }
 .status-warn { color: var(--warn); }
@@ -220,18 +221,18 @@ main { flex: 1; min-width: 0; position: relative; z-index: 1; display: flex; fle
 .lrow { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--line); }
 .lrow:first-child { border-top: 0; }
 .lrow:hover { background: var(--hover); }
-.lrow.head { background: rgba(255,255,255,.04); }
+.lrow.head { background: rgba(var(--ink),.04); }
 .lrow.head.sub { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .6px; font-weight: 700; }
 .avatar { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; color: #fff; flex: none; }
 .lrow .main { flex: 1; min-width: 0; }
 .lrow .main b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lrow .main small { display: block; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lrow .meta { width: 120px; text-align: right; color: var(--sub); font-size: 13px; flex: none; font-variant-numeric: tabular-nums; }
-.lrow .chip { font-size: 12px; color: var(--sub); background: rgba(255,255,255,.07); border: 1px solid var(--line); padding: 3px 10px; border-radius: 9px; white-space: nowrap; flex: none; }
+.lrow .chip { font-size: 12px; color: var(--sub); background: rgba(var(--ink),.07); border: 1px solid var(--line); padding: 3px 10px; border-radius: 9px; white-space: nowrap; flex: none; }
 .lrow .chip.status-good { color: var(--good); background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.25); }
 .lrow .actions { display: flex; gap: 8px; flex: none; }
 .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.search { flex: 1; max-width: 380px; height: 38px; border-radius: 11px; border: 1px solid var(--line2); background: rgba(255,255,255,.04); padding: 0 12px 0 38px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2365717f' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px center; }
+.search { flex: 1; max-width: 380px; height: 38px; border-radius: 11px; border: 1px solid var(--line2); background: rgba(var(--ink),.04); padding: 0 12px 0 38px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2365717f' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px center; }
 .search:focus, select:focus, input[type=time]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(46,230,197,.15); }
 select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid var(--line2); background: var(--card); padding: 0 10px; outline: none; }
 .loading { padding: 40px; text-align: center; color: var(--sub); }
@@ -250,9 +251,38 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
 .toast.err { border-left-color: var(--bad); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 5px; border: 3px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); background-clip: padding-box; border: 3px solid transparent; }
+::-webkit-scrollbar-thumb { background: rgba(var(--ink),.12); border-radius: 5px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--ink),.2); background-clip: padding-box; border: 3px solid transparent; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* Light theme and tech mode are switched from Settings. */
+html[data-theme=light] {
+  --bg: #f2f4f8; --side: #eaeef3; --panel: #ffffff; --card: #ffffff; --card2: #eef2f7; --hover: rgba(15,23,42,.05);
+  --line: rgba(15,23,42,.08); --line2: rgba(15,23,42,.15);
+  --text: #111827; --sub: #4b5563; --dim: #7b8794;
+  --accent: #0ea58c; --accent2: #1a8fd6; --on-accent: #04141a;
+  --glow: 0 10px 30px rgba(14,165,140,.22);
+  --good: #15803d; --warn: #b45309; --bad: #dc2626;
+  --ink: 15,23,42; --track: rgba(15,23,42,.08);
+  color-scheme: light;
+}
+html[data-theme=light] body::before { background: radial-gradient(900px 500px at 12% -10%, rgba(46,230,197,.22), transparent 60%), radial-gradient(800px 500px at 100% 110%, rgba(76,201,255,.18), transparent 60%); }
+html[data-theme=light] .tabs button.active, html[data-theme=light] .nav button.active { color: var(--text); }
+html[data-theme=light] .actionbar { background: rgba(255,255,255,.92); box-shadow: 0 14px 40px rgba(15,23,42,.12); }
+html[data-theme=light] .card { background: #fff; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+html[data-theme=light] .brand .mark { box-shadow: 0 8px 22px rgba(14,165,140,.25); }
+html[data-theme=light] .modal-back { background: rgba(15,23,42,.35); }
+html[data-theme=light] .nav button.active { background: linear-gradient(90deg, rgba(46,230,197,.28), rgba(76,201,255,.10)); }
+html[data-tech] .page-head p, html[data-tech] .hero p, html[data-tech] .hint, html[data-tech] .beginner { display: none; }
+html[data-tech] .page-head { padding-bottom: 10px; }
+html[data-tech] .lrow { padding: 8px 14px; }
+html[data-tech] .drow { padding: 6px 14px; }
+html[data-tech] .hero { padding: 20px 24px; }
+.radio { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(var(--ink),.05); border: 1px solid var(--line); }
+.radio button { border: 0; background: transparent; padding: 6px 14px; border-radius: 8px; color: var(--sub); font-weight: 600; font-size: 13px; }
+.radio button.active { background: var(--card2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line2); }
+.pillbtn { display: none; width: 100%; margin-bottom: 10px; border-radius: 10px; border: 1px solid rgba(46,230,197,.35); background: linear-gradient(90deg, rgba(46,230,197,.18), rgba(76,201,255,.08)); color: var(--text); font-weight: 600; font-size: 12.5px; padding: 8px 10px; text-align: left; }
+.pillbtn.show { display: block; }
 </style>
 </head>
 <body>
@@ -293,6 +323,7 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
   <div class="side-foot">
     <div class="admin"><span class="dot" id="adminDot"></span><span id="adminText">Checking...</span></div>
     <button class="btn small" id="sideAdminBtn" style="display:none">Restart as administrator</button>
+    <button class="pillbtn" id="updatePill"></button>
     <div id="versionText"></div>
   </div>
 </aside>
@@ -435,7 +466,7 @@ select, input[type=time] { height: 38px; border-radius: 11px; border: 1px solid 
 
   <!-- Settings -->
   <section class="page" id="page-settings">
-    <div class="page-head"><div class="grow"><h1>Settings</h1><p>Automatic cleaning, logs and information about Kempt.</p></div></div>
+    <div class="page-head"><div class="grow"><h1>Settings</h1><p>Automatic cleaning, look and feel, updates, backups of your settings, logs and information about Kempt.</p></div></div>
     <div class="page-body stack" id="settingsBody"></div>
   </section>
 </main>
@@ -787,10 +818,10 @@ async function showBackups() {
 
 function setBusy(b) { renderPicker(); }
 
-async function startRun(owner, mode, ids) {
+async function startRun(owner, mode, ids, quiet) {
   if (S.run) return;
   if (!ids.length) { toast("Tick at least one item first.", true); return; }
-  if (mode === "clean") {
+  if (mode === "clean" && !quiet) {
     let open = [];
     try { open = (await api.OpenApps(ids)) || []; } catch (e) { open = []; }
     const warn = open.length ? `<div class="warnbox">${esc(open.join(", "))} ${open.length === 1 ? "is" : "are"} open. Close ${open.length === 1 ? "it" : "them"} first for a full clean, or files in use will be skipped.</div>` : "";
@@ -825,6 +856,8 @@ window.cpcEvent = (name, p) => {
     p.error ? w.rej(new Error(p.error)) : w.res(p.result);
     return;
   }
+  if (name.startsWith("update")) return selfUpdateEvent(name, p);
+  if (name === "trayClean") { show("health"); if (!S.run) startRun("health", "clean", recommendedIds(), true); return; }
   if (name.startsWith("dupe")) return dupeEvent(name, p);
   if (name.startsWith("disk")) return diskEvent(name, p);
   if (name.startsWith("leftovers")) return leftoversEvent(name, p);
@@ -876,9 +909,28 @@ function gauge(fraction, label, value, color) {
   const c = 2 * Math.PI * 52, off = c * (1 - Math.min(1, Math.max(0, fraction)));
   const stroke = color === "accent" ? "url(#ringGrad)" : color;
   return `<div class="gauge"><svg viewBox="0 0 120 120"><defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee6c5"/><stop offset="1" stop-color="#4cc9ff"/></linearGradient></defs>
-    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="10"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--track)" stroke-width="10"/>
     <circle cx="60" cy="60" r="52" fill="none" stroke="${stroke}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>
     <div class="val"><div><b>${value}</b>${label}</div></div></div>`;
+}
+
+// Drive and battery tiles load on their own so the rest of the page is never
+// re-rendered under the user's cursor when the slow SMART query returns.
+function renderHwTiles() {
+  const el = $("#hwTiles");
+  if (!el) return;
+  const hh = S.hw;
+  const worst = hh && hh.disks.length ? hh.disks.reduce((a, d) => ({ bad: 2, warn: 1, good: 0 }[d.level] > ({ bad: 2, warn: 1, good: 0 }[a.level] || 0) ? d : a), hh.disks[0]) : null;
+  const lvlColor = l => l === "bad" ? "var(--bad)" : l === "warn" ? "var(--warn)" : "var(--good)";
+  const health = `<div class="tiles" style="margin-top:14px;grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div class="tile"><div class="k">Drive condition</div>
+      <div class="v" style="color:${worst ? lvlColor(worst.level) : "var(--text)"}">${!hh ? "..." : !worst ? "Unknown" : worst.level === "good" ? "Healthy" : worst.level === "warn" ? "Check" : "Failing"}</div>
+      <div class="s">${!hh ? "Reading SMART data." : !worst ? "Windows didn't report drive health. Run as administrator." : hh.disks.map(d => `<div><b style="color:var(--text)">${esc(d.name)}</b> (${esc(d.mediaType)}, ${fmtBytes(d.size)}): ${esc(d.text)}${d.wear >= 0 ? " Wear " + d.wear + "%." : ""}</div>`).join("")}</div></div>
+    <div class="tile"><div class="k">Battery</div>
+      <div class="v" style="color:${hh && hh.battery.present ? lvlColor(hh.battery.level) : "var(--text)"}">${!hh ? "..." : !hh.battery.present ? "None" : hh.battery.healthPercent ? hh.battery.healthPercent + "% health" : "Present"}</div>
+      <div class="s">${!hh ? "" : esc(hh.battery.text)}${hh && hh.battery.present ? ` Now ${esc(hh.battery.status.toLowerCase())}, ${hh.battery.charge}% charged.` : ""}</div></div></div>`;
+  el.innerHTML = health;
+  if (!hh && !S.hwLoading) { S.hwLoading = true; slow(api.Health()).then(h => { S.hw = h; }).catch(() => { S.hw = { disks: [], battery: { present: false, text: "" } }; }).finally(() => { S.hwLoading = false; renderHwTiles(); }); }
 }
 
 function renderHealth() {
@@ -926,18 +978,8 @@ function renderHealth() {
       <div class="s">${h.state === "done" ? files(h.summary.files) + " in the Recommended items." : "Temp files, caches, Recycle Bin and error reports."}</div>
       <div><button class="link" id="hCustom2">Open Custom Clean</button></div></div>
   </div>`;
-  const hh = S.hw;
-  const worst = hh && hh.disks.length ? hh.disks.reduce((a, d) => ({ bad: 2, warn: 1, good: 0 }[d.level] > ({ bad: 2, warn: 1, good: 0 }[a.level] || 0) ? d : a), hh.disks[0]) : null;
-  const lvlColor = l => l === "bad" ? "var(--bad)" : l === "warn" ? "var(--warn)" : "var(--good)";
-  const health = `<div class="tiles" style="margin-top:14px;grid-template-columns:repeat(2,minmax(0,1fr))">
-    <div class="tile"><div class="k">Drive condition</div>
-      <div class="v" style="color:${worst ? lvlColor(worst.level) : "var(--text)"}">${!hh ? "..." : !worst ? "Unknown" : worst.level === "good" ? "Healthy" : worst.level === "warn" ? "Check" : "Failing"}</div>
-      <div class="s">${!hh ? "Reading SMART data." : !worst ? "Windows didn't report drive health. Run as administrator." : hh.disks.map(d => `<div><b style="color:var(--text)">${esc(d.name)}</b> (${esc(d.mediaType)}, ${fmtBytes(d.size)}): ${esc(d.text)}${d.wear >= 0 ? " Wear " + d.wear + "%." : ""}</div>`).join("")}</div></div>
-    <div class="tile"><div class="k">Battery</div>
-      <div class="v" style="color:${hh && hh.battery.present ? lvlColor(hh.battery.level) : "var(--text)"}">${!hh ? "..." : !hh.battery.present ? "None" : hh.battery.healthPercent ? hh.battery.healthPercent + "% health" : "Present"}</div>
-      <div class="s">${!hh ? "" : esc(hh.battery.text)}${hh && hh.battery.present ? ` Now ${esc(hh.battery.status.toLowerCase())}, ${hh.battery.charge}% charged.` : ""}</div></div></div>`;
-  el.innerHTML = hero + tiles + health;
-  if (!hh && !S.hwLoading) { S.hwLoading = true; slow(api.Health()).then(h => { S.hw = h; }).catch(() => { S.hw = { disks: [], battery: { present: false, text: "" } }; }).finally(() => { S.hwLoading = false; renderHealth(); }); }
+  el.innerHTML = hero + tiles + '<div id="hwTiles"></div>';
+  renderHwTiles();
   const on = (id, fn) => { const b = $("#" + id); if (b) b.onclick = fn; };
   on("hRun", runHealth); on("hAgain", runHealth); on("hFix", fixHealth);
   on("hCustom", () => show("clean")); on("hCustom2", () => show("clean")); on("hStartup", () => show("startup"));
@@ -1559,6 +1601,7 @@ function renderHelp() {
     ["Bloatware", "Lists preinstalled Store apps like Candy Crush, Xbox extras and promo apps, and removes the ones you tick. Windows' own apps are never offered."],
     ["Tech Report", "Builds a one-page summary of the PC for a ticket: make and model, Windows version and patch, drive and battery condition, startup, services, programs and warnings. Also available as Kempt.exe /report from a script."],
     ["Driver Updater", "Checks Windows Update for newer drivers and installs the ones you pick, with a restore point first. It also lists every installed driver, lets you ignore an update, and Fix a problem shows devices with errors. Some makers post newer drivers only on their own sites, and Kempt links to those pages."],
+    ["Settings", "Dark or light theme, tech mode (hides the explanations), a notification area icon with Clean now, a daily check for new versions with one-click install, and export or import of every setting. Kempt.exe /export and /import do the same from a script."],
     ["Automatic cleaning", "Settings can schedule a weekly clean with the items you ticked in Custom Clean. It skips apps that are open. You can also run Kempt.exe /auto from a script or RMM tool."],
     ["What Kempt never touches", "Documents, photos, bookmarks, Windows' own scheduled tasks and services, COM and ActiveX registry entries, and anything newer than 24 hours in temp folders. Cookies, history and passwords are only cleaned if you tick them."],
     ["Not included", "Cloud Drive Cleaner needs sign-in to your cloud accounts, so it isn't included. Duplicate Finder does search your local OneDrive folder. Wiping free space and driver downloads from third-party sites are left out on purpose."],
@@ -1702,9 +1745,58 @@ async function buildReport() {
 
 // ---------------------------------------------------------------- settings
 const days = [["MON", "Monday"], ["TUE", "Tuesday"], ["WED", "Wednesday"], ["THU", "Thursday"], ["FRI", "Friday"], ["SAT", "Saturday"], ["SUN", "Sunday"]];
+function applyPrefs(p) {
+  S.prefs = p;
+  document.documentElement.dataset.theme = p.theme || "dark";
+  if (p.techMode) document.documentElement.dataset.tech = "1"; else delete document.documentElement.dataset.tech;
+}
+async function setPref(name, value) {
+  try { applyPrefs(await api.SetPref(name, String(value))); } catch (e) { toast(errText(e), true); }
+  renderSettings();
+}
+const UP = { result: null, busy: false, done: 0, total: 0, error: "" };
+function updateRow() {
+  const r = UP.result;
+  if (UP.busy) return `<div class="grow"><div class="progress" style="margin:0 0 6px"><i style="width:${UP.total ? Math.round(UP.done / UP.total * 100) : 0}%"></i></div><span class="muted">Downloading Kempt ${esc(r.latest)}... ${fmtBytes(UP.done)}${UP.total ? " of " + fmtBytes(UP.total) : ""}</span></div>`;
+  let text;
+  if (!r) text = `Kempt ${esc(S.info.version)}.`;
+  else if (r.error) text = `Couldn't check: ${esc(r.error)}`;
+  else if (r.available) text = `<b>Kempt ${esc(r.latest)} is available.</b> You have ${esc(r.current)}.`;
+  else text = `Kempt ${esc(r.current)} is up to date.`;
+  if (UP.error) text += ` <span style="color:var(--bad)">${esc(UP.error)}</span>`;
+  return `<span class="grow">${text}${r && r.checked ? ` <span class="dim">Checked ${esc(r.checked)}.</span>` : ""}</span>
+    ${r && r.available ? `<button class="btn primary small" id="updInstall">Install Kempt ${esc(r.latest)}</button><button class="link" id="updNotes" style="font-size:13px">What's new</button>` : ""}
+    <button class="btn small" id="updCheck">Check for updates</button>`;
+}
+function renderUpdatePill() {
+  const b = $("#updatePill"), r = UP.result;
+  b.className = "pillbtn" + (r && r.available ? " show" : "");
+  b.textContent = r && r.available ? "Kempt " + r.latest + " is available" : "";
+  b.onclick = () => show("settings");
+}
+function wireUpdateRow() {
+  const on = (id, fn) => { const b = $("#" + id); if (b) b.onclick = fn; };
+  on("updCheck", async () => { $("#updCheck").disabled = true; UP.error = ""; try { UP.result = await slow(api.UpdateCheck()); } catch (e) { UP.result = { error: errText(e) }; } renderUpdatePill(); $("#updRow").innerHTML = updateRow(); wireUpdateRow(); });
+  on("updInstall", async () => {
+    if (!await confirmBox("Install Kempt " + UP.result.latest + "?", "The new version downloads (" + fmtBytes(UP.result.size) + "), is checked against its published checksum, and Kempt restarts. Any scan in progress stops.", "Install")) return;
+    try { await api.UpdateInstall(); UP.busy = true; UP.done = 0; UP.total = UP.result.size; UP.error = ""; $("#updRow").innerHTML = updateRow(); } catch (e) { toast(errText(e), true); }
+  });
+  on("updNotes", () => { const r = UP.result; confirmBox("What's new in Kempt " + r.latest, `<div style="white-space:pre-wrap;max-height:300px;overflow:auto">${esc(r.notes || "No notes for this release.")}</div>`, "Close"); });
+}
+function selfUpdateEvent(name, p) {
+  if (name === "updateProgress") { UP.done = p.done; UP.total = p.total || UP.total; const row = $("#updRow"); if (row && UP.busy) { row.innerHTML = updateRow(); } }
+  if (name === "updateDone") {
+    UP.busy = false;
+    if (p.ok) { toast(p.text); const row = $("#updRow"); if (row) row.innerHTML = `<span class="grow status-good">${esc(p.text)}</span>`; }
+    else { UP.error = p.text; toast(p.text, true); const row = $("#updRow"); if (row) { row.innerHTML = updateRow(); wireUpdateRow(); } if (p.page) api.OpenPath(p.page).catch(() => {}); }
+  }
+}
+async function checkUpdatesQuietly() {
+  try { if (!await api.UpdateDue()) return; UP.result = await slow(api.UpdateCheck()); renderUpdatePill(); if ($("#page-settings").classList.contains("active")) renderSettings(); } catch (e) { /* offline, try tomorrow */ }
+}
 async function renderSettings() {
   try { S.schedule = await api.Schedule(); } catch (e) { S.schedule = { enabled: false }; }
-  const sc = S.schedule, admin = S.info.elevated;
+  const sc = S.schedule, admin = S.info.elevated, pf = S.prefs || { theme: "dark", checkUpdates: true };
   $("#settingsBody").innerHTML = `
     <div class="card"><div class="row"><div class="grow"><h3>Automatic cleaning</h3>
       <p>Runs a clean once a week in the background using the items ticked in Custom Clean. Apps that are open at the time are skipped. Each run writes a log.</p></div>
@@ -1718,7 +1810,17 @@ async function renderSettings() {
       <p>Custom Clean, Health Check and automatic cleaning skip these folders and everything inside them.</p></div>
       <button class="btn small" id="exclAdd">Add folder</button></div>
       <div class="list" style="margin-top:12px" id="exclList"></div></div>
-    <div class="card"><div class="row"><div class="grow"><h3>Cleaning logs</h3><p>Every clean records each file it deleted. The last 30 logs are kept.</p></div>
+    <div class="card"><div class="row"><div class="grow"><h3>Look and feel</h3><p class="hint">Tech mode hides the explanations and tightens the lists. The tray icon keeps Kempt running when the window is closed, with Clean now one right-click away.</p></div></div>
+      <div class="row" style="margin-top:14px;flex-wrap:wrap;gap:22px">
+        <div class="row" style="gap:10px"><span class="muted">Theme</span><div class="radio" role="group" aria-label="Theme"><button id="themeDark" class="${pf.theme === "dark" ? "active" : ""}">Dark theme</button><button id="themeLight" class="${pf.theme === "light" ? "active" : ""}">Light theme</button></div></div>
+        <label class="row" style="gap:10px;cursor:pointer"><input type="checkbox" class="cb" id="prefTech" aria-label="Tech mode" ${pf.techMode ? "checked" : ""}> <span>Tech mode</span></label>
+        <label class="row" style="gap:10px;cursor:pointer"><input type="checkbox" class="cb" id="prefTray" aria-label="Keep running in the notification area" ${pf.tray ? "checked" : ""}> <span>Keep running in the notification area</span></label></div></div>
+    <div class="card"><div class="row"><div class="grow"><h3>Updates</h3><p class="hint">Kempt checks GitHub once a day for a new version and only installs when you say so. Downloads are verified against the published checksum.</p></div>
+      <label class="row" style="gap:10px;cursor:pointer"><input type="checkbox" class="cb" id="prefUpd" aria-label="Check for updates automatically" ${pf.checkUpdates ? "checked" : ""}> <span class="muted">Check daily</span></label></div>
+      <div class="row" style="margin-top:14px" id="updRow">${updateRow()}</div></div>
+    <div class="card"><div class="row"><div class="grow"><h3>Back up settings</h3><p class="hint">Save the ticked items, excluded folders and preferences to a file, and load it on another PC. From a script: <code>Kempt.exe /export file.json</code> and <code>Kempt.exe /import file.json</code>.</p></div>
+      <button class="btn small" id="setExport">Export settings</button><button class="btn small" id="setImport">Import settings</button></div></div>
+    <div class="card"><div class="row"><div class="grow"><h3>Cleaning logs</h3><p class="hint">Every clean records each file it deleted. The last 30 logs are kept.</p></div>
       <button class="btn small" id="openLogs">Open logs folder</button></div></div>
     <div class="card"><h3>What Kempt never touches</h3>
       <p>Your documents, photos and bookmarks. Firefox history, because Firefox keeps it in the same file as bookmarks. Anything newer than 24 hours in temp folders. Windows' own scheduled tasks and services, and COM and ActiveX registry entries. Cookies, history and saved passwords are only cleaned if you tick them, and every registry fix is backed up first so it can be undone.</p></div>
@@ -1735,6 +1837,23 @@ async function renderSettings() {
   try { drawExcl(await api.Exclusions()); } catch (e) { drawExcl([]); }
   $("#exclAdd").onclick = async () => { try { drawExcl(await api.AddExclusion()); } catch (e) { toast(errText(e), true); } };
   $("#openLogs").onclick = () => api.OpenLogs().catch(e => toast("No logs yet. Run a clean first.", true));
+  $("#themeDark").onclick = () => setPref("theme", "dark");
+  $("#themeLight").onclick = () => setPref("theme", "light");
+  $("#prefTech").onchange = e => setPref("techMode", e.target.checked);
+  $("#prefTray").onchange = e => setPref("tray", e.target.checked);
+  $("#prefUpd").onchange = e => setPref("checkUpdates", e.target.checked);
+  wireUpdateRow();
+  $("#setExport").onclick = async () => { try { const p = await api.ExportSettings(); if (p) toast("Settings saved to " + p); } catch (e) { toast(errText(e), true); } };
+  $("#setImport").onclick = async () => {
+    try {
+      const r = await api.ImportSettings();
+      if (!r.path) return;
+      applyPrefs(await api.Prefs());
+      S.targets = await api.Targets(); S.checked = new Set(S.targets.filter(t => t.checked).map(t => t.id)); renderPicker();
+      toast("Settings loaded" + (r.from ? " (exported from Kempt " + r.from + ")" : "") + ".");
+      renderSettings();
+    } catch (e) { toast(errText(e), true); }
+  };
   const sa = $("#setAdmin"); if (sa) sa.onclick = restartAdmin;
   $("#schedOn").onchange = async e => {
     try {
@@ -1760,6 +1879,7 @@ async function refreshInfo() {
 }
 
 async function init() {
+  try { applyPrefs(await api.Prefs()); } catch (e) { /* defaults */ }
   try {
     await refreshInfo();
     S.targets = await api.Targets();
@@ -1768,6 +1888,7 @@ async function init() {
   } catch (e) { toast("Couldn't load: " + errText(e), true); }
   renderPicker(); renderResults();
   show("health");
+  setTimeout(checkUpdatesQuietly, 4000);
 }
 init();
 </script>

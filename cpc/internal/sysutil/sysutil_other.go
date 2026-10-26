@@ -45,3 +45,6 @@ type Drive struct {
 }
 
 func FixedDrives() []Drive { return nil }
+
+func SaveFileDialog(uintptr, string, string, string, string, string) string { return "" }
+func OpenFileDialog(uintptr, string, string, string) string                 { return "" }

@@ -27,7 +27,7 @@ jobs:
           go vet ./...
           GOOS=windows go vet ./...
       - name: Test and build
-        run: ./build.sh "1.4.${{ github.run_number }}"
+        run: ./build.sh "1.5.${{ github.run_number }}"
       - uses: actions/upload-artifact@v4
         with:
           name: Kempt

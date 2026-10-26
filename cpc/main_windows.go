@@ -14,6 +14,7 @@ import (
 
 	"github.com/credence29-2/jocai/cpc/internal/settings"
 	"github.com/credence29-2/jocai/cpc/internal/sysutil"
+	"github.com/credence29-2/jocai/cpc/internal/update"
 )
 
 //go:embed web/index.html
@@ -32,7 +33,16 @@ func main() {
 				dest = os.Args[i+2]
 			}
 			os.Exit(runReport(dest))
+		case "/export", "-export", "--export", "/import", "-import", "--import":
+			file := ""
+			if i+2 < len(os.Args) {
+				file = os.Args[i+2]
+			}
+			os.Exit(runSettingsFile(strings.Contains(a, "export"), file))
 		}
+	}
+	if exe, err := os.Executable(); err == nil {
+		update.CleanupOld(exe)
 	}
 
 	dataDir := settings.Dir()
@@ -62,6 +72,12 @@ func main() {
 		w.Dispatch(func() { w.Eval(js) })
 	})
 	a.hwnd = uintptr(w.Window())
+	a.quit = func() { w.Dispatch(func() { w.Terminate() }) }
+	installTray(a.hwnd, func() { a.emit("trayClean", nil) }, func() { w.Terminate() })
+	a.setTray = setTray
+	if a.cfg.Tray {
+		setTray(true)
+	}
 	a.restartElevated = func() error {
 		if err := sysutil.ShellRunAs(a.exe); err != nil {
 			return err
@@ -89,4 +105,27 @@ func bindAll(w webview2.WebView, a *api) error {
 		}
 	}
 	return nil
+}
+
+// runSettingsFile handles Kempt.exe /export <file> and /import <file> for
+// scripts that set up many PCs the same way.
+func runSettingsFile(export bool, file string) int {
+	if file == "" {
+		if export {
+			file = "Kempt-settings.json"
+		} else {
+			return 2
+		}
+	}
+	a := newAPI(settings.Dir(), sysutil.IsElevated(), func(string, any) {})
+	if export {
+		if err := a.exportTo(file); err != nil {
+			return 1
+		}
+		return 0
+	}
+	if _, err := a.importFrom(file); err != nil {
+		return 1
+	}
+	return 0
 }

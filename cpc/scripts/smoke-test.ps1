@@ -291,6 +291,28 @@ Remove-Item -Force $fakeKey -ErrorAction SilentlyContinue
 
 Click $win "Settings" | Out-Null
 if (Expect $win "Automatic cleaning" "Settings rendered") { Shot "8-settings" }
+Click $win "Check for updates" | Out-Null
+if (Expect $win "(is up to date|is available|Couldn't check)" "update check answered" 60) { Write-Host "Update: $((Texts $win) -replace '.*(Kempt [^|]*(up to date|available|Couldn.t check[^|]*)).*', '$1')" }
+Click $win "Light theme" | Out-Null
+Start-Sleep 1
+Shot "8b-light"
+Click $win "Dark theme" | Out-Null
+Click $win "Tech mode" | Out-Null
+Start-Sleep 1
+if ((Texts $win) -notmatch "look and feel, updates") { Pass "tech mode hides the page intro" } else { Fail "tech mode left the intro text" }
+Click $win "Tech mode" | Out-Null
+Click $win "Keep running in the notification area" | Out-Null
+Start-Sleep 1
+Click $win "Keep running in the notification area" | Out-Null
+Start-Sleep 1
+if (-not $gui.HasExited) { Pass "tray icon switched on and off" } else { Fail "Kempt died when the tray was toggled" }
+$exp = "$env:RUNNER_TEMP\kempt-settings.json"
+$cli = Start-Process $exe -ArgumentList "/export", "`"$exp`"" -PassThru -Wait
+if ($cli.ExitCode -eq 0 -and (Test-Path $exp) -and ((Get-Content $exp -Raw) -match '"app": "Kempt"')) { Pass "/export wrote a settings file" } else { Fail "/export failed with $($cli.ExitCode)" }
+$cli = Start-Process $exe -ArgumentList "/import", "`"$exp`"" -PassThru -Wait
+if ($cli.ExitCode -eq 0) { Pass "/import loaded the settings file" } else { Fail "/import failed with $($cli.ExitCode)" }
+$cli = Start-Process $exe -ArgumentList "/import", "`"$env:RUNNER_TEMP\nope.json`"" -PassThru -Wait
+if ($cli.ExitCode -ne 0) { Pass "/import rejects a missing file" } else { Fail "/import accepted a missing file" }
 Click $win "Turn automatic cleaning on or off" | Out-Null
 $task = Wait-For { schtasks /query /tn "Kempt weekly clean" 2>$null } 15
 if ($task) { Pass "weekly scheduled task created" } else { Fail "scheduled task not created. Screen: $(Texts $win)" }

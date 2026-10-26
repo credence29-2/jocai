@@ -26,7 +26,7 @@ const (
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
-var version = "1.4.2"
+var version = "1.5.0"
 
 // scheduleName is the Task Scheduler entry Kempt manages. oldScheduleName is
 // what earlier versions created; it is replaced when the schedule changes.
@@ -55,6 +55,10 @@ type api struct {
 	emit func(name string, payload any)
 	// restartElevated relaunches Kempt through UAC. Set by main.
 	restartElevated func() error
+	// setTray shows or hides the notification area icon. Set by main.
+	setTray func(on bool)
+	// quit closes the window and ends the process. Set by main.
+	quit func()
 
 	mu       sync.Mutex
 	cfg      settings.Settings

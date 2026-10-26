@@ -423,3 +423,85 @@ func FixedDrives() []Drive {
 	}
 	return out
 }
+
+var (
+	comdlg32             = windows.NewLazySystemDLL("comdlg32.dll")
+	procGetSaveFileNameW = comdlg32.NewProc("GetSaveFileNameW")
+	procGetOpenFileNameW = comdlg32.NewProc("GetOpenFileNameW")
+)
+
+type openFileName struct {
+	StructSize    uint32
+	Owner         uintptr
+	Instance      uintptr
+	Filter        *uint16
+	CustomFilter  *uint16
+	MaxCustFilter uint32
+	FilterIndex   uint32
+	File          *uint16
+	MaxFile       uint32
+	FileTitle     *uint16
+	MaxFileTitle  uint32
+	InitialDir    *uint16
+	Title         *uint16
+	Flags         uint32
+	FileOffset    uint16
+	FileExtension uint16
+	DefExt        *uint16
+	CustData      uintptr
+	Hook          uintptr
+	TemplateName  *uint16
+	PvReserved    uintptr
+	DwReserved    uint32
+	FlagsEx       uint32
+}
+
+// filter builds a double-NUL separated filter such as "JSON files\0*.json\0".
+func filter(desc, pattern string) *uint16 {
+	s := append(utf16Z(desc), utf16Z(pattern)...)
+	s = append(s, 0)
+	return &s[0]
+}
+
+func utf16Z(s string) []uint16 {
+	u, _ := windows.UTF16FromString(s)
+	return u
+}
+
+func fileDialog(save bool, owner uintptr, title, defaultName, desc, pattern, defExt string) string {
+	buf := make([]uint16, 32768)
+	copy(buf, utf16Z(defaultName))
+	t, _ := windows.UTF16PtrFromString(title)
+	ext, _ := windows.UTF16PtrFromString(defExt)
+	const (
+		ofnOverwritePrompt = 0x00000002
+		ofnPathMustExist   = 0x00000800
+		ofnFileMustExist   = 0x00001000
+		ofnNoChangeDir     = 0x00000008
+		ofnExplorer        = 0x00080000
+	)
+	ofn := openFileName{Owner: owner, Filter: filter(desc, pattern), FilterIndex: 1, File: &buf[0], MaxFile: uint32(len(buf)), Title: t, DefExt: ext, Flags: ofnNoChangeDir | ofnExplorer | ofnPathMustExist}
+	ofn.StructSize = uint32(unsafe.Sizeof(ofn))
+	var r uintptr
+	if save {
+		ofn.Flags |= ofnOverwritePrompt
+		r, _, _ = procGetSaveFileNameW.Call(uintptr(unsafe.Pointer(&ofn)))
+	} else {
+		ofn.Flags |= ofnFileMustExist
+		r, _, _ = procGetOpenFileNameW.Call(uintptr(unsafe.Pointer(&ofn)))
+	}
+	if r == 0 {
+		return ""
+	}
+	return windows.UTF16ToString(buf)
+}
+
+// SaveFileDialog asks where to save a file. Returns "" when cancelled.
+func SaveFileDialog(owner uintptr, title, defaultName, desc, pattern, defExt string) string {
+	return fileDialog(true, owner, title, defaultName, desc, pattern, defExt)
+}
+
+// OpenFileDialog asks for a file to open. Returns "" when cancelled.
+func OpenFileDialog(owner uintptr, title, desc, pattern string) string {
+	return fileDialog(false, owner, title, "", desc, pattern, "")
+}

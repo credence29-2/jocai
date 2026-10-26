@@ -67,3 +67,37 @@ func TestDirMigratesOldFolder(t *testing.T) {
 		t.Fatal("dir changed on second call")
 	}
 }
+
+func TestExportRoundTrip(t *testing.T) {
+	s := Settings{Selected: map[string]bool{"win.temp.user": true, "chrome.cookies": false}, Exclude: []string{`C:\Keep`}, Theme: "light", TechMode: true, Tray: true, LastUpdateCheck: "2026-10-26T00:00:00Z"}
+	b, err := Encode("Kempt", "1.5.0", s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, err := Decode(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.App != "Kempt" || e.Version != "1.5.0" || e.Settings.Theme != "light" || !e.Settings.TechMode || !e.Settings.Tray || len(e.Settings.Exclude) != 1 || e.Settings.Selected["win.temp.user"] != true {
+		t.Fatalf("round trip lost data: %+v", e)
+	}
+	if e.Settings.LastUpdateCheck != "" {
+		t.Fatal("export should not carry the update check time")
+	}
+	m := Merge(Settings{LastUpdateCheck: "keep"}, e)
+	if m.LastUpdateCheck != "keep" || m.Theme != "light" {
+		t.Fatalf("merge wrong: %+v", m)
+	}
+	if _, err := Decode([]byte(`{"hello": 1}`)); err == nil {
+		t.Fatal("random JSON accepted")
+	}
+	if _, err := Decode([]byte(`not json`)); err == nil {
+		t.Fatal("garbage accepted")
+	}
+	if e, err := Decode([]byte(`{"selected":{"a":true}}`)); err != nil || !e.Settings.Selected["a"] {
+		t.Fatalf("bare settings.json rejected: %v", err)
+	}
+	if e, _ := Decode([]byte(`{"app":"Kempt","settings":{"selected":{},"theme":"neon"}}`)); e.Settings.Theme != "" {
+		t.Fatal("unknown theme kept")
+	}
+}

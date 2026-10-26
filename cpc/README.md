@@ -19,7 +19,7 @@ A CCleaner replacement for Windows by 804 Industries. One portable `Kempt.exe`, 
 | Repair Tools | System File Checker, DISM, network reset, Windows Update reset, icon cache, Explorer restart, disk check, Store reset and print spooler restart, with live output. |
 | Bloatware | Preinstalled Store apps grouped as promotions, Microsoft extras, Xbox, PC maker and other. Windows' own apps are never offered. |
 | Tech Report | One-page HTML and text summary of the PC for a ticket. Also `Kempt.exe /report [folder or file]` from a script. |
-| Settings | Weekly automatic cleaning through Task Scheduler, folders to never clean, logs. |
+| Settings | Weekly automatic cleaning through Task Scheduler, folders to never clean, dark or light theme, tech mode, a notification area icon with Clean now, daily update checks with one-click install, and export or import of every setting. |
 
 Nothing is deleted until you confirm. Every clean writes a log of each deleted file to `%LOCALAPPDATA%\Kempt\logs`. Registry backups go to `%LOCALAPPDATA%\Kempt\backups`.
 
@@ -52,6 +52,21 @@ Windows shows a SmartScreen warning the first time because the exe isn't code-si
 
 Turn on **Settings > Automatic cleaning** for a weekly clean. Or run `Kempt.exe /auto` yourself, from Task Scheduler, a script or an RMM tool. It cleans the items last ticked in Custom Clean, or the Recommended set if it's never been opened. It skips anything whose program is open, honors the never-clean folders, writes a log, and exits with 0 on success.
 
+### Settings on many PCs
+
+**Settings > Back up settings** exports everything (ticked items, never-clean folders, theme, tech mode, tray and update preferences) to a JSON file and imports it again. From a script, `Kempt.exe /export C:\path\settings.json` and `Kempt.exe /import C:\path\settings.json` do the same, so a deployment can be `/import` followed by `/auto`.
+
+### Updates
+
+Kempt checks GitHub Releases once a day (or when you click **Check for updates**) and installs only when you click **Install**. The download is checked against the release's `SHA256SUMS.txt` before the running exe is swapped, and the previous exe is removed on the next start. Publishing a release is one tag:
+
+```
+git tag kempt-v1.5.0
+git push origin kempt-v1.5.0
+```
+
+The **Kempt release** workflow builds both exes, writes `SHA256SUMS.txt` and publishes the release with generated notes.
+
 ## Building
 
 You need Go 1.24 or newer. Go builds the Windows exe from Windows, Mac or Linux.
@@ -75,7 +90,7 @@ go-winres make --in winres/winres.json --arch amd64,arm64
 ## Testing
 
 - `go test ./...` runs the unit tests anywhere.
-- The **Kempt Windows test** GitHub workflow runs on a real Windows machine. It runs the unit tests natively, cleans planted junk with `/auto`, and then drives the actual window through UI Automation. That covers Health Check, scan, clean and confirm, registry scan, fix and undo, Duplicate Finder, Startup Manager tabs, Software Updater, Driver Check, the weekly schedule switch, and Help.
+- The **Kempt Windows test** GitHub workflow runs on a real Windows machine. It runs the unit tests natively, cleans planted junk with `/auto`, and then drives the actual window through UI Automation. That covers Health Check, scan, clean and confirm, registry scan, fix and undo, Duplicate Finder, Disk Analyzer, Startup Manager tabs, Software Updater, Driver Updater, Repair Tools, Bloatware, Tech Report, Uninstaller leftovers, the Settings switches, `/report`, `/export` and `/import`, the weekly schedule switch, and Help.
 - The **Kempt build** workflow produces the exes as a downloadable artifact on every push.
 
 ## Code signing
