@@ -339,3 +339,52 @@ func TestAttachmentPreviewTypes(t *testing.T) {
 		t.Fatal("download must stay a download")
 	}
 }
+
+func TestContactSuggestions(t *testing.T) {
+	hs := newHarness(t)
+	var list listOut
+	hs.call("POST", "/api/list", listIn{Folder: mail.Inbox}, &list)
+	var st stateOut
+	hs.call("GET", "/api/state", nil, &st)
+	var support mail.Identity
+	for _, i := range st.Identities {
+		if i.Email == "support@credence.example" {
+			support = i
+		}
+	}
+	hs.call("POST", "/api/send", sendIn{IdentityID: support.ID, To: "Dana Reyes <dana@posdealer.example>", Subject: "x"}, nil)
+	hs.a.saveContacts()
+
+	var hits []struct{ Email, Name string }
+	hs.call("GET", "/api/contacts?q=ma", nil, &hits)
+	if len(hits) == 0 || hits[0].Email != "maria@tacoshack.example" || hits[0].Name != "Maria Lopez" {
+		t.Fatalf("ma -> %+v", hits)
+	}
+	hs.call("GET", "/api/contacts?q=reyes", nil, &hits)
+	if len(hits) == 0 || hits[0].Email != "dana@posdealer.example" {
+		t.Fatalf("reyes -> %+v", hits)
+	}
+	// Sent-to addresses rank above merely seen ones with no query.
+	hs.call("GET", "/api/contacts", nil, &hits)
+	found := false
+	for _, h := range hits {
+		found = found || h.Email == "dana@posdealer.example"
+	}
+	if !found {
+		t.Fatalf("sent contact missing: %+v", hits)
+	}
+	// Own aliases are offered too.
+	hs.call("GET", "/api/contacts?q=bill", nil, &hits)
+	if len(hits) == 0 || hits[0].Email != "billing@credence.example" {
+		t.Fatalf("bill -> %+v", hits)
+	}
+	// Survives a restart.
+	st2, _ := store.Open(hs.a.st.File(""))
+	b := New(st2, false, func(string) error { return nil })
+	hs.a = b
+	hs.h = b.routes()
+	hs.call("GET", "/api/contacts?q=dana", nil, &hits)
+	if len(hits) == 0 || hits[0].Email != "dana@posdealer.example" {
+		t.Fatalf("after restart: %+v", hits)
+	}
+}

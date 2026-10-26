@@ -169,6 +169,11 @@ select.input { padding-right: 6px; }
 .cfield input, .cfield select { flex: 1; min-width: 0; border: 0; background: none; outline: none; height: 34px; }
 .cfield select { background: var(--panel); }
 .cfield .extra { display: flex; gap: 10px; flex: none; }
+.cfield { position: relative; }
+.suggest { position: absolute; left: 60px; right: 18px; top: 100%; z-index: 5; background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.4); overflow: hidden; }
+.suggest div { padding: 8px 12px; cursor: pointer; display: flex; gap: 8px; align-items: baseline; }
+.suggest div.on, .suggest div:hover { background: var(--card2); }
+.suggest .em { color: var(--sub); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fmt { display: flex; gap: 2px; padding: 6px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .fmt button { width: 32px; height: 30px; border: 0; border-radius: 6px; background: none; color: #d4d9df; font-weight: 700; display: grid; place-items: center; }
 .fmt button:hover { background: var(--card2); }
@@ -1008,6 +1013,7 @@ function compose(d = {}) {
     sig.innerHTML = sigHTML(ident, isReply);
     via();
   };
+  ["cTo", "cCc", "cBcc"].forEach(id => suggestOn($("#" + id)));
   $("#cShowCc").onclick = () => { $("#cCcRow").hidden = false; $("#cShowCc").hidden = true; $("#cCc").focus(); };
   $("#cShowBcc").onclick = () => { $("#cBccRow").hidden = false; $("#cShowBcc").hidden = true; $("#cBcc").focus(); };
 
@@ -1120,6 +1126,41 @@ function compose(d = {}) {
   });
   (isReply && d.kind !== "forward" ? body : $("#cTo")).focus();
   if (isReply && d.kind !== "forward") { const r = document.createRange(); r.setStart(body.firstChild, 0); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); }
+}
+// suggestOn adds address suggestions under a recipient box. It looks up
+// the part after the last comma and fills in "Name <email>, " when picked.
+function suggestOn(input) {
+  let box = null, hits = [], cur = -1, timer = null, seq = 0;
+  const unbox = () => { if (box) box.remove(); box = null; };
+  const hide = () => { unbox(); hits = []; cur = -1; };
+  const parts = () => { const v = input.value; const i = v.lastIndexOf(","); return [i < 0 ? "" : v.slice(0, i + 1), (i < 0 ? v : v.slice(i + 1)).trim()]; };
+  const pick = h => { const [head] = parts(); input.value = (head ? head + " " : "") + (h.name ? `${h.name} <${h.email}>` : h.email) + ", "; hide(); input.dispatchEvent(new Event("input", { bubbles: true })); };
+  const show = () => {
+    unbox();
+    if (!hits.length) return;
+    box = document.createElement("div"); box.className = "suggest";
+    box.innerHTML = hits.map((h, i) => `<div data-i="${i}" class="${i === cur ? "on" : ""}"><span>${esc(h.name || h.email)}</span>${h.name ? `<span class="em">${esc(h.email)}</span>` : ""}</div>`).join("");
+    box.onmousedown = e => { e.preventDefault(); const d = e.target.closest("[data-i]"); if (d) pick(hits[+d.dataset.i]); };
+    input.parentElement.append(box);
+  };
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    const [, tail] = parts();
+    if (tail.length < 1) return hide();
+    timer = setTimeout(async () => {
+      const my = ++seq;
+      try { const r = await api(dl("/api/contacts", { q: tail })); if (my !== seq) return; hits = r.filter(h => !input.value.toLowerCase().includes(h.email.toLowerCase())); cur = hits.length ? 0 : -1; show(); }
+      catch { hide(); }
+    }, 150);
+  });
+  input.addEventListener("keydown", e => {
+    if (!box) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); cur = (cur + 1) % hits.length; show(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); cur = (cur - 1 + hits.length) % hits.length; show(); }
+    else if ((e.key === "Enter" || e.key === "Tab") && cur >= 0) { e.preventDefault(); pick(hits[cur]); }
+    else if (e.key === "Escape") { e.stopPropagation(); hide(); }
+  });
+  input.addEventListener("blur", () => setTimeout(hide, 120));
 }
 const b64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = () => bad(r.error); r.readAsDataURL(f); });
 $("#composeBtn").onclick = () => { setDrawer(false); compose(); };

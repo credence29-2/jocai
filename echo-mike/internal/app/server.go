@@ -58,6 +58,7 @@ type App struct {
 	// onNewMail tells the window to refresh; nil when there's no window.
 	OnNewMail func()
 	watch     watcher
+	book      contacts
 
 	// Updater checks for and installs new versions; nil where the app
 	// can't replace itself (Android, development).
@@ -162,6 +163,7 @@ func (a *App) routes() http.Handler {
 	api("POST /api/account/update", a.handleAccountUpdate)
 	api("POST /api/account/remove", a.handleAccountRemove)
 	api("GET /api/unread", a.handleUnread)
+	api("GET /api/contacts", a.handleContacts)
 	api("GET /api/update", a.handleUpdateStatus)
 	api("POST /api/update/check", a.handleUpdateCheck)
 	api("POST /api/update/install", a.handleUpdateInstall)
@@ -324,6 +326,9 @@ func (a *App) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
 			for i := range page.Messages {
 				page.Messages[i].AccountID = id
 			}
+			for _, m := range page.Messages {
+				a.learn(1, []mail.Address{m.From}, m.To)
+			}
 			out.Messages = append(out.Messages, page.Messages...)
 			if page.Next != "" {
 				out.Cursors[id] = page.Next
@@ -331,6 +336,7 @@ func (a *App) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
 		}(id)
 	}
 	wg.Wait()
+	go a.saveContacts()
 	if in.Group {
 		out.Messages = groupThreads(out.Messages)
 	}
@@ -403,7 +409,9 @@ func (a *App) handleThread(w http.ResponseWriter, r *http.Request) (any, error) 
 	}
 	for _, m := range msgs {
 		m.AccountID = acct
+		a.learn(1, []mail.Address{m.From}, m.To, m.Cc)
 	}
+	go a.saveContacts()
 	return msgs, nil
 }
 
@@ -666,6 +674,8 @@ func (a *App) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
 		return nil, err
 	}
 	a.dropDraft(ctx, in.DraftAccountID, in.DraftID)
+	a.learn(5, o.To, o.Cc, o.Bcc)
+	go a.saveContacts()
 	return map[string]bool{"ok": true}, nil
 }
 
