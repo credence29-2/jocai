@@ -194,7 +194,7 @@ func TestOpenOnlyWebLinks(t *testing.T) {
 
 func TestAttachmentDownloadIsNotRendered(t *testing.T) {
 	hs := newHarness(t)
-	req := httptest.NewRequest("GET", "http://127.0.0.1:5555/api/attachment?t="+hs.a.token+"&a=demo-g&m=3&att=f1&name=x.html&type=text/html&inline=1", nil)
+	req := httptest.NewRequest("GET", "http://127.0.0.1:5555/api/attachment?t="+hs.a.token+"&a=demo-g&m=5&att=f1&name=x.html&type=text/html&inline=1", nil)
 	rec := httptest.NewRecorder()
 	hs.h.ServeHTTP(rec, req)
 	if rec.Code != 200 || rec.Header().Get("Content-Type") != "application/octet-stream" || !strings.HasPrefix(rec.Header().Get("Content-Disposition"), "attachment") {
@@ -217,5 +217,54 @@ func TestPullSignature(t *testing.T) {
 	}
 	if code := hs.call("POST", "/api/aliases/signature", map[string]string{"accountId": "demo-g", "email": "nobody@x.com"}, &res); code == 200 || !strings.Contains(res["error"], "send-as") {
 		t.Fatalf("unknown address: %d %v", code, res)
+	}
+}
+
+func TestThreadsGroupAndApply(t *testing.T) {
+	hs := newHarness(t)
+	var list listOut
+	hs.call("POST", "/api/list", listIn{Folder: mail.Inbox, AccountID: "demo-g", Group: true}, &list)
+	var maria *mail.Summary
+	for i := range list.Messages {
+		if strings.Contains(list.Messages[i].Subject, "Terminal 3") {
+			c := list.Messages[i]
+			maria = &c
+		}
+	}
+	if maria == nil || maria.Count != 2 || !strings.HasPrefix(maria.Subject, "Re:") || !maria.Unread {
+		t.Fatalf("thread row = %+v", maria)
+	}
+	// The sent reply isn't in the inbox page, so the row counts 2; the
+	// conversation itself has all 3.
+	var msgs []mail.Message
+	if code := hs.call("GET", "/api/thread?a=demo-g&id="+maria.ThreadID, nil, &msgs); code != 200 || len(msgs) != 3 {
+		t.Fatalf("thread: %d %d messages", code, len(msgs))
+	}
+	if !msgs[0].Date.Before(msgs[2].Date) || msgs[1].From.Email != "support@credence.example" {
+		t.Fatalf("order: %v", msgs)
+	}
+	for i := range list.Messages {
+		if list.Messages[i].Count > 1 && list.Messages[i].ThreadID != maria.ThreadID {
+			t.Fatalf("unexpected grouping: %+v", list.Messages[i])
+		}
+	}
+
+	var res map[string]any
+	if code := hs.call("POST", "/api/apply", map[string]any{"accountId": "demo-g", "threads": []string{maria.ThreadID}, "change": "archive"}, &res); code != 200 {
+		t.Fatalf("apply: %d %v", code, res)
+	}
+	hs.call("POST", "/api/list", listIn{Folder: mail.Inbox, AccountID: "demo-g", Group: true}, &list)
+	for _, m := range list.Messages {
+		if m.ThreadID == maria.ThreadID {
+			t.Fatal("thread still in inbox after archive")
+		}
+	}
+	hs.call("POST", "/api/list", listIn{Folder: mail.Archive, AccountID: "demo-g"}, &list)
+	found := false
+	for _, m := range list.Messages {
+		found = found || m.ThreadID == maria.ThreadID
+	}
+	if !found {
+		t.Fatal("thread not in archive")
 	}
 }

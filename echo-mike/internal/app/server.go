@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -137,6 +138,7 @@ func (a *App) routes() http.Handler {
 	api("GET /api/state", a.handleState)
 	api("POST /api/list", a.handleList)
 	api("GET /api/message", a.handleMessage)
+	api("GET /api/thread", a.handleThread)
 	api("POST /api/apply", a.handleApply)
 	api("GET /api/attachment", a.handleAttachment)
 	api("POST /api/draft", a.handleDraft)
@@ -259,6 +261,8 @@ type listIn struct {
 	// Cursors holds each account's next-page cursor. When it's set, only
 	// accounts with a cursor are asked, for "load more".
 	Cursors map[string]string `json:"cursors"`
+	// Group folds each conversation into one row.
+	Group bool `json:"group"`
 }
 
 type listOut struct {
@@ -313,8 +317,80 @@ func (a *App) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
 		}(id)
 	}
 	wg.Wait()
+	if in.Group {
+		out.Messages = groupThreads(out.Messages)
+	}
 	sort.SliceStable(out.Messages, func(i, j int) bool { return out.Messages[i].Date.After(out.Messages[j].Date) })
 	return out, nil
+}
+
+// groupThreads folds messages of the same conversation into one row: the
+// newest message, carrying the count, everyone who wrote, and whether any
+// message is unread, starred or has a file.
+func groupThreads(msgs []mail.Summary) []mail.Summary {
+	type key struct{ acct, thread string }
+	rows := map[key]*mail.Summary{}
+	var order []key
+	for _, m := range msgs {
+		k := key{m.AccountID, m.ThreadID}
+		if m.ThreadID == "" {
+			k.thread = "msg:" + m.ID
+		}
+		r, ok := rows[k]
+		if !ok {
+			c := m
+			c.Count = 1
+			c.Participants = []string{who(m)}
+			rows[k] = &c
+			order = append(order, k)
+			continue
+		}
+		r.Count++
+		if !slices.Contains(r.Participants, who(m)) {
+			r.Participants = append(r.Participants, who(m))
+		}
+		r.Unread = r.Unread || m.Unread
+		r.Starred = r.Starred || m.Starred
+		r.HasAttachments = r.HasAttachments || m.HasAttachments
+		if m.Date.After(r.Date) {
+			// Keep the newest message's subject, snippet and date, but
+			// list writers oldest first like the conversation reads.
+			parts, count := r.Participants, r.Count
+			*r = m
+			r.Participants, r.Count = parts, count
+			r.Unread, r.Starred, r.HasAttachments = r.Unread || m.Unread, r.Starred || m.Starred, r.HasAttachments || m.HasAttachments
+		}
+	}
+	out := make([]mail.Summary, 0, len(order))
+	for _, k := range order {
+		out = append(out, *rows[k])
+	}
+	return out
+}
+
+func who(m mail.Summary) string {
+	if m.From.Name != "" {
+		return m.From.Name
+	}
+	return m.From.Email
+}
+
+// handleThread returns every message in a conversation, oldest first.
+func (a *App) handleThread(w http.ResponseWriter, r *http.Request) (any, error) {
+	acct, id := r.URL.Query().Get("a"), r.URL.Query().Get("id")
+	p, _, err := a.provider(acct)
+	if err != nil {
+		return nil, err
+	}
+	msgs, err := p.Thread(r.Context(), id)
+	if err != nil {
+		a.noteErr(acct, err)
+		return nil, err
+	}
+	for _, m := range msgs {
+		m.AccountID = acct
+	}
+	return msgs, nil
 }
 
 func (a *App) handleMessage(w http.ResponseWriter, r *http.Request) (any, error) {
@@ -334,9 +410,11 @@ func (a *App) handleMessage(w http.ResponseWriter, r *http.Request) (any, error)
 
 func (a *App) handleApply(w http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
-		AccountID string      `json:"accountId"`
-		IDs       []string    `json:"ids"`
-		Change    mail.Change `json:"change"`
+		AccountID string   `json:"accountId"`
+		IDs       []string `json:"ids"`
+		// Threads applies the change to every message in each conversation.
+		Threads []string    `json:"threads"`
+		Change  mail.Change `json:"change"`
 	}
 	if err := decode(r, &in); err != nil {
 		return nil, err
@@ -344,6 +422,21 @@ func (a *App) handleApply(w http.ResponseWriter, r *http.Request) (any, error) {
 	p, _, err := a.provider(in.AccountID)
 	if err != nil {
 		return nil, err
+	}
+	for _, t := range in.Threads {
+		msgs, err := p.Thread(r.Context(), t)
+		if err != nil {
+			a.noteErr(in.AccountID, err)
+			return nil, err
+		}
+		for _, m := range msgs {
+			// Leave trashed or spam messages where they are unless the
+			// change is putting things back in the inbox.
+			if m.Hidden && in.Change != mail.MoveInbox {
+				continue
+			}
+			in.IDs = append(in.IDs, m.ID)
+		}
 	}
 	for _, id := range in.IDs {
 		if err := p.Apply(r.Context(), id, in.Change); err != nil {

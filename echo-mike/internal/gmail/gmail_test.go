@@ -171,3 +171,30 @@ func TestParseAddrsLenient(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 }
+
+func TestListUsesCache(t *testing.T) {
+	gets := 0
+	c := fake(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/gmail/v1/users/me/messages":
+			w.Write([]byte(`{"messages":[{"id":"m1"},{"id":"m2"}]}`))
+		case strings.HasSuffix(r.URL.Path, "/modify"):
+			w.Write([]byte(`{}`))
+		case strings.HasPrefix(r.URL.Path, "/gmail/v1/users/me/messages/m"):
+			gets++
+			id := strings.TrimPrefix(r.URL.Path, "/gmail/v1/users/me/messages/")
+			w.Write([]byte(`{"id":"` + id + `","threadId":"t","labelIds":["INBOX","UNREAD"],"internalDate":"1700000000000","payload":{"headers":[{"name":"Subject","value":"x"}]}}`))
+		}
+	})
+	ctx := context.Background()
+	c.List(ctx, cm.Inbox, "", "", 30)
+	c.List(ctx, cm.Inbox, "", "", 30)
+	if gets != 2 {
+		t.Fatalf("second list fetched again: %d gets", gets)
+	}
+	c.Apply(ctx, "m1", cm.MarkRead)
+	page, _ := c.List(ctx, cm.Inbox, "", "", 30)
+	if page.Messages[0].Unread || !page.Messages[1].Unread || gets != 2 {
+		t.Fatalf("cache not updated by Apply: %+v gets=%d", page.Messages, gets)
+	}
+}

@@ -42,6 +42,8 @@ type seed struct {
 	starred bool
 	folder  mail.Folder
 	file    string
+	// thread puts the message in an earlier message's conversation.
+	thread string
 }
 
 // Boxes returns two sample accounts: a Gmail-style one with aliases and an
@@ -57,18 +59,20 @@ func Boxes(now time.Time) (*Box, *Box) {
 	}}
 	h := time.Hour
 	g.seed(now, []seed{
-		{mail.Address{Name: "Maria Lopez", Email: "maria@tacoshack.example"}, "support@credence.example", "Terminal 3 won't print kitchen tickets", "<p>Hi team,</p><p>Since this morning terminal 3 stopped sending tickets to the kitchen printer. The other two terminals are fine. We already rebooted it twice.</p><p>Can someone call me before the lunch rush? 555-0134.</p><p>Thanks,<br>Maria</p>", 25 * time.Minute, true, true, mail.Inbox, ""},
-		{mail.Address{Name: "Zendesk", Email: "notifications@zendesk.example"}, "jacob.demo@gmail.example", "[Credence] 14 tickets breached first reply SLA yesterday", "<p>Your daily SLA summary is ready.</p><table border=1 cellpadding=4><tr><th>Group</th><th>Breached</th></tr><tr><td>Tier 1</td><td>11</td></tr><tr><td>Escalations</td><td>3</td></tr></table><p><a href=\"https://example.com/sla\">Open the report</a></p><img src=\"https://example.com/pixel.gif\" width=1 height=1>", 2 * h, true, false, mail.Inbox, ""},
-		{mail.Address{Name: "Derek Chan", Email: "derek@posdealer.example"}, "billing@credence.example", "Invoice question for October", "<p>Hey, the October invoice shows 412 tickets but our portal says 388. Can you send the breakdown?</p><p>Derek</p>", 5 * h, false, false, mail.Inbox, "october-ticket-export.csv"},
-		{mail.Address{Name: "Mom", Email: "mom@family.example"}, "jacob.demo@gmail.example", "Sunday dinner", "<p>Are you still bringing the dessert? Let me know by Friday.</p>", 27 * h, false, false, mail.Inbox, ""},
-		{mail.Address{Name: "Credence Support", Email: "support@credence.example"}, "maria@tacoshack.example", "Re: Online orders not syncing", "<p>Hi Maria, the sync is fixed. Orders placed between 2 and 3 PM were re-sent to the POS.</p>", 50 * h, false, false, mail.Sent, ""},
-		{mail.Address{Name: "Airline", Email: "deals@airline.example"}, "jacob.demo@gmail.example", "Fares from $49 this weekend only", "<p>Book now.</p>", 70 * h, false, false, mail.Spam, ""},
-		{mail.Address{Name: "Ana Ruiz", Email: "ana@credence.example"}, "support@credence.example", "Weekend schedule swap", "<p>Can I swap Saturday with Kevin's Sunday shift? He already said yes.</p>", 96 * h, false, false, mail.Archive, ""},
+		{mail.Address{Name: "Maria Lopez", Email: "maria@tacoshack.example"}, "support@credence.example", "Terminal 3 won't print kitchen tickets", "<p>Hi team,</p><p>Since this morning terminal 3 stopped sending tickets to the kitchen printer. The other two terminals are fine. We already rebooted it twice.</p><p>Can someone call me before the lunch rush? 555-0134.</p><p>Thanks,<br>Maria</p>", 25 * time.Minute, true, true, mail.Inbox, "", ""},
+		{mail.Address{Name: "Credence Support", Email: "support@credence.example"}, "maria@tacoshack.example", "Re: Terminal 3 won't print kitchen tickets", "<p>Hi Maria, is the printer's light solid green or blinking? If it's blinking, hold the feed button for 5 seconds and let me know what prints.</p><p>Jacob</p>", 18 * time.Minute, false, false, mail.Sent, "", "1"},
+		{mail.Address{Name: "Maria Lopez", Email: "maria@tacoshack.example"}, "support@credence.example", "Re: Terminal 3 won't print kitchen tickets", "<p>Blinking. I held the button and it printed a test page with an IP of 0.0.0.0.</p><p>Maria</p>", 9 * time.Minute, true, false, mail.Inbox, "", "1"},
+		{mail.Address{Name: "Zendesk", Email: "notifications@zendesk.example"}, "jacob.demo@gmail.example", "[Credence] 14 tickets breached first reply SLA yesterday", "<p>Your daily SLA summary is ready.</p><table border=1 cellpadding=4><tr><th>Group</th><th>Breached</th></tr><tr><td>Tier 1</td><td>11</td></tr><tr><td>Escalations</td><td>3</td></tr></table><p><a href=\"https://example.com/sla\">Open the report</a></p><img src=\"https://example.com/pixel.gif\" width=1 height=1>", 2 * h, true, false, mail.Inbox, "", ""},
+		{mail.Address{Name: "Derek Chan", Email: "derek@posdealer.example"}, "billing@credence.example", "Invoice question for October", "<p>Hey, the October invoice shows 412 tickets but our portal says 388. Can you send the breakdown?</p><p>Derek</p>", 5 * h, false, false, mail.Inbox, "october-ticket-export.csv", ""},
+		{mail.Address{Name: "Mom", Email: "mom@family.example"}, "jacob.demo@gmail.example", "Sunday dinner", "<p>Are you still bringing the dessert? Let me know by Friday.</p>", 27 * h, false, false, mail.Inbox, "", ""},
+		{mail.Address{Name: "Credence Support", Email: "support@credence.example"}, "maria@tacoshack.example", "Re: Online orders not syncing", "<p>Hi Maria, the sync is fixed. Orders placed between 2 and 3 PM were re-sent to the POS.</p>", 50 * h, false, false, mail.Sent, "", ""},
+		{mail.Address{Name: "Airline", Email: "deals@airline.example"}, "jacob.demo@gmail.example", "Fares from $49 this weekend only", "<p>Book now.</p>", 70 * h, false, false, mail.Spam, "", ""},
+		{mail.Address{Name: "Ana Ruiz", Email: "ana@credence.example"}, "support@credence.example", "Weekend schedule swap", "<p>Can I swap Saturday with Kevin's Sunday shift? He already said yes.</p>", 96 * h, false, false, mail.Archive, "", ""},
 	})
 	o.seed(now, []seed{
-		{mail.Address{Name: "Priya Nair", Email: "priya@restauranttech.example"}, "jacob.demo@outlook.example", "Onboarding call for the new Toast dealer", "<p>Jacob,</p><p>Can we do Thursday at 2 for the onboarding kickoff? I'll bring the escalation matrix draft.</p><p>Priya</p>", 50 * time.Minute, true, false, mail.Inbox, ""},
-		{mail.Address{Name: "Microsoft 365", Email: "no-reply@microsoft.example"}, "jacob.demo@outlook.example", "Your storage is 80% full", "<p>Free up space or upgrade.</p>", 9 * h, false, false, mail.Inbox, ""},
-		{mail.Address{Name: "Kevin Brooks", Email: "kevin@credence.example"}, "jacob.demo@outlook.example", "Missed calls report draft", "<p>Attached is the draft. Callback rate is up to 91% from 84% last month.</p>", 30 * h, false, true, mail.Inbox, "missed-calls-draft.pdf"},
+		{mail.Address{Name: "Priya Nair", Email: "priya@restauranttech.example"}, "jacob.demo@outlook.example", "Onboarding call for the new Toast dealer", "<p>Jacob,</p><p>Can we do Thursday at 2 for the onboarding kickoff? I'll bring the escalation matrix draft.</p><p>Priya</p>", 50 * time.Minute, true, false, mail.Inbox, "", ""},
+		{mail.Address{Name: "Microsoft 365", Email: "no-reply@microsoft.example"}, "jacob.demo@outlook.example", "Your storage is 80% full", "<p>Free up space or upgrade.</p>", 9 * h, false, false, mail.Inbox, "", ""},
+		{mail.Address{Name: "Kevin Brooks", Email: "kevin@credence.example"}, "jacob.demo@outlook.example", "Missed calls report draft", "<p>Attached is the draft. Callback rate is up to 91% from 84% last month.</p>", 30 * h, false, true, mail.Inbox, "missed-calls-draft.pdf", ""},
 	})
 	return g, o
 }
@@ -78,9 +82,13 @@ func (b *Box) seed(now time.Time, list []seed) {
 		b.next++
 		id := strconv.Itoa(b.next)
 		m := &msg{folder: s.folder, files: map[string][]byte{}}
+		thread := s.thread
+		if thread == "" {
+			thread = id
+		}
 		m.m = mail.Message{
 			Summary: mail.Summary{
-				ID: id, ThreadID: id, From: s.from, To: []mail.Address{{Email: s.to}},
+				ID: id, ThreadID: thread, From: s.from, To: []mail.Address{{Email: s.to}},
 				Subject: s.subject, Snippet: snippet(s.body), Date: now.Add(-s.ago),
 				Unread: s.unread, Starred: s.starred, HasAttachments: s.file != "",
 			},
@@ -150,6 +158,25 @@ func (b *Box) List(_ context.Context, f mail.Folder, query, cursor string, max i
 		end = len(out)
 	}
 	return mail.Page{Messages: out[start:end], Next: next}, nil
+}
+
+func (b *Box) Thread(_ context.Context, threadID string) ([]*mail.Message, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var out []*mail.Message
+	for _, m := range b.msgs {
+		if m.m.ThreadID != threadID {
+			continue
+		}
+		c := m.m
+		c.Hidden = m.folder == mail.Trash || m.folder == mail.Spam
+		out = append(out, &c)
+	}
+	if out == nil {
+		return nil, fmt.Errorf("conversation not found")
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Date.Before(out[j].Date) })
+	return out, nil
 }
 
 func (b *Box) Get(_ context.Context, id string) (*mail.Message, error) {
@@ -236,7 +263,7 @@ func (b *Box) Aliases(context.Context) ([]mail.Alias, error) {
 func (b *Box) Deliver(from mail.Address, subject, body string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.seed(time.Now(), []seed{{from, b.Email, subject, body, 0, true, false, mail.Inbox, ""}})
+	b.seed(time.Now(), []seed{{from, b.Email, subject, body, 0, true, false, mail.Inbox, "", ""}})
 }
 
 func (b *Box) Unread(context.Context) (int, error) {

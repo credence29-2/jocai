@@ -1132,9 +1132,10 @@ async function pollUnread() {
   renderEmptyReader();
   if (S.accounts.length) { loadList(); pollUnread(); } else renderList();
   setInterval(() => {
+    if (document.hidden) return;
     pollUnread();
     if (S.folder === "inbox" && !S.query && !S.loading && !$("#list").scrollTop) loadList.quiet();
-  }, 120000);
+  }, 180000);
 })();
 // quiet reloads the list without clearing it first, for the background check.
 loadList.quiet = async () => {

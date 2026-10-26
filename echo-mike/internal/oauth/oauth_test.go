@@ -117,3 +117,43 @@ func TestFlowRejectsWrongState(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestDoRetriesRateLimits(t *testing.T) {
+	calls := 0
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls < 3 {
+			w.WriteHeader(403)
+			w.Write([]byte(`{"error":{"message":"Quota exceeded for quota metric 'Total Query Cost'"}}`))
+			return
+		}
+		w.Write([]byte(`{"ok":true}`))
+	}))
+	defer api.Close()
+	tokens := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{"access_token": "tok", "expires_in": 3600})
+	}))
+	defer tokens.Close()
+	p := Google("id", "secret")
+	p.TokenURL = tokens.URL
+	s := NewSource(p, "r", nil, nil)
+	req, _ := http.NewRequest("GET", api.URL, nil)
+	var out map[string]bool
+	if err := s.Do(req, nil, &out); err != nil || !out["ok"] || calls != 3 {
+		t.Fatalf("err=%v calls=%d out=%v", err, calls, out)
+	}
+
+	calls = 0
+	always := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(429)
+		w.Write([]byte(`{"error":{"message":"rateLimitExceeded"}}`))
+	}))
+	defer always.Close()
+	req, _ = http.NewRequest("GET", always.URL, nil)
+	err := s.Do(req, nil, nil)
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || !apiErr.RateLimited || calls != 5 {
+		t.Fatalf("err=%v calls=%d", err, calls)
+	}
+}

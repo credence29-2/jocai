@@ -13,6 +13,7 @@ import (
 	"net/mail"
 	"net/textproto"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +28,52 @@ type Client struct {
 	Src *oauth.Source
 	// Base is the API root. Tests point it at a fake server.
 	Base string
+
+	// meta remembers message summaries for a while, so a refresh or the
+	// new-mail check only fetches messages it hasn't seen. Gmail charges
+	// each fetch against a per-user rate limit that a unified inbox with
+	// several accounts can trip.
+	metaMu sync.Mutex
+	meta   map[string]cachedMeta
+}
+
+type cachedMeta struct {
+	sum cm.Summary
+	at  time.Time
+}
+
+// metaTTL is how long a cached summary is trusted. Read and starred flags
+// changed in another mail app can lag by this much; changes made here are
+// applied to the cache right away.
+const metaTTL = 5 * time.Minute
+
+func (c *Client) cached(id string) (cm.Summary, bool) {
+	c.metaMu.Lock()
+	defer c.metaMu.Unlock()
+	e, ok := c.meta[id]
+	if !ok || time.Since(e.at) > metaTTL {
+		return cm.Summary{}, false
+	}
+	return e.sum, true
+}
+
+func (c *Client) remember(s cm.Summary) {
+	c.metaMu.Lock()
+	defer c.metaMu.Unlock()
+	if c.meta == nil || len(c.meta) > 4000 {
+		c.meta = map[string]cachedMeta{}
+	}
+	c.meta[s.ID] = cachedMeta{sum: s, at: time.Now()}
+}
+
+// touch updates a cached summary's flags after a change made here.
+func (c *Client) touch(id string, fn func(*cm.Summary)) {
+	c.metaMu.Lock()
+	defer c.metaMu.Unlock()
+	if e, ok := c.meta[id]; ok {
+		fn(&e.sum)
+		c.meta[id] = e
+	}
 }
 
 // New returns a client for the real Gmail API.
@@ -119,10 +166,16 @@ func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, ma
 	// time to stay under Gmail's rate limits.
 	out := make([]cm.Summary, len(list.Messages))
 	errs := make([]error, len(list.Messages))
-	sem := make(chan struct{}, 8)
+	// A few at a time: Gmail allows about 250 units a second per user and
+	// each fetch costs 5, so a burst of 30 from two accounts trips it.
+	sem := make(chan struct{}, 3)
 	var wg sync.WaitGroup
 	meta := "?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject"
 	for i, m := range list.Messages {
+		if s, ok := c.cached(m.ID); ok {
+			out[i] = s
+			continue
+		}
 		wg.Add(1)
 		go func(i int, id string) {
 			defer wg.Done()
@@ -131,6 +184,7 @@ func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, ma
 			var gm message
 			if errs[i] = c.do(ctx, "GET", "/gmail/v1/users/me/messages/"+url.PathEscape(id)+meta, nil, &gm); errs[i] == nil {
 				out[i] = gm.summary()
+				c.remember(out[i])
 			}
 		}(i, m.ID)
 	}
@@ -224,6 +278,32 @@ func (c *Client) Get(ctx context.Context, id string) (*cm.Message, error) {
 	if err := c.do(ctx, "GET", "/gmail/v1/users/me/messages/"+url.PathEscape(id)+"?format=full", nil, &gm); err != nil {
 		return nil, err
 	}
+	return c.full(ctx, &gm)
+}
+
+// Thread returns a conversation's messages, oldest first.
+func (c *Client) Thread(ctx context.Context, threadID string) ([]*cm.Message, error) {
+	var t struct {
+		Messages []message `json:"messages"`
+	}
+	if err := c.do(ctx, "GET", "/gmail/v1/users/me/threads/"+url.PathEscape(threadID)+"?format=full", nil, &t); err != nil {
+		return nil, err
+	}
+	out := make([]*cm.Message, 0, len(t.Messages))
+	for i := range t.Messages {
+		m, err := c.full(ctx, &t.Messages[i])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Date.Before(out[j].Date) })
+	return out, nil
+}
+
+// full turns a format=full message into a Message with body and attachments.
+func (c *Client) full(ctx context.Context, gm *message) (*cm.Message, error) {
+	id := gm.ID
 	p := &gm.Payload
 	m := &cm.Message{
 		Summary:    gm.summary(),
@@ -233,6 +313,8 @@ func (c *Client) Get(ctx context.Context, id string) (*cm.Message, error) {
 		References: p.header("References"),
 	}
 	m.HasAttachments = false
+	m.Hidden = gm.has("TRASH") || gm.has("SPAM")
+	defer func() { c.remember(m.Summary) }()
 	for _, h := range append(p.headers("Delivered-To"), p.headers("X-Original-To")...) {
 		m.DeliveredTo = append(m.DeliveredTo, ParseAddrs(h)...)
 	}
@@ -349,6 +431,18 @@ func findPart(p *part, id string) *part {
 }
 
 func (c *Client) Apply(ctx context.Context, id string, ch cm.Change) error {
+	defer c.touch(id, func(s *cm.Summary) {
+		switch ch {
+		case cm.MarkRead:
+			s.Unread = false
+		case cm.MarkUnread:
+			s.Unread = true
+		case cm.Star:
+			s.Starred = true
+		case cm.Unstar:
+			s.Starred = false
+		}
+	})
 	base := "/gmail/v1/users/me/messages/" + url.PathEscape(id)
 	modify := func(add, remove []string) error {
 		return c.do(ctx, "POST", base+"/modify", map[string][]string{"addLabelIds": add, "removeLabelIds": remove}, nil)

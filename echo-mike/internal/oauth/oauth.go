@@ -361,6 +361,28 @@ func (s *Source) Invalidate() {
 type APIError struct {
 	Status int
 	Msg    string
+	// RateLimited means the service asked us to slow down.
+	RateLimited bool
+}
+
+func rateLimited(status int, msg string) bool {
+	if status == 429 {
+		return true
+	}
+	if status != 403 {
+		return false
+	}
+	l := strings.ToLower(msg)
+	return strings.Contains(l, "quota") || strings.Contains(l, "rate limit") || strings.Contains(l, "ratelimit") || strings.Contains(l, "too many")
+}
+
+func pause(ctx context.Context, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(d):
+		return nil
+	}
 }
 
 func (e *APIError) Error() string { return e.Msg }
@@ -383,21 +405,17 @@ func (s *Source) Do(req *http.Request, scopes []string, out any) error {
 		if err != nil {
 			return err
 		}
-		if attempt == 0 && (resp.StatusCode == 401 || resp.StatusCode == 429 || resp.StatusCode >= 500) {
+		if attempt == 0 && (resp.StatusCode == 401 || resp.StatusCode >= 500) {
 			resp.Body.Close()
 			if resp.StatusCode == 401 {
 				s.Invalidate()
-			} else {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-time.After(time.Second):
-				}
+			} else if err := pause(ctx, time.Second); err != nil {
+				return err
 			}
 			continue
 		}
-		defer resp.Body.Close()
 		if resp.StatusCode == 401 {
+			resp.Body.Close()
 			return mail.ErrAuth
 		}
 		if resp.StatusCode >= 300 {
@@ -405,8 +423,24 @@ func (s *Source) Do(req *http.Request, scopes []string, out any) error {
 				Error json.RawMessage `json:"error"`
 			}
 			json.NewDecoder(resp.Body).Decode(&e)
-			return &APIError{Status: resp.StatusCode, Msg: fmt.Sprintf("%s: %s", resp.Status, errText(e.Error))}
+			resp.Body.Close()
+			msg := errText(e.Error)
+			// Google answers a burst of requests with 403 "Quota exceeded"
+			// (and sometimes 429). Back off and try again a few times
+			// before giving up; the limit clears within seconds.
+			if rateLimited(resp.StatusCode, msg) {
+				if attempt < 4 {
+					if err := pause(ctx, time.Duration(1<<attempt)*time.Second); err != nil {
+						return err
+					}
+					continue
+				}
+				return &APIError{Status: resp.StatusCode, RateLimited: true,
+					Msg: "too many requests in a short time; it'll catch up on its own in a minute"}
+			}
+			return &APIError{Status: resp.StatusCode, Msg: fmt.Sprintf("%s: %s", resp.Status, msg)}
 		}
+		defer resp.Body.Close()
 		if out == nil || resp.StatusCode == 204 {
 			return nil
 		}

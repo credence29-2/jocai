@@ -44,6 +44,13 @@ type Summary struct {
 	Unread         bool      `json:"unread"`
 	Starred        bool      `json:"starred"`
 	HasAttachments bool      `json:"hasAttachments"`
+	// Hidden means the message is in Trash or Spam, so a thread opened from
+	// another folder leaves it out.
+	Hidden bool `json:"hidden,omitempty"`
+	// Count and Participants are set on a row that stands for a whole
+	// thread: how many messages it has and who wrote them.
+	Count        int      `json:"count,omitempty"`
+	Participants []string `json:"participants,omitempty"`
 }
 
 // Attachment describes a file on a received message.
@@ -132,6 +139,8 @@ type Provider interface {
 	// List returns a page of a folder, or of a search when query isn't empty.
 	List(ctx context.Context, folder Folder, query, cursor string, max int) (Page, error)
 	Get(ctx context.Context, id string) (*Message, error)
+	// Thread returns every message in a conversation, oldest first.
+	Thread(ctx context.Context, threadID string) ([]*Message, error)
 	Apply(ctx context.Context, id string, c Change) error
 	// Attachment returns the bytes of an attachment on a message.
 	Attachment(ctx context.Context, msgID, attID string) ([]byte, error)

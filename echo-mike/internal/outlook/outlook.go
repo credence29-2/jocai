@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	cm "github.com/credence29-2/jocai/echo-mike/internal/mail"
@@ -31,6 +32,11 @@ type Client struct {
 	// Base is the Graph root. Tests point it at a fake server.
 	Base string
 	SMTP SMTPConfig
+
+	// hiddenFolders holds the IDs of Deleted Items and Junk Email, looked
+	// up once, so thread messages in them can be marked Hidden.
+	hiddenOnce    sync.Once
+	hiddenFolders map[string]bool
 }
 
 // New returns a client for the real Graph and SMTP servers.
@@ -121,6 +127,7 @@ type gMessage struct {
 		FlagStatus string `json:"flagStatus"`
 	} `json:"flag"`
 	HasAttachments    bool   `json:"hasAttachments"`
+	ParentFolderID    string `json:"parentFolderId"`
 	InternetMessageID string `json:"internetMessageId"`
 	Headers           []struct {
 		Name  string `json:"name"`
@@ -196,14 +203,63 @@ func (c *Client) msgURL(id string) string {
 	return c.Base + "/me/messages/" + url.PathEscape(id)
 }
 
+const fullFields = listFields + ",ccRecipients,replyTo,body,internetMessageId,internetMessageHeaders,parentFolderId"
+
 func (c *Client) Get(ctx context.Context, id string) (*cm.Message, error) {
 	var g gMessage
-	sel := listFields + ",ccRecipients,replyTo,body,internetMessageId,internetMessageHeaders"
-	if err := c.do(ctx, "GET", c.msgURL(id)+"?$select="+sel, nil, &g); err != nil {
+	if err := c.do(ctx, "GET", c.msgURL(id)+"?$select="+fullFields, nil, &g); err != nil {
 		return nil, err
 	}
+	return c.full(ctx, &g)
+}
+
+// Thread returns a conversation's messages, oldest first.
+func (c *Client) Thread(ctx context.Context, threadID string) ([]*cm.Message, error) {
+	u := fmt.Sprintf("%s/me/messages?$top=50&$select=%s&$filter=%s&$orderby=%s", c.Base, fullFields,
+		url.QueryEscape("conversationId eq '"+strings.ReplaceAll(threadID, "'", "''")+"'"),
+		url.QueryEscape("receivedDateTime asc"))
+	var r struct {
+		Value []gMessage `json:"value"`
+	}
+	if err := c.do(ctx, "GET", u, nil, &r); err != nil {
+		return nil, err
+	}
+	if len(r.Value) == 0 {
+		return nil, fmt.Errorf("conversation not found")
+	}
+	out := make([]*cm.Message, 0, len(r.Value))
+	for i := range r.Value {
+		m, err := c.full(ctx, &r.Value[i])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
+
+func (c *Client) hidden(ctx context.Context, folderID string) bool {
+	c.hiddenOnce.Do(func() {
+		c.hiddenFolders = map[string]bool{}
+		for _, wk := range []string{"deleteditems", "junkemail"} {
+			var f struct {
+				ID string `json:"id"`
+			}
+			if c.do(ctx, "GET", c.Base+"/me/mailFolders/"+wk+"?$select=id", nil, &f) == nil && f.ID != "" {
+				c.hiddenFolders[f.ID] = true
+			}
+		}
+	})
+	return c.hiddenFolders[folderID]
+}
+
+func (c *Client) full(ctx context.Context, g *gMessage) (*cm.Message, error) {
+	id := g.ID
 	m := &cm.Message{
 		Summary: g.summary(), Cc: addrs(g.Cc), ReplyTo: addrs(g.ReplyTo), MessageID: g.InternetMessageID,
+	}
+	if g.ParentFolderID != "" {
+		m.Hidden = c.hidden(ctx, g.ParentFolderID)
 	}
 	if strings.EqualFold(g.Body.ContentType, "html") {
 		m.HTML = g.Body.Content
