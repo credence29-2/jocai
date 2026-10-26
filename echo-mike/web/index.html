@@ -260,6 +260,79 @@ select.input { padding-right: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .demo-flag { margin: 0 12px 10px; padding: 8px 10px; border-radius: 8px; background: #3a2f22; color: #f6d4a1; font-size: 12px; line-height: 1.4; }
 
+/* ---------- calendar ---------- */
+.cal-pane { flex: 1; min-width: 0; display: none; flex-direction: column; }
+body.cal .list-pane, body.cal .read-pane, body.cal .splitter { display: none !important; }
+body.cal .cal-pane { display: flex; }
+.cal-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.cal-head h2 { margin: 0 6px; font-size: 17px; min-width: 180px; }
+.cal-head .grow { flex: 1; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: none; color: var(--sub); padding: 0 12px; height: 32px; font-weight: 600; }
+.seg button.active { background: var(--card2); color: #fff; }
+.cal-legend { display: flex; gap: 14px; padding: 6px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; font-size: 13px; color: var(--sub); align-items: center; }
+.cal-legend label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.cal-legend .warn { color: var(--warn); }
+.cal-body { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.cal-msg { padding: 30px 20px; text-align: center; color: var(--sub); line-height: 1.5; }
+/* week */
+.wk { display: grid; grid-template-columns: 52px repeat(7, 1fr); }
+.wk-head { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line); }
+.wk-head .dh { padding: 8px 6px 4px; text-align: center; font-size: 12px; color: var(--sub); border-left: 1px solid var(--line); }
+.wk-head .dh b { display: block; font-size: 18px; color: var(--text); font-weight: 600; line-height: 1.3; }
+.wk-head .dh.today b { color: var(--accent-hi); }
+.wk-allday { min-height: 22px; border-left: 1px solid var(--line); padding: 2px 3px; display: flex; flex-direction: column; gap: 2px; }
+.wk-gutter { color: var(--dim); font-size: 11px; text-align: right; padding-right: 6px; position: relative; top: -7px; }
+.wk-col { position: relative; border-left: 1px solid var(--line); height: 1152px; background: repeating-linear-gradient(to bottom, transparent 0 47px, var(--line) 47px 48px); }
+.wk-col.today { background-color: rgba(47, 124, 246, .06); }
+.wk-col.past { opacity: .85; }
+.ev { position: absolute; left: 2px; right: 4px; border-radius: 6px; padding: 3px 6px; font-size: 12px; line-height: 1.3; overflow: hidden; color: #fff; cursor: pointer; border-left: 3px solid rgba(0,0,0,.35); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.ev b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev small { opacity: .9; }
+.ev.tentative { background-image: repeating-linear-gradient(45deg, transparent 0 4px, rgba(0,0,0,.18) 4px 8px); }
+.ev.declined { opacity: .45; text-decoration: line-through; }
+.ev.needs { border-style: dashed; border-color: #fff; }
+.ev-chip { display: flex; gap: 6px; align-items: center; border-radius: 5px; padding: 2px 6px; font-size: 12px; color: #fff; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev-chip .t { opacity: .85; flex: none; }
+.ev-chip span { overflow: hidden; text-overflow: ellipsis; }
+.now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--bad); z-index: 1; pointer-events: none; }
+.now-line::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+/* month */
+.mo { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(100px, 1fr); min-height: 100%; }
+.mo .dh { padding: 6px; text-align: center; font-size: 12px; color: var(--sub); border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 2; }
+.mo .cell { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px; display: flex; flex-direction: column; gap: 2px; min-width: 0; cursor: pointer; }
+.mo .cell:hover { background: rgba(255,255,255,.02); }
+.mo .cell .dn { font-size: 12px; color: var(--sub); padding: 2px 4px; }
+.mo .cell.other .dn { color: var(--dim); }
+.mo .cell.today .dn { color: #fff; background: var(--accent); border-radius: 10px; display: inline-block; align-self: flex-start; font-weight: 600; }
+.mo .more { font-size: 12px; color: var(--sub); padding: 0 6px; }
+/* agenda */
+.ag { padding: 10px 14px 40px; max-width: 900px; }
+.ag h4 { margin: 18px 0 6px; font-size: 13px; color: var(--sub); text-transform: uppercase; letter-spacing: .04em; }
+.ag h4.today { color: var(--accent-hi); }
+.ag .item { display: flex; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; align-items: flex-start; }
+.ag .item:hover { background: var(--card); }
+.ag .item .when { width: 130px; flex: none; color: var(--sub); font-size: 13px; padding-top: 2px; }
+.ag .item .bar { width: 4px; border-radius: 2px; align-self: stretch; flex: none; }
+.ag .item .what { min-width: 0; line-height: 1.4; }
+.ag .item .what .muted { font-size: 13px; }
+/* event dialog */
+.ev-detail .row { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; line-height: 1.5; }
+.ev-detail .row svg { flex: none; margin-top: 3px; color: var(--sub); }
+.ev-detail .att { display: flex; flex-wrap: wrap; gap: 6px; }
+.ev-detail .att .chip { gap: 4px; }
+.ev-detail .notes { white-space: pre-wrap; color: var(--sub); max-height: 200px; overflow: auto; }
+.st-accepted { color: var(--good); } .st-declined { color: var(--bad); } .st-tentative { color: var(--warn); } .st-needsAction { color: var(--dim); }
+.ev-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.ev-form .when { display: grid; grid-template-columns: 1fr 120px; gap: 8px; }
+.ev-form textarea.input { height: auto; min-height: 70px; padding: 8px 10px; resize: vertical; font: inherit; }
+@media (max-width: 760px) {
+  .cal-head h2 { font-size: 15px; min-width: 0; }
+  .cal-head .seg button { padding: 0 9px; }
+  .wk-col { height: 960px; }
+  .ag .item .when { width: 90px; }
+  .ev-form .two { grid-template-columns: 1fr; }
+}
 /* ---------- phones (the Android app) ---------- */
 .phone-only { display: none !important; }
 @media (max-width: 760px) {
@@ -287,7 +360,7 @@ select.input { padding-right: 6px; }
   .row .chk { opacity: 1; }
   .list { padding-bottom: 90px; }
   #fab { position: fixed; right: 18px; bottom: 18px; z-index: 5; height: 54px; padding: 0 20px; border-radius: 16px; border: 0; background: var(--accent); color: #fff; font-weight: 600; align-items: center; gap: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
-  body.reading #fab { display: none !important; }
+  body.reading #fab, body.cal #fab { display: none !important; }
   .toolbar { padding: 6px 8px; gap: 0; min-height: 54px; flex-wrap: nowrap; }
   .toolbar .tb { padding: 0 9px; height: 42px; }
   .reader { padding: 14px 14px 30px; }
@@ -365,6 +438,7 @@ select.input { padding-right: 6px; }
     <div class="splitter" id="splitter" title="Drag to resize. Double-click to reset."></div>
   </section>
   <section class="read-pane" id="readPane"></section>
+  <section class="cal-pane" id="calPane"></section>
 </main>
 
 <div id="scrim"></div>
@@ -447,6 +521,14 @@ const ICON = {
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
   pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 17h1.5a1.5 1.5 0 0 0 0-3H8zM13 17v-3h1.5a1.5 1.5 0 0 1 0 3zM18 14h-1v3"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  pin: '<path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/>',
+  people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M21.5 19a5 5 0 0 0-5-5"/>',
+  notes: '<path d="M4 5h16M4 10h16M4 15h10"/>',
   sparkle: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
   bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-2"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
@@ -465,6 +547,8 @@ const S = {
   sel: null, msg: null, showImages: false, unread: {},
   // aiSum is the summary of the open conversation, if asked for.
   aiSum: null,
+  // view is mail or cal.
+  view: "mail",
   // checked holds the row keys ticked for a bulk action.
   checked: new Set(),
 };
@@ -521,8 +605,9 @@ function hue(s) { let h = 0; for (const c of s || "") h = (h * 31 + c.charCodeAt
 function renderSidebar() {
   const inboxUnread = Object.entries(S.unread).filter(([id]) => !S.account || id === S.account).reduce((n, [, v]) => n + v, 0);
   $("#folders").innerHTML = Object.keys(FOLDER_NAMES).map(f => `
-    <button data-folder="${f}" class="${S.folder === f && !S.query ? "active" : ""}">${icon(f)}${FOLDER_NAMES[f]}
-      ${f === "inbox" && inboxUnread ? `<span class="count">${inboxUnread}</span>` : ""}</button>`).join("");
+    <button data-folder="${f}" class="${S.folder === f && !S.query && S.view !== "cal" ? "active" : ""}">${icon(f)}${FOLDER_NAMES[f]}
+      ${f === "inbox" && inboxUnread ? `<span class="count">${inboxUnread}</span>` : ""}</button>`).join("") +
+    `<button data-view="cal" class="${S.view === "cal" ? "active" : ""}" style="margin-top:6px">${icon("calendar")}Calendar</button>`;
   $("#accounts").innerHTML = `<button data-acct="" class="${S.account ? "" : "active"}">${icon("all", 16)}<span class="acct-name">All accounts</span></button>` +
     S.accounts.map(a => `<button data-acct="${esc(a.id)}" class="${S.account === a.id ? "active" : ""}" title="${esc(a.email)}">
       <span class="acct-dot" style="background:${esc(a.color)}"></span><span class="acct-name">${esc(a.name || a.email)}</span>
@@ -530,14 +615,18 @@ function renderSidebar() {
   document.title = inboxUnread ? `(${inboxUnread}) Project Echo Mike` : "Project Echo Mike";
 }
 $("#folders").onclick = e => {
+  if (e.target.closest("[data-view=cal]")) return showCalendar();
   const b = e.target.closest("[data-folder]"); if (!b) return;
+  showMail();
   S.folder = b.dataset.folder; S.query = ""; $("#search").value = ""; S.checked.clear();
   setDrawer(false); closeReader();
   loadList();
 };
 $("#accounts").onclick = e => {
   const b = e.target.closest("[data-acct]"); if (!b) return;
-  S.account = b.dataset.acct; S.checked.clear(); setDrawer(false); closeReader(); loadList();
+  S.account = b.dataset.acct; S.checked.clear(); setDrawer(false); closeReader();
+  if (S.view === "cal") { renderSidebar(); return; }
+  loadList();
 };
 
 /* ---------- list ---------- */
@@ -726,6 +815,7 @@ $("#search").addEventListener("keydown", e => {
   if (e.key === "Escape") { e.target.value = ""; if (S.query) { S.query = ""; loadList(); } e.target.blur(); }
 });
 $("#search").addEventListener("input", e => {
+  showMail();
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { const q = e.target.value.trim(); if (q !== S.query) { S.query = q; loadList(); } }, 600);
 });
@@ -1414,6 +1504,289 @@ function suggestOn(input) {
 const b64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = () => bad(r.error); r.readAsDataURL(f); });
 $("#composeBtn").onclick = () => { setDrawer(false); compose(); };
 
+/* ---------- calendar ---------- */
+// S.cal holds the view (week, month or agenda), the anchor date, the events
+// fetched for the shown range, and which accounts are ticked.
+S.cal = { view: innerWidth <= 760 ? "agenda" : "week", date: new Date(), events: [], cals: [], errors: {}, loading: false, off: new Set(), key: "" };
+const dayStart = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const hm = d => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const hmShort = d => d.getMinutes() ? hm(d) : d.toLocaleTimeString([], { hour: "numeric" });
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// calRange is the span the current view needs, [from, to).
+function calRange() {
+  const c = S.cal, d = dayStart(c.date);
+  if (c.view === "week") { const s = addDays(d, -d.getDay()); return [s, addDays(s, 7)]; }
+  if (c.view === "month") { const first = new Date(d.getFullYear(), d.getMonth(), 1); const s = addDays(first, -first.getDay()); return [s, addDays(s, 42)]; }
+  return [d, addDays(d, 30)];
+}
+function showCalendar() {
+  S.view = "cal"; document.body.classList.add("cal"); setDrawer(false);
+  renderSidebar(); loadCal();
+}
+function showMail() {
+  if (S.view !== "cal") return;
+  S.view = "mail"; document.body.classList.remove("cal");
+}
+async function loadCal(force) {
+  const [from, to] = calRange();
+  const key = ymd(from) + ".." + ymd(to);
+  const c = S.cal;
+  if (c.key !== key || force) {
+    c.loading = true; renderCal();
+    try {
+      const r = await api("/api/cal/events?" + new URLSearchParams({ from: ymd(from), to: ymd(to) }));
+      c.events = r.events.map(e => ({ ...e, s: new Date(e.start), e: new Date(e.end) })); c.errors = r.errors || {}; c.key = key;
+    } catch (e) { c.errors = { "": e.message }; c.events = []; }
+    c.loading = false;
+  }
+  renderCal();
+}
+function evColor(e) { const a = acctById(e.accountId); return (a && a.color) || "#5f6368"; }
+function evClass(e) { return e.myStatus === "tentative" ? "tentative" : e.myStatus === "declined" ? "declined" : e.myStatus === "needsAction" ? "needs" : ""; }
+function visibleEvents() { return S.cal.events.filter(e => !S.cal.off.has(e.accountId)); }
+// onDay: events touching a given day (all-day spans count on each day).
+function onDay(day) {
+  const s = dayStart(day), e = addDays(s, 1);
+  return visibleEvents().filter(ev => ev.allDay ? ev.s < e && addDays(dayStart(ev.e), 1) > s : ev.s < e && ev.e > s);
+}
+
+function renderCal() {
+  const c = S.cal, [from, to] = calRange(), today = new Date();
+  let title;
+  if (c.view === "week") { const last = addDays(to, -1); title = from.getMonth() === last.getMonth() ? `${MONTHS[from.getMonth()]} ${from.getDate()} to ${last.getDate()}, ${from.getFullYear()}` : `${MONTHS[from.getMonth()].slice(0, 3)} ${from.getDate()} to ${MONTHS[last.getMonth()].slice(0, 3)} ${last.getDate()}, ${last.getFullYear()}`; }
+  else if (c.view === "month") title = `${MONTHS[c.date.getMonth()]} ${c.date.getFullYear()}`;
+  else title = `Next 30 days from ${MONTHS[from.getMonth()].slice(0, 3)} ${from.getDate()}`;
+  const legend = S.accounts.map(a => {
+    const err = c.errors[a.id];
+    return `<label title="${esc(a.email)}"><input type="checkbox" data-cal-acct="${esc(a.id)}" ${c.off.has(a.id) ? "" : "checked"} style="accent-color:${esc(a.color)}">${esc(a.name || a.email)}</label>` +
+      (err === "needs-reconnect" ? `<span class="warn">needs calendar access: <button class="link" data-cal-reconnect="${esc(a.id)}">Reconnect</button></span>` : err ? `<span class="warn" title="${esc(err)}">couldn't load</span>` : "");
+  }).join("") + (c.errors[""] ? `<span class="warn">${esc(c.errors[""])}</span>` : "");
+  $("#calPane").innerHTML = `
+    <div class="cal-head">
+      <button class="tb phone-only" id="calMenu" title="Menu">${icon("menu", 22)}</button>
+      <button class="btn small" data-cal-nav="today">Today</button>
+      <button class="tb" data-cal-nav="-1" title="Previous">${icon("back", 18)}</button>
+      <button class="tb" data-cal-nav="1" title="Next" style="transform:scaleX(-1)">${icon("back", 18)}</button>
+      <h2>${esc(title)}</h2><span class="grow"></span>
+      <div class="seg">${["week", "month", "agenda"].map(v => `<button data-cal-view="${v}" class="${c.view === v ? "active" : ""}">${v[0].toUpperCase() + v.slice(1)}</button>`).join("")}</div>
+      <button class="btn primary small" id="calNew">${icon("plus", 16)}<span class="desk-only">New event</span></button>
+      <button class="tb" id="calRefresh" title="Refresh">${icon("refresh", 18)}</button>
+    </div>
+    <div class="cal-legend">${legend || '<span>No accounts yet.</span>'}</div>
+    <div class="cal-body" id="calBody">${c.loading && !c.events.length ? '<div class="cal-msg">Loading...</div>' : c.view === "week" ? weekHTML(from, today) : c.view === "month" ? monthHTML(from, today) : agendaHTML(from, to, today)}</div>`;
+  if (c.view === "week") { const b = $("#calBody"); b.scrollTop = Math.max(0, 48 * 7 - 10); }
+}
+
+function weekHTML(from, today) {
+  const days = [...Array(7)].map((_, i) => addDays(from, i));
+  const head = `<div class="wk wk-head"><div></div>${days.map(d => `<div class="dh ${sameDay(d, today) ? "today" : ""}">${DOW[d.getDay()]}<b>${d.getDate()}</b></div>`).join("")}
+    <div></div>${days.map(d => `<div class="wk-allday" data-cal-day="${ymd(d)}">${onDay(d).filter(e => e.allDay).map(chip).join("")}</div>`).join("")}</div>`;
+  const gutter = [...Array(24)].map((_, h) => `<div class="wk-gutter" style="height:48px">${h ? hmShort(new Date(2000, 0, 1, h)) : ""}</div>`).join("");
+  const cols = days.map(d => {
+    const evs = lanes(onDay(d).filter(e => !e.allDay));
+    const s = dayStart(d), e = addDays(s, 1);
+    const blocks = evs.map(({ ev, lane, lanes: n }) => {
+      const st = ev.s < s ? s : ev.s, en = ev.e > e ? e : ev.e;
+      const top = (st - s) / 36e5 * 48, h = Math.max(18, (en - st) / 36e5 * 48 - 2);
+      const w = 100 / n;
+      return `<div class="ev ${evClass(ev)}" data-ev="${esc(ev.accountId)}:${esc(ev.id)}" style="top:${top}px;height:${h}px;left:calc(${lane * w}% + 2px);width:calc(${w}% - 6px);background:${evColor(ev)}" title="${esc(ev.title)}"><b>${esc(ev.title)}</b>${h > 30 ? `<small>${hm(ev.s)}${ev.location ? " · " + esc(ev.location) : ""}</small>` : ""}</div>`;
+    }).join("");
+    const now = sameDay(d, today) ? `<div class="now-line" style="top:${(today - s) / 36e5 * 48}px"></div>` : "";
+    return `<div class="wk-col ${sameDay(d, today) ? "today" : d < today ? "past" : ""}" data-cal-day="${ymd(d)}">${blocks}${now}</div>`;
+  }).join("");
+  return head + `<div class="wk"><div>${gutter}</div>${cols}</div>`;
+}
+// lanes places overlapping events side by side.
+function lanes(evs) {
+  evs = [...evs].sort((a, b) => a.s - b.s || b.e - a.e);
+  const out = []; let group = [], groupEnd = 0;
+  const flush = () => {
+    const ends = [];
+    for (const ev of group) {
+      let lane = ends.findIndex(t => t <= ev.s); if (lane < 0) { lane = ends.length; ends.push(0); }
+      ends[lane] = ev.e; out.push({ ev, lane });
+    }
+    for (let i = out.length - group.length; i < out.length; i++) out[i].lanes = ends.length;
+    group = [];
+  };
+  for (const ev of evs) { if (group.length && ev.s >= groupEnd) flush(); group.push(ev); groupEnd = Math.max(groupEnd, ev.e); }
+  if (group.length) flush();
+  return out;
+}
+function chip(ev) {
+  return `<div class="ev-chip ${evClass(ev)}" data-ev="${esc(ev.accountId)}:${esc(ev.id)}" style="background:${evColor(ev)}" title="${esc(ev.title)}">${ev.allDay ? "" : `<span class="t">${hmShort(ev.s)}</span>`}<span>${esc(ev.title)}</span></div>`;
+}
+function monthHTML(from, today) {
+  const cells = [...Array(42)].map((_, i) => {
+    const d = addDays(from, i), evs = onDay(d), max = 4;
+    return `<div class="cell ${d.getMonth() !== S.cal.date.getMonth() ? "other" : ""} ${sameDay(d, today) ? "today" : ""}" data-cal-day="${ymd(d)}">
+      <span class="dn">${d.getDate() === 1 ? MONTHS[d.getMonth()].slice(0, 3) + " " : ""}${d.getDate()}</span>
+      ${evs.slice(0, max).map(chip).join("")}${evs.length > max ? `<span class="more" data-cal-more="${ymd(d)}">+${evs.length - max} more</span>` : ""}</div>`;
+  }).join("");
+  return `<div class="mo">${DOW.map(d => `<div class="dh">${d}</div>`).join("")}${cells}</div>`;
+}
+function agendaHTML(from, to, today) {
+  let html = "", any = false;
+  for (let d = from; d < to; d = addDays(d, 1)) {
+    const evs = onDay(d); if (!evs.length) continue; any = true;
+    html += `<h4 class="${sameDay(d, today) ? "today" : ""}">${sameDay(d, today) ? "Today, " : sameDay(d, addDays(today, 1)) ? "Tomorrow, " : ""}${DOW[d.getDay()]} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}</h4>` +
+      evs.map(ev => `<div class="item" data-ev="${esc(ev.accountId)}:${esc(ev.id)}"><div class="when">${ev.allDay ? "All day" : hm(ev.s) + " to " + hm(ev.e)}</div><div class="bar" style="background:${evColor(ev)}"></div>
+        <div class="what"><div>${esc(ev.title)}${ev.myStatus === "needsAction" ? ' <span class="chip">Invitation</span>' : ""}</div><div class="muted">${esc([ev.location, (acctById(ev.accountId) || {}).name].filter(Boolean).join(" · "))}</div></div></div>`).join("");
+  }
+  return any ? `<div class="ag">${html}</div>` : '<div class="cal-msg">Nothing in the next 30 days.</div>';
+}
+
+$("#calPane").addEventListener("click", async e => {
+  const t = e.target;
+  if (t.closest("#calMenu")) return setDrawer(true);
+  if (t.closest("#calRefresh")) return loadCal(true);
+  if (t.closest("#calNew")) return editEvent(null, S.cal.date);
+  const nav = t.closest("[data-cal-nav]");
+  if (nav) {
+    const c = S.cal, n = nav.dataset.calNav;
+    if (n === "today") c.date = new Date();
+    else if (c.view === "week") c.date = addDays(c.date, 7 * +n);
+    else if (c.view === "month") c.date = new Date(c.date.getFullYear(), c.date.getMonth() + +n, 1);
+    else c.date = addDays(c.date, 30 * +n);
+    return loadCal();
+  }
+  const v = t.closest("[data-cal-view]");
+  if (v) { S.cal.view = v.dataset.calView; return loadCal(); }
+  if (t.dataset.calAcct) { const s = S.cal.off; t.checked ? s.delete(t.dataset.calAcct) : s.add(t.dataset.calAcct); return renderCal(); }
+  if (t.dataset.calReconnect) { const a = acctById(t.dataset.calReconnect); openSettings("accounts"); return connect(a.provider, a.id); }
+  const ev = t.closest("[data-ev]");
+  if (ev) { e.stopPropagation(); const [acct, id] = ev.dataset.ev.split(/:(.+)/); const x = S.cal.events.find(y => y.accountId === acct && y.id === id); return x && showEvent(x); }
+  const more = t.closest("[data-cal-more]");
+  if (more) { S.cal.date = new Date(more.dataset.calMore + "T12:00"); S.cal.view = "week"; return loadCal(); }
+  const day = t.closest("[data-cal-day]");
+  if (day) {
+    const d = new Date(day.dataset.calDay + "T09:00");
+    if (day.classList.contains("wk-col")) { const r = day.getBoundingClientRect(); d.setHours(Math.max(0, Math.min(23, Math.floor((e.clientY - r.top + 0) / 48))), 0); }
+    const allDay = day.classList.contains("wk-allday");
+    if (S.cal.view === "month" && !allDay) return editEvent(null, d);
+    return editEvent(null, d, allDay);
+  }
+});
+
+const STATUS_WORDS = { accepted: "Accepted", declined: "Declined", tentative: "Maybe", needsAction: "No answer yet" };
+function showEvent(ev) {
+  const a = acctById(ev.accountId) || {};
+  const when = ev.allDay ? (sameDay(ev.s, ev.e) ? ev.s.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }) : `${ev.s.toLocaleDateString([], { month: "short", day: "numeric" })} to ${ev.e.toLocaleDateString([], { month: "short", day: "numeric" })}`) + ", all day"
+    : `${ev.s.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}, ${hm(ev.s)} to ${hm(ev.e)}`;
+  const invited = !ev.mine && ev.myStatus;
+  const box = document.createElement("div");
+  box.innerHTML = `<div class="overlay"><div class="dialog small ev-detail">
+    <div class="dlg-head"><h3 style="border-left:4px solid ${evColor(ev)};padding-left:10px">${esc(ev.title)}</h3><button class="x" data-x>${icon("x")}</button></div>
+    <div class="dlg-body">
+      <div class="row">${icon("calendar", 16)}<div>${esc(when)}${ev.recurring ? ' <span class="chip">Repeats</span>' : ""}</div></div>
+      ${ev.location ? `<div class="row">${icon("pin", 16)}<div>${esc(ev.location)}</div></div>` : ""}
+      ${ev.online ? `<div class="row">${icon("video", 16)}<div><button class="link" data-open="${esc(ev.online)}">Join the meeting</button></div></div>` : ""}
+      ${ev.attendees && ev.attendees.length ? `<div class="row">${icon("people", 16)}<div class="att">${ev.attendees.map(x => `<span class="chip" title="${esc(x.email)}"><span class="st-${esc(x.status || "")}">●</span>${esc(x.name || x.email)}${x.organizer ? " (organizer)" : ""}</span>`).join("")}</div></div>` : ""}
+      ${ev.notes ? `<div class="row">${icon("notes", 16)}<div class="notes">${esc(ev.notes)}</div></div>` : ""}
+      <div class="row"><span class="acct-dot" style="background:${esc(a.color)};margin-top:7px"></span><div class="muted">${esc(a.name || a.email || "")}${ev.link ? ` · <button class="link" data-open="${esc(ev.link)}">Open in ${a.provider === "gmail" ? "Google Calendar" : "Outlook"}</button>` : ""}</div></div>
+      ${invited ? `<div class="row" style="margin-top:14px"><span class="muted" style="width:90px">Your answer</span><div style="display:flex;gap:6px;flex-wrap:wrap">${[["ACCEPTED", "accepted", "Accept"], ["TENTATIVE", "tentative", "Maybe"], ["DECLINED", "declined", "Decline"]].map(([st, k, l]) => `<button class="btn small ${ev.myStatus === k ? "primary" : ""}" data-rsvp-ev="${st}">${l}</button>`).join("")}</div></div>` : ""}
+    </div>
+    <div class="dlg-foot">${ev.mine ? `<button class="btn ghost danger" id="evDelete">Delete</button>` : ""}<span class="grow"></span><button class="btn ghost" data-x>Close</button>${ev.mine ? `<button class="btn primary" id="evEdit">Edit</button>` : ""}</div></div></div>`;
+  $("#modal").append(box);
+  const close = () => box.remove();
+  box.querySelectorAll("[data-x]").forEach(b => (b.onclick = close));
+  box.onclick = async e => {
+    if (e.target.dataset.open) return api(dl("/open", { u: e.target.dataset.open })).catch(() => {});
+    const r = e.target.closest("[data-rsvp-ev]");
+    if (r) {
+      box.querySelectorAll("[data-rsvp-ev]").forEach(b => (b.disabled = true));
+      try { const out = await api("/api/cal/event/respond", { accountId: ev.accountId, calendarId: ev.calendarId, id: ev.id, status: r.dataset.rsvpEv }); ev.myStatus = out.status; close(); renderCal(); toast(`${STATUS_WORDS[out.status]}: ${ev.title}`); }
+      catch (err) { toast(err.message, 6000); box.querySelectorAll("[data-rsvp-ev]").forEach(b => (b.disabled = false)); }
+    }
+  };
+  if (ev.mine) {
+    box.querySelector("#evEdit").onclick = () => { close(); editEvent(ev); };
+    box.querySelector("#evDelete").onclick = async () => {
+      const hasGuests = (ev.attendees || []).some(x => !x.organizer);
+      if (!(await ask(`Delete "${ev.title}"?${hasGuests ? " Guests will be told it's cancelled." : ""}`, { ok: "Delete", danger: true }))) return;
+      try { await api("/api/cal/event/delete", { accountId: ev.accountId, calendarId: ev.calendarId, id: ev.id, notify: hasGuests }); S.cal.events = S.cal.events.filter(x => x !== ev); close(); renderCal(); toast("Deleted"); }
+      catch (err) { toast(err.message, 6000); }
+    };
+  }
+}
+
+// editEvent opens the form for a new event (at a suggested time) or an
+// existing one of ours.
+function editEvent(ev, at, allDay) {
+  const accts = S.accounts;
+  if (!accts.length) { toast("Add an account first."); return openSettings("accounts"); }
+  let start = ev ? ev.s : at || new Date();
+  if (!ev && !at) { start = new Date(Math.ceil(start.getTime() / 18e5) * 18e5); } // next half hour
+  const end = ev ? ev.e : new Date(start.getTime() + 36e5);
+  const isAllDay = ev ? ev.allDay : !!allDay;
+  const acctId = ev ? ev.accountId : (S.cal.lastAcct || accts.find(a => !S.cal.off.has(a.id)) || accts[0]).id || accts[0].id;
+  const box = document.createElement("div");
+  const dateV = d => ymd(d), timeV = d => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  box.innerHTML = `<div class="overlay"><div class="dialog small ev-form" style="max-width:600px">
+    <div class="dlg-head"><h3>${ev ? "Edit event" : "New event"}</h3><button class="x" data-x>${icon("x")}</button></div>
+    <div class="dlg-body">
+      <label class="field"><span>Title</span><input class="input" id="evTitle" value="${esc(ev ? ev.title : "")}" placeholder="What is it?"></label>
+      <div class="two">
+        <label class="field"><span>Account</span><select class="input" id="evAcct" ${ev ? "disabled" : ""}>${accts.map(a => `<option value="${esc(a.id)}" ${a.id === acctId ? "selected" : ""}>${esc(a.name || a.email)}</option>`).join("")}</select></label>
+        <label class="check" style="margin-top:26px"><input type="checkbox" id="evAllDay" ${isAllDay ? "checked" : ""}>All day</label>
+      </div>
+      <div class="two">
+        <label class="field"><span>Starts</span><div class="when"><input class="input" type="date" id="evSD" value="${dateV(start)}"><input class="input" type="time" id="evST" value="${timeV(start)}" ${isAllDay ? "hidden" : ""}></div></label>
+        <label class="field"><span>Ends</span><div class="when"><input class="input" type="date" id="evED" value="${dateV(end)}"><input class="input" type="time" id="evET" value="${timeV(end)}" ${isAllDay ? "hidden" : ""}></div></label>
+      </div>
+      <label class="field"><span>Where</span><input class="input" id="evWhere" value="${esc(ev ? ev.location || "" : "")}" placeholder="Room, address, phone number or link"></label>
+      <label class="field" style="position:relative"><span>Guests</span><input class="input" id="evWho" value="${esc(ev ? (ev.attendees || []).filter(x => !x.organizer).map(x => x.name ? `${x.name} <${x.email}>` : x.email).join(", ") : "")}" placeholder="Email addresses, comma separated" autocomplete="off" spellcheck="false"></label>
+      <label class="field"><span>Notes</span><textarea class="input" id="evNotes">${esc(ev ? ev.notes || "" : "")}</textarea></label>
+      <label class="check"><input type="checkbox" id="evNotify" checked>Email the guests${ev ? " about the change" : " an invitation"}</label>
+      <span class="err" id="evErr"></span>
+    </div>
+    <div class="dlg-foot"><span class="grow"></span><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="evSave">${ev ? "Save" : "Create"}</button></div></div></div>`;
+  $("#modal").append(box);
+  const q = s => box.querySelector(s);
+  box.querySelectorAll("[data-x]").forEach(b => (b.onclick = () => box.remove()));
+  suggestOn(q("#evWho"));
+  q("#evAllDay").onchange = e => { q("#evST").hidden = q("#evET").hidden = e.target.checked; };
+  // Moving the start keeps the length.
+  q("#evSD").onchange = q("#evST").onchange = () => {
+    const s = new Date(q("#evSD").value + "T" + (q("#evST").value || "09:00")), len = end - start;
+    if (isNaN(s)) return;
+    const e2 = new Date(s.getTime() + Math.max(len, 0));
+    q("#evED").value = dateV(e2); q("#evET").value = timeV(e2);
+  };
+  q("#evTitle").focus();
+  q("#evSave").onclick = async () => {
+    const allDay = q("#evAllDay").checked;
+    const s = new Date(q("#evSD").value + "T" + (allDay ? "00:00" : q("#evST").value || "00:00"));
+    const e2 = new Date(q("#evED").value + "T" + (allDay ? "00:00" : q("#evET").value || "00:00"));
+    if (isNaN(s) || isNaN(e2)) { q("#evErr").textContent = "Pick a start and end."; return; }
+    let attendees = [];
+    try { attendees = parseGuests(q("#evWho").value); } catch (err) { q("#evErr").textContent = err.message; return; }
+    const body = { accountId: ev ? ev.accountId : q("#evAcct").value, calendarId: ev ? ev.calendarId : "", id: ev ? ev.id : "", title: q("#evTitle").value, allDay, start: s.toISOString(), end: e2.toISOString(),
+      location: q("#evWhere").value.trim(), notes: q("#evNotes").value, attendees, notify: q("#evNotify").checked && attendees.length > 0 };
+    q("#evSave").disabled = true; q("#evErr").textContent = "";
+    try {
+      const saved = await api("/api/cal/event", body);
+      S.cal.lastAcct = body.accountId;
+      const full = { ...saved, s: new Date(saved.start), e: new Date(saved.end) };
+      S.cal.events = S.cal.events.filter(x => !(x.accountId === full.accountId && x.id === full.id)).concat(full);
+      box.remove(); renderCal(); toast(ev ? "Saved" : "Added to " + (acctById(body.accountId) || {}).name);
+    } catch (err) { q("#evErr").textContent = err.message; q("#evSave").disabled = false; }
+  };
+}
+function parseGuests(s) {
+  return (s || "").split(/[,;]/).map(x => x.trim()).filter(Boolean).map(x => {
+    const m = x.match(/^(.*)<([^>]+)>$/);
+    const a = m ? { name: m[1].trim().replace(/^"|"$/g, ""), email: m[2].trim() } : { email: x };
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a.email)) throw new Error(`"${x}" isn't an email address`);
+    return a;
+  });
+}
+
 /* ---------- settings ---------- */
 let settingsTab = "accounts";
 function openSettings(tab) {
@@ -1616,7 +1989,8 @@ function renderSetup() {
       <ol class="steps">
         <li>Go to <button class="link" data-open="https://console.cloud.google.com/projectcreate">console.cloud.google.com</button> and create a project named Project Echo Mike.</li>
         <li>In <b>APIs and Services, Library</b>, turn on the <b>Gmail API</b>.</li>
-        <li>In <b>Google Auth Platform</b> (OAuth consent screen), choose <b>External</b>, fill in the app name and your email. Under <b>Data access</b>, add the scope <code>https://www.googleapis.com/auth/gmail.modify</code>.</li>
+        <li>In <b>APIs and Services, Library</b>, also turn on the <b>Google Calendar API</b> if you want the Calendar tab.</li>
+        <li>In <b>Google Auth Platform</b> (OAuth consent screen), choose <b>External</b>, fill in the app name and your email. Under <b>Data access</b>, add the scopes <code>https://www.googleapis.com/auth/gmail.modify</code> and <code>https://www.googleapis.com/auth/calendar</code>.</li>
         <li>Under <b>Audience</b>, click <b>Publish app</b>. If you leave it in Testing, Google signs you out every 7 days.</li>
         <li>Under <b>Clients</b>, create an OAuth client of type <b>Desktop app</b>. Copy its Client ID and Client secret below.</li>
       </ol>

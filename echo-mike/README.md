@@ -13,6 +13,7 @@ One window for all your Gmail and Outlook accounts. Send from any of your aliase
 | Signatures | Each alias has its own signature, display name and reply-to address, and you choose whether the signature goes on replies. Switching the From box swaps the signature in the message. |
 | Smart From | Replying to mail sent to sales@ goes out from sales@, with that signature, through the account it belongs to. New messages use the default you pick. |
 | Privacy | Remote images are blocked until you click Show images, so tracking pixels can't report when you opened something. Scripts in email never run. Links open in your normal browser. |
+| Calendar | Week, month and agenda views of every account's calendars in one place, color by account. New events with guests, edit and delete your own, and answer invitations. Google needs the Calendar API and scope from the setup steps; accounts connected before that show a Reconnect link on the Calendar tab. |
 | Attachments | Attach by button or drag and drop. Forwards carry the original's attachments. Click an attachment to save it. |
 | AI, optional | **Summarize** on a conversation, and an **AI** button in compose that writes a message from a short note or rewrites what you typed (shorter, more professional, friendlier, fix grammar). Runs on your own PC with Ollama, or through Anthropic's or OpenAI's API with your key, chosen per account. Off until you set it up, and nothing is sent to a model until you click. |
 
@@ -27,8 +28,8 @@ Google and Microsoft only let an app read mail once it's registered with them. B
 ### Google
 
 1. At [console.cloud.google.com](https://console.cloud.google.com/projectcreate), create a project called Project Echo Mike.
-2. In **APIs and Services > Library**, turn on the **Gmail API**.
-3. In **Google Auth Platform**, set up the consent screen as **External**. Under **Data access**, add the scope `https://www.googleapis.com/auth/gmail.modify`.
+2. In **APIs and Services > Library**, turn on the **Gmail API** and the **Google Calendar API**.
+3. In **Google Auth Platform**, set up the consent screen as **External**. Under **Data access**, add the scopes `https://www.googleapis.com/auth/gmail.modify` and `https://www.googleapis.com/auth/calendar`.
 4. Under **Audience**, click **Publish app**. Apps left in Testing get signed out every 7 days. Google will show "Google hasn't verified this app" when you sign in. Click **Advanced**, then **Go to Project Echo Mike**. That's expected for a personal app, which can have up to 100 users.
 5. Under **Clients**, create an OAuth client of type **Desktop app**. Paste its Client ID and Client secret into Project Echo Mike.
 
@@ -175,7 +176,6 @@ go-winres make --in winres/winres.json --arch amd64,arm64
 
 ## Not in this version
 
-- Conversation view. Messages are listed one by one, not grouped into threads.
+- Recurring events can be viewed and answered, but a repeating series is created and edited in Google Calendar or Outlook.
 - Offline mode and a local mail cache.
-- Drafts that sync to the server. Closing the compose window asks before discarding.
 - Other providers like Yahoo, iCloud or plain IMAP.

@@ -31,6 +31,9 @@ type Box struct {
 	next int
 	// SentLog records everything Send was given, for tests.
 	SentLog []mail.Outgoing
+
+	events []mail.Event
+	nextEv int
 }
 
 type seed struct {
@@ -90,6 +93,8 @@ func Boxes(now time.Time) (*Box, *Box) {
 			m.m.Attachments = append(m.m.Attachments, mail.Attachment{ID: "f1", Name: "invite.ics", MIMEType: "text/calendar", Size: int64(len(ics))})
 		}
 	}
+	g.seedEvents(now)
+	o.seedEvents(now)
 	return g, o
 }
 
