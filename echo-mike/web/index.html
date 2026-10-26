@@ -541,6 +541,7 @@ const ICON = {
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
   pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 17h1.5a1.5 1.5 0 0 0 0-3H8zM13 17v-3h1.5a1.5 1.5 0 0 1 0 3zM18 14h-1v3"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  chevron: '<path d="m9 6 6 6-6 6"/>',
   tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -680,7 +681,7 @@ function labelTree(labels) {
     const a = acctById(n.acct) || {}, l = n.label, open = openLabels.has(n.key) || (n.kids.length && hasActive(n));
     const active = l && n.acct + "|" + l.id === activeKey;
     const row = `<button class="lbl ${active ? "active" : ""} ${open ? "open" : ""}" style="padding-left:${8 + depth * 14}px" ${l ? `data-label="${esc(l.id)}" data-label-acct="${esc(n.acct)}"` : `data-fold="${esc(n.key)}"`} title="${esc(n.full)} · ${esc(a.name || a.email || "")}">
-      ${n.kids.length ? `<span class="caret" data-fold="${esc(n.key)}">${icon("back", 12)}</span>` : '<span class="spacer"></span>'}
+      ${n.kids.length ? `<span class="caret" data-fold="${esc(n.key)}">${icon("chevron", 14)}</span>` : '<span class="spacer"></span>'}
       <span class="lbl-dot" style="background:${esc((l && l.color) || a.color || "#5f6368")};${l ? "" : "opacity:.4"}"></span><span class="acct-name">${esc(n.name)}</span>
       ${S.account || depth ? "" : `<span class="acct-dot" style="background:${esc(a.color)};margin-left:auto;width:7px;height:7px"></span>`}</button>`;
     return row + (open ? n.kids.map(k => render(k, depth + 1)).join("") : "");
