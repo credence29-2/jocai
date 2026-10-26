@@ -82,6 +82,8 @@ type Message struct {
 	HTML        string       `json:"html,omitempty"`
 	Text        string       `json:"text,omitempty"`
 	Attachments []Attachment `json:"attachments,omitempty"`
+	// Invite is set when the message carries a calendar invitation.
+	Invite *Invite `json:"invite,omitempty"`
 }
 
 // OutFile is an attachment on an outgoing message.
@@ -111,6 +113,10 @@ type Outgoing struct {
 	// them to stay in the conversation.
 	OrigID string
 	Kind   string
+	// ICS, when set, is a text/calendar part sent alongside the body: a
+	// reply to an invitation.
+	ICS       string
+	ICSMethod string
 }
 
 // Alias is a send-as address a provider reports for an account.
@@ -159,6 +165,9 @@ type Provider interface {
 	// returns the draft's id.
 	SaveDraft(ctx context.Context, draftID string, m *Outgoing) (string, error)
 	DeleteDraft(ctx context.Context, draftID string) error
+	// Respond answers the invitation in message msgID as me, with status
+	// ACCEPTED, TENTATIVE or DECLINED.
+	Respond(ctx context.Context, msgID string, inv *Invite, me Address, status string) error
 	// Aliases returns the send-as addresses the provider knows about. It
 	// always includes the primary address.
 	Aliases(ctx context.Context) ([]Alias, error)

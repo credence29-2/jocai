@@ -34,7 +34,7 @@ Google and Microsoft only let an app read mail once it's registered with them. B
 1. At [entra.microsoft.com](https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade), go to **App registrations > New registration**. A free personal Microsoft account can do this.
 2. Supported account types: **Any Entra ID tenant and personal Microsoft accounts**.
 3. Redirect URI: **Public client/native (mobile and desktop)**, `http://localhost`.
-4. Under **API permissions**, add the delegated permissions `Mail.ReadWrite`, `Mail.Send`, `User.Read`, `offline_access` and `SMTP.Send`.
+4. Under **API permissions**, add the delegated permissions `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite`, `User.Read`, `offline_access` and `SMTP.Send`.
 5. Paste the **Application (client) ID** into Project Echo Mike. No secret is needed.
 
 Then go to **Settings > Accounts** and add each account. Your browser opens for sign-in.

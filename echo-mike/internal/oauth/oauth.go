@@ -59,7 +59,7 @@ func Google(clientID, clientSecret string) *Provider {
 // Microsoft scopes. Graph reads and organizes mail. SMTP sends it, because
 // Graph always sends from the primary address and ignores aliases.
 var (
-	GraphScopes = []string{"offline_access", "https://graph.microsoft.com/User.Read", "https://graph.microsoft.com/Mail.ReadWrite", "https://graph.microsoft.com/Mail.Send"}
+	GraphScopes = []string{"offline_access", "https://graph.microsoft.com/User.Read", "https://graph.microsoft.com/Mail.ReadWrite", "https://graph.microsoft.com/Mail.Send", "https://graph.microsoft.com/Calendars.ReadWrite"}
 	SMTPScopes  = []string{"offline_access", "https://outlook.office.com/SMTP.Send"}
 )
 

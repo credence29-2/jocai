@@ -47,7 +47,7 @@ func Build(m *Outgoing, withBcc bool, now time.Time) ([]byte, error) {
 	h("References", m.References)
 	h("MIME-Version", "1.0")
 
-	alt, altType, err := alternative(m.HTML)
+	alt, altType, err := alternative(m.HTML, m.ICS, m.ICSMethod)
 	if err != nil {
 		return nil, err
 	}
@@ -89,13 +89,19 @@ func Build(m *Outgoing, withBcc bool, now time.Time) ([]byte, error) {
 }
 
 // alternative builds the text and HTML versions of the body.
-func alternative(htmlBody string) ([]byte, string, error) {
+func alternative(htmlBody, ics, icsMethod string) ([]byte, string, error) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
-	for _, p := range []struct{ typ, body string }{
+	parts := []struct{ typ, body string }{
 		{"text/plain; charset=utf-8", HTMLToText(htmlBody)},
 		{"text/html; charset=utf-8", "<html><body>" + htmlBody + "</body></html>"},
-	} {
+	}
+	if ics != "" {
+		// Calendar servers look for this part to update the organizer's
+		// attendee list.
+		parts = append(parts, struct{ typ, body string }{"text/calendar; charset=utf-8; method=" + icsMethod, ics})
+	}
+	for _, p := range parts {
 		w, err := mw.CreatePart(textproto.MIMEHeader{
 			"Content-Type":              {p.typ},
 			"Content-Transfer-Encoding": {"quoted-printable"},

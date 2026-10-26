@@ -106,6 +106,16 @@ main { flex: 1; min-width: 0; display: flex; background: var(--panel); margin: 1
 .pv-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .pv-body iframe { width: 100%; height: 100%; border: 0; background: #fff; }
 .dlg-head a.btn { text-decoration: none; }
+.invite { display: flex; gap: 14px; align-items: flex-start; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; background: var(--card2); }
+.invite .cal { width: 48px; flex: none; text-align: center; border-radius: 8px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); }
+.invite .cal b { display: block; background: var(--bad); color: #fff; font-size: 11px; letter-spacing: .5px; padding: 2px 0; }
+.invite .cal span { display: block; font-size: 20px; font-weight: 700; padding: 4px 0 6px; }
+.invite .body { flex: 1; min-width: 0; line-height: 1.5; }
+.invite .body h4 { margin: 0 0 2px; font-size: 15px; }
+.invite .acts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+.invite .acts .btn.small.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.invite .status { color: var(--good); font-weight: 600; }
+.invite.cancelled { border-left-color: var(--bad); }
 .msgcard { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; background: var(--card); }
 .msgcard .mhead { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; cursor: pointer; }
 .msgcard .mhead:hover { background: var(--card2); }
@@ -807,6 +817,7 @@ function msgCard(x, i, open) {
       ${open && S.thread.length > 1 ? `<button class="tb" data-reply-one="${i}" title="Reply to this message">${icon("reply", 16)}</button>` : ""}
     </div>
     ${open ? `<div class="mbody">
+      ${x.invite ? inviteCard(x, i) : ""}
       <div class="imgBanner" data-banner="${i}"></div>
       <div class="paper"><iframe id="frame-${i}" sandbox="allow-same-origin" referrerpolicy="no-referrer" title="Message"></iframe></div>
       ${files.length ? `<div class="atts">${files.map((f, j) => `<a class="att" href="${esc(dl("/api/attachment", { a: x.accountId, m: x.id, att: f.id, name: f.name, type: f.mimeType }))}" ${canPreview(f) ? `data-preview="${i}:${j}"` : ""} title="${canPreview(f) ? "Open" : "Download"} ${esc(f.name)}">${icon(canPreview(f) ? (f.mimeType === "application/pdf" ? "pdf" : "image") : "clip", 15)}<span>${esc(f.name)}</span><small>${fmtSize(f.size)}</small></a>`).join("")}</div>` : ""}
@@ -857,6 +868,40 @@ function renderBody(m, i) {
   f.srcdoc = "<!doctype html>" + doc.documentElement.outerHTML;
   $(`[data-banner="${i}"]`).innerHTML = remote && !S.showImages ? `<div class="banner">${icon("spam", 16)}<span>Remote images are hidden so the sender can't tell you opened this.</span><button class="link" data-show-imgs>Show images</button></div>` : "";
 }
+// inviteCard shows a calendar invitation with Accept, Tentative and
+// Decline. Answering replies to the organizer as the alias it came to.
+function inviteCard(x, i) {
+  const v = x.invite, cancelled = v.method === "CANCEL";
+  const s = new Date(v.start), e = new Date(v.end);
+  const day = s.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  const when = v.allDay ? day + " (all day)" : `${day}, ${s.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} to ${e.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  const mine = (v.myStatus || "").toUpperCase();
+  const label = { ACCEPTED: "You accepted", TENTATIVE: "You tentatively accepted", DECLINED: "You declined" }[mine];
+  const btn = (st, text) => `<button class="btn small ${mine === st ? "on" : ""}" data-rsvp="${i}:${st}">${text}</button>`;
+  return `<div class="invite ${cancelled ? "cancelled" : ""}">
+    <div class="cal"><b>${esc(s.toLocaleDateString([], { month: "short" }).toUpperCase())}</b><span>${s.getDate()}</span></div>
+    <div class="body">
+      <h4>${esc(v.summary || x.subject)}</h4>
+      <div>${esc(when)}</div>
+      ${v.location ? `<div class="muted">${esc(v.location)}</div>` : ""}
+      <div class="muted">Organized by ${esc(v.organizer.name || v.organizer.email)}${v.attendees && v.attendees.length ? ` · ${v.attendees.length} invited` : ""}</div>
+      ${cancelled ? `<div class="status" style="color:var(--bad)">This meeting was cancelled.</div>` :
+        `<div class="acts">${btn("ACCEPTED", "Accept")}${btn("TENTATIVE", "Maybe")}${btn("DECLINED", "Decline")}${label ? `<span class="status">${label}</span>` : ""}</div>`}
+    </div></div>`;
+}
+async function rsvp(i, status) {
+  const x = S.thread[i];
+  const btns = $$(`[data-rsvp^="${i}:"]`);
+  btns.forEach(b => (b.disabled = true));
+  try {
+    const r = await api("/api/invite/respond", { accountId: x.accountId, id: x.id, status });
+    x.invite.myStatus = r.status;
+    renderReader();
+    toast(`Reply sent to the organizer from ${r.as}`);
+  } catch (e) { toast(e.message, 7000); btns.forEach(b => (b.disabled = false)); }
+}
+const $$ = s => [...document.querySelectorAll(s)];
+
 // canPreview says whether an attachment opens inside the app.
 // Android's WebView can't show PDFs, so there they open in the phone's
 // own viewer instead.
@@ -884,6 +929,8 @@ function previewAttachment(x, f) {
 }
 
 $("#readPane").addEventListener("click", e => {
+  const rs = e.target.closest("[data-rsvp]");
+  if (rs) { const [i, st] = rs.dataset.rsvp.split(":"); return rsvp(+i, st); }
   const pv = e.target.closest("[data-preview]");
   if (pv) {
     e.preventDefault();
@@ -1443,7 +1490,7 @@ function renderSetup() {
         <li>Go to <button class="link" data-open="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade">entra.microsoft.com, App registrations</button> and click <b>New registration</b>. A free personal Microsoft account works.</li>
         <li>Name it Project Echo Mike. For account types, pick <b>Any Entra ID tenant and personal Microsoft accounts</b>.</li>
         <li>For Redirect URI, pick <b>Public client/native (mobile and desktop)</b> and enter <code>http://localhost</code>.</li>
-        <li>Open <b>API permissions</b>, add Microsoft Graph delegated permissions <code>Mail.ReadWrite</code>, <code>Mail.Send</code>, <code>User.Read</code>, <code>offline_access</code>, and <code>SMTP.Send</code>.</li>
+        <li>Open <b>API permissions</b>, add Microsoft Graph delegated permissions <code>Mail.ReadWrite</code>, <code>Mail.Send</code>, <code>Calendars.ReadWrite</code>, <code>User.Read</code>, <code>offline_access</code>, and <code>SMTP.Send</code>.</li>
         <li>Copy the <b>Application (client) ID</b> from Overview below. No secret is needed.</li>
       </ol>
       <label class="field"><span>Application (client) ID</span><input class="input" id="mId" value="${esc(st.microsoftClientId)}" spellcheck="false" placeholder="00000000-0000-0000-0000-000000000000"></label>

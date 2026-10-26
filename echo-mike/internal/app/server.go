@@ -164,6 +164,7 @@ func (a *App) routes() http.Handler {
 	api("POST /api/account/remove", a.handleAccountRemove)
 	api("GET /api/unread", a.handleUnread)
 	api("GET /api/contacts", a.handleContacts)
+	api("POST /api/invite/respond", a.handleInviteRespond)
 	api("GET /api/update", a.handleUpdateStatus)
 	api("POST /api/update/check", a.handleUpdateCheck)
 	api("POST /api/update/install", a.handleUpdateInstall)
@@ -1013,6 +1014,46 @@ func (a *App) handleUnread(w http.ResponseWriter, r *http.Request) (any, error) 
 	}
 	wg.Wait()
 	return out, nil
+}
+
+// handleInviteRespond accepts, tentatively accepts or declines an invitation
+// as the alias it was sent to.
+func (a *App) handleInviteRespond(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		AccountID string `json:"accountId"`
+		ID        string `json:"id"`
+		Status    string `json:"status"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	status := strings.ToUpper(in.Status)
+	if status != "ACCEPTED" && status != "TENTATIVE" && status != "DECLINED" {
+		return nil, fmt.Errorf("unknown response %q", in.Status)
+	}
+	p, _, err := a.provider(in.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	m, err := p.Get(r.Context(), in.ID)
+	if err != nil {
+		return nil, err
+	}
+	if m.Invite == nil {
+		return nil, fmt.Errorf("that message has no invitation")
+	}
+	id, _ := mail.PickIdentity(a.st.Get().Identities, in.AccountID, m)
+	me := mail.Address{Name: displayName(&id), Email: id.Email}
+	if me.Email == "" {
+		return nil, fmt.Errorf("add a From address for this account first")
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
+	defer cancel()
+	if err := p.Respond(ctx, in.ID, m.Invite, me, status); err != nil {
+		a.noteErr(in.AccountID, err)
+		return nil, err
+	}
+	return map[string]string{"status": status, "as": me.Email}, nil
 }
 
 func (a *App) handleUpdateStatus(w http.ResponseWriter, r *http.Request) (any, error) {

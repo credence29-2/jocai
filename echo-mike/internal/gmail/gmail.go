@@ -35,6 +35,9 @@ type Client struct {
 	// several accounts can trip.
 	metaMu sync.Mutex
 	meta   map[string]cachedMeta
+	// email is the account's address, learned on first use, to find its
+	// own line in invitations.
+	email string
 }
 
 type cachedMeta struct {
@@ -110,6 +113,9 @@ func (c *Client) Email(ctx context.Context) (string, error) {
 		EmailAddress string `json:"emailAddress"`
 	}
 	err := c.do(ctx, "GET", "/gmail/v1/users/me/profile", nil, &p)
+	if err == nil {
+		c.email = p.EmailAddress
+	}
 	return p.EmailAddress, err
 }
 
@@ -297,6 +303,23 @@ func (c *Client) SaveDraft(ctx context.Context, draftID string, o *cm.Outgoing) 
 	return out.ID, nil
 }
 
+// Respond answers an invitation the way mail programs without calendar
+// access do: a calendar reply emailed to the organizer. Google Calendar
+// reads it and updates the attendee list, and adds the event to this
+// account's calendar on its own.
+func (c *Client) Respond(ctx context.Context, msgID string, inv *cm.Invite, me cm.Address, status string) error {
+	status = strings.ToUpper(status)
+	o := &cm.Outgoing{
+		From:      me,
+		To:        []cm.Address{inv.Organizer},
+		Subject:   cm.ReplyWords(inv, status),
+		HTML:      "<p>" + cm.ReplyWords(inv, status) + "</p>",
+		ICS:       cm.ReplyICS(inv, me, status, time.Now()),
+		ICSMethod: "REPLY",
+	}
+	return c.Send(ctx, o)
+}
+
 func (c *Client) DeleteDraft(ctx context.Context, draftID string) error {
 	err := c.do(ctx, "DELETE", "/gmail/v1/users/me/drafts/"+url.PathEscape(draftID), nil, nil)
 	if apiErr, ok := err.(*oauth.APIError); ok && apiErr.Status == 404 {
@@ -456,6 +479,18 @@ func (c *Client) walk(ctx context.Context, msgID string, p *part, m *cm.Message)
 			}
 		}
 		return nil
+	}
+	if typ == "text/calendar" && m.Invite == nil {
+		// An invitation. The part is also kept as an attachment below when
+		// it's a file, so it can be saved.
+		if data, err := c.partData(ctx, msgID, p); err == nil {
+			if inv, err := cm.ParseICS(cm.DecodeCharset(data, params["charset"]), c.email); err == nil && inv.Method != "REPLY" {
+				m.Invite = inv
+			}
+		}
+		if p.Filename == "" {
+			return nil // the bare calendar part isn't a file to save
+		}
 	}
 	isFile := p.Filename != "" || disp == "attachment" || (cid != "" && !strings.HasPrefix(typ, "text/"))
 	if !isFile && (typ == "text/html" || typ == "text/plain") {

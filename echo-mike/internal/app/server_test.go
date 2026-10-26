@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/credence29-2/jocai/echo-mike/internal/demo"
 	"github.com/credence29-2/jocai/echo-mike/internal/mail"
@@ -386,5 +387,37 @@ func TestContactSuggestions(t *testing.T) {
 	hs.call("GET", "/api/contacts?q=dana", nil, &hits)
 	if len(hits) == 0 || hits[0].Email != "dana@posdealer.example" {
 		t.Fatalf("after restart: %+v", hits)
+	}
+}
+
+func TestInviteRespond(t *testing.T) {
+	hs := newHarness(t)
+	var list listOut
+	hs.call("POST", "/api/list", listIn{Folder: mail.Inbox, AccountID: "demo-o"}, &list)
+	var priya mail.Summary
+	for _, m := range list.Messages {
+		if m.From.Email == "priya@restauranttech.example" {
+			priya = m
+		}
+	}
+	var m mail.Message
+	hs.call("GET", "/api/message?a=demo-o&id="+priya.ID, nil, &m)
+	if m.Invite == nil || m.Invite.Summary != "Onboarding kickoff - Toast dealer" || m.Invite.MyStatus != "NEEDS-ACTION" || m.Invite.Start.Weekday() != time.Thursday {
+		t.Fatalf("invite = %+v", m.Invite)
+	}
+	var res map[string]string
+	if code := hs.call("POST", "/api/invite/respond", map[string]string{"accountId": "demo-o", "id": priya.ID, "status": "tentative"}, &res); code != 200 || res["as"] != "jacob.demo@outlook.example" {
+		t.Fatalf("respond: %d %v", code, res)
+	}
+	hs.call("GET", "/api/message?a=demo-o&id="+priya.ID, nil, &m)
+	if m.Invite.MyStatus != "TENTATIVE" {
+		t.Fatalf("status after = %q", m.Invite.MyStatus)
+	}
+	box := hs.a.providers["demo-o"].(*demo.Box)
+	if sent := box.SentLog[len(box.SentLog)-1]; sent.To[0].Email != "priya@restauranttech.example" || sent.ICSMethod != "REPLY" {
+		t.Fatalf("reply = %+v", sent)
+	}
+	if code := hs.call("POST", "/api/invite/respond", map[string]string{"accountId": "demo-o", "id": priya.ID, "status": "maybe"}, &res); code == 200 {
+		t.Fatal("bad status accepted")
 	}
 }

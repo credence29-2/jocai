@@ -260,3 +260,46 @@ func TestGmailQuery(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestInviteParsedAndAnswered(t *testing.T) {
+	var sentRaw string
+	c := fake(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/gmail/v1/users/me/profile":
+			w.Write([]byte(`{"emailAddress":"jacob@gmail.com"}`))
+		case r.URL.Path == "/gmail/v1/users/me/messages/inv":
+			ics := "BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:u1\r\nORGANIZER;CN=Priya:mailto:priya@x.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:jacob@gmail.com\r\nSUMMARY:Kickoff\r\nDTSTART:20261029T180000Z\r\nDTEND:20261029T190000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+			json.NewEncoder(w).Encode(map[string]any{"id": "inv", "threadId": "t", "labelIds": []string{"INBOX"}, "internalDate": "1700000000000",
+				"payload": map[string]any{"mimeType": "multipart/mixed", "headers": []map[string]string{{"name": "From", "value": "Priya <priya@x.com>"}, {"name": "Subject", "value": "Invitation: Kickoff"}},
+					"parts": []any{
+						map[string]any{"partId": "0", "mimeType": "text/plain", "body": map[string]any{"data": b64("You're invited")}},
+						map[string]any{"partId": "1", "mimeType": "text/calendar", "headers": []map[string]string{{"name": "Content-Type", "value": "text/calendar; charset=UTF-8; method=REQUEST"}}, "body": map[string]any{"data": b64(ics)}},
+						map[string]any{"partId": "2", "mimeType": "application/ics", "filename": "invite.ics", "body": map[string]any{"attachmentId": "a1", "size": 10}},
+					}}})
+		case r.URL.Path == "/upload/gmail/v1/users/me/messages/send":
+			_, params, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+			mr := multipart.NewReader(r.Body, params["boundary"])
+			mr.NextPart()
+			p, _ := mr.NextPart()
+			b, _ := io.ReadAll(p)
+			sentRaw = string(b)
+			w.Write([]byte(`{"id":"s"}`))
+		default:
+			t.Errorf("unexpected %s", r.URL)
+		}
+	})
+	ctx := context.Background()
+	c.Email(ctx)
+	m, err := c.Get(ctx, "inv")
+	if err != nil || m.Invite == nil || m.Invite.Summary != "Kickoff" || m.Invite.MyStatus != "NEEDS-ACTION" || len(m.Attachments) != 1 {
+		t.Fatalf("invite: %+v %v", m.Invite, err)
+	}
+	if err := c.Respond(ctx, "inv", m.Invite, cm.Address{Name: "Jacob", Email: "jacob@gmail.com"}, "ACCEPTED"); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"<priya@x.com>", "Subject: Accepted: Kickoff", "text/calendar; charset=utf-8; method=REPLY", "PARTSTAT=3DACCEPTED"} {
+		if !strings.Contains(sentRaw, want) {
+			t.Errorf("reply missing %q", want)
+		}
+	}
+}

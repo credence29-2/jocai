@@ -128,8 +128,23 @@ type gMessage struct {
 	Flag             struct {
 		FlagStatus string `json:"flagStatus"`
 	} `json:"flag"`
-	HasAttachments    bool   `json:"hasAttachments"`
-	ParentFolderID    string `json:"parentFolderId"`
+	HasAttachments bool   `json:"hasAttachments"`
+	ParentFolderID string `json:"parentFolderId"`
+	// Invitations are eventMessages with these extra fields.
+	Type               string `json:"@odata.type"`
+	MeetingMessageType string `json:"meetingMessageType"`
+	StartDateTime      *struct {
+		DateTime string `json:"dateTime"`
+		TimeZone string `json:"timeZone"`
+	} `json:"startDateTime"`
+	EndDateTime *struct {
+		DateTime string `json:"dateTime"`
+		TimeZone string `json:"timeZone"`
+	} `json:"endDateTime"`
+	Location *struct {
+		DisplayName string `json:"displayName"`
+	} `json:"location"`
+	IsAllDay          bool   `json:"isAllDay"`
 	InternetMessageID string `json:"internetMessageId"`
 	Headers           []struct {
 		Name  string `json:"name"`
@@ -272,6 +287,61 @@ func (c *Client) Thread(ctx context.Context, threadID string) ([]*cm.Message, er
 	return out, nil
 }
 
+// invite reads an invitation's details. The base message select leaves the
+// event fields out, so they're fetched for invitations only.
+func (c *Client) invite(ctx context.Context, g *gMessage) *cm.Invite {
+	var ev gMessage
+	if err := c.do(ctx, "GET", c.msgURL(g.ID)+"?$select=meetingMessageType,startDateTime,endDateTime,location,isAllDay,subject,from", nil, &ev); err != nil {
+		return nil
+	}
+	if ev.MeetingMessageType == "" || ev.StartDateTime == nil {
+		return nil
+	}
+	inv := &cm.Invite{UID: g.ID, Summary: g.Subject, AllDay: ev.IsAllDay, Method: "REQUEST"}
+	if ev.MeetingMessageType == "meetingCancelled" {
+		inv.Method = "CANCEL"
+	}
+	if g.From != nil {
+		inv.Organizer = g.From.addr()
+	}
+	if ev.Location != nil {
+		inv.Location = ev.Location.DisplayName
+	}
+	inv.Start = graphTime(ev.StartDateTime.DateTime, ev.StartDateTime.TimeZone)
+	if ev.EndDateTime != nil {
+		inv.End = graphTime(ev.EndDateTime.DateTime, ev.EndDateTime.TimeZone)
+	}
+	return inv
+}
+
+func graphTime(v, tz string) time.Time {
+	loc := time.UTC
+	if l, err := time.LoadLocation(tz); err == nil {
+		loc = l
+	}
+	if len(v) > 19 {
+		v = v[:19]
+	}
+	t, _ := time.ParseInLocation("2006-01-02T15:04:05", v, loc)
+	return t
+}
+
+// Respond accepts, tentatively accepts or declines through Outlook's own
+// calendar, which also puts the event on it.
+func (c *Client) Respond(ctx context.Context, msgID string, inv *cm.Invite, me cm.Address, status string) error {
+	var ev struct {
+		ID string `json:"id"`
+	}
+	if err := c.do(ctx, "GET", c.msgURL(msgID)+"/event?$select=id", nil, &ev); err != nil {
+		return fmt.Errorf("couldn't find the event for this invitation: %w", err)
+	}
+	verb := map[string]string{"ACCEPTED": "accept", "TENTATIVE": "tentativelyAccept", "DECLINED": "decline"}[strings.ToUpper(status)]
+	if verb == "" {
+		return fmt.Errorf("unknown response %q", status)
+	}
+	return c.do(ctx, "POST", c.Base+"/me/events/"+url.PathEscape(ev.ID)+"/"+verb, map[string]any{"sendResponse": true}, nil)
+}
+
 func (c *Client) hidden(ctx context.Context, folderID string) bool {
 	c.hiddenOnce.Do(func() {
 		c.hiddenFolders = map[string]bool{}
@@ -294,6 +364,9 @@ func (c *Client) full(ctx context.Context, g *gMessage) (*cm.Message, error) {
 	}
 	if g.ParentFolderID != "" {
 		m.Hidden = c.hidden(ctx, g.ParentFolderID)
+	}
+	if strings.Contains(g.Type, "eventMessage") {
+		m.Invite = c.invite(ctx, g)
 	}
 	if strings.EqualFold(g.Body.ContentType, "html") {
 		m.HTML = g.Body.Content

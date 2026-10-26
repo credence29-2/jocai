@@ -75,7 +75,31 @@ func Boxes(now time.Time) (*Box, *Box) {
 		{mail.Address{Name: "Microsoft 365", Email: "no-reply@microsoft.example"}, "jacob.demo@outlook.example", "Your storage is 80% full", "<p>Free up space or upgrade.</p>", 9 * h, false, false, mail.Inbox, "", ""},
 		{mail.Address{Name: "Kevin Brooks", Email: "kevin@credence.example"}, "jacob.demo@outlook.example", "Missed calls report draft", "<p>Attached is the draft. Callback rate is up to 91% from 84% last month.</p>", 30 * h, false, true, mail.Inbox, "missed-calls-draft.pdf", ""},
 	})
+	// Priya's message carries an invitation.
+	for _, m := range o.msgs {
+		if m.m.From.Email == "priya@restauranttech.example" {
+			ics := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:demo-kickoff@restauranttech.example\r\nSEQUENCE:0\r\n" +
+				"ORGANIZER;CN=Priya Nair:mailto:priya@restauranttech.example\r\n" +
+				"ATTENDEE;CN=Jacob;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:" + o.Email + "\r\n" +
+				"ATTENDEE;CN=Kevin Brooks;PARTSTAT=ACCEPTED:mailto:kevin@credence.example\r\n" +
+				"SUMMARY:Onboarding kickoff - Toast dealer\r\nLOCATION:Teams\r\nDESCRIPTION:Escalation matrix draft and support hours.\r\n" +
+				"DTSTART:" + nextThursday(now).Format("20060102T150405Z") + "\r\nDTEND:" + nextThursday(now).Add(time.Hour).Format("20060102T150405Z") + "\r\n" +
+				"END:VEVENT\r\nEND:VCALENDAR\r\n"
+			m.m.Invite, _ = mail.ParseICS(ics, o.Email)
+			m.files["f1"] = []byte(ics)
+			m.m.Attachments = append(m.m.Attachments, mail.Attachment{ID: "f1", Name: "invite.ics", MIMEType: "text/calendar", Size: int64(len(ics))})
+		}
+	}
 	return g, o
+}
+
+// nextThursday is 2 PM local on the coming Thursday, in UTC.
+func nextThursday(now time.Time) time.Time {
+	d := now
+	for d.Weekday() != time.Thursday || !d.After(now) {
+		d = d.Add(24 * time.Hour)
+	}
+	return time.Date(d.Year(), d.Month(), d.Day(), 14, 0, 0, 0, time.Local).UTC()
 }
 
 func (b *Box) seed(now time.Time, list []seed) {
@@ -318,6 +342,22 @@ func (b *Box) DeleteDraft(_ context.Context, draftID string) error {
 			return nil
 		}
 	}
+	return nil
+}
+
+// Respond records the answer and marks the attendee line.
+func (b *Box) Respond(_ context.Context, msgID string, inv *mail.Invite, me mail.Address, status string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	m, err := b.find(msgID)
+	if err != nil {
+		return err
+	}
+	if m.m.Invite == nil {
+		return fmt.Errorf("that message has no invitation")
+	}
+	m.m.Invite.MyStatus = strings.ToUpper(status)
+	b.SentLog = append(b.SentLog, mail.Outgoing{From: me, To: []mail.Address{inv.Organizer}, Subject: mail.ReplyWords(inv, status), ICSMethod: "REPLY"})
 	return nil
 }
 
