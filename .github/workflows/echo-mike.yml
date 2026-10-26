@@ -27,13 +27,16 @@ jobs:
           go vet ./...
           GOOS=windows go vet ./...
       - name: Test and build
-        run: ./build.sh "1.0.${{ github.run_number }}"
+        run: ./build.sh "1.3.${{ github.run_number }}"
+      - name: Checksums
+        run: cd dist && sha256sum ProjectEchoMike.exe ProjectEchoMike-arm64.exe > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: Project-Echo-Mike
           path: |
             echo-mike/dist/ProjectEchoMike.exe
             echo-mike/dist/ProjectEchoMike-arm64.exe
+            echo-mike/dist/SHA256SUMS.txt
 
   windows-test:
     # The sign-in store uses Windows DPAPI, which only runs on Windows.
@@ -49,3 +52,27 @@ jobs:
           cache-dependency-path: echo-mike/go.sum
       - name: Unit tests
         run: go test ./...
+
+  # Puts the exe at a fixed link the app checks for updates:
+  # https://github.com/credence29-2/jocai/releases/download/echo-mike-windows/ProjectEchoMike.exe
+  # Only builds whose tests passed on Windows get there.
+  publish:
+    needs: [build, windows-test]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Project-Echo-Mike
+      - name: Replace the download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release delete echo-mike-windows -R "$REPO" --yes --cleanup-tag || true
+          gh release create echo-mike-windows ProjectEchoMike.exe ProjectEchoMike-arm64.exe SHA256SUMS.txt -R "$REPO" \
+            --target "${{ github.sha }}" --prerelease \
+            --title "Project Echo Mike for Windows 1.3.${{ github.run_number }}" \
+            --notes "1.3.${{ github.run_number }}"

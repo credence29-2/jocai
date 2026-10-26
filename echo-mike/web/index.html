@@ -1365,7 +1365,16 @@ function renderGeneral() {
       <span class="code">E</span> archive &nbsp; <span class="code">Del</span> delete &nbsp; <span class="code">S</span> star &nbsp; <span class="code">U</span> mark unread<br>
       <span class="code">J</span> / <span class="code">K</span> next and previous &nbsp; <span class="code">X</span> select &nbsp; <span class="code">/</span> search &nbsp; <span class="code">Ctrl+Enter</span> send
     </div>
-    <p class="dim" style="margin-top:24px">Project Echo Mike ${esc(S.version)}</p>`;
+    <h4 style="margin:20px 0 8px">Updates</h4>
+    <div id="updBox" class="muted" style="line-height:1.6">Project Echo Mike ${esc(S.version)}</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="updCheck">Check for updates</button><button class="btn small primary" id="updInstall" hidden>Install and restart</button></div>`;
+  renderUpdate();
+  $("#updCheck").onclick = async () => {
+    $("#updCheck").disabled = true; $("#updBox").textContent = "Checking...";
+    try { S.update = await api("/api/update/check", {}); } catch (e) { $("#updBox").textContent = e.message; }
+    $("#updCheck").disabled = false; renderUpdate();
+  };
+  $("#updInstall").onclick = installUpdate;
   $("#gNotify").onchange = e => setMute(!e.target.checked);
   $("#gDark").onchange = async e => {
     try { await api("/api/settings", { ...S.settings, lightMessages: !e.target.checked }); await refreshState(); if (S.msg) { S.lightMsg = false; renderReader(); } } catch (err) { toast(err.message); }
@@ -1376,6 +1385,30 @@ function renderGeneral() {
 }
 
 $("#settingsBtn").onclick = () => { setDrawer(false); openSettings(); };
+
+// Updates: the app checks on its own once a day and the desktop calls
+// onUpdate; Settings has a button too.
+function renderUpdate() {
+  const box = $("#updBox"); if (!box) return;
+  const u = S.update;
+  if (!S.updates) { box.textContent = `Project Echo Mike ${S.version}. ${ANDROID ? "The phone app updates from the download link." : "Updates aren't available in this build."}`; $("#updCheck").hidden = true; return; }
+  if (!u) { box.textContent = `Project Echo Mike ${S.version}`; return; }
+  if (u.error) { box.textContent = `Project Echo Mike ${S.version}. Couldn't check: ${u.error}`; return; }
+  box.textContent = u.available ? `Version ${u.latest} is available. You have ${S.version}.` : `Project Echo Mike ${S.version} is up to date.`;
+  $("#updInstall").hidden = !u.available;
+}
+async function installUpdate() {
+  const btn = $("#updInstall");
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Downloading'; }
+  toast("Downloading the update. The app restarts when it's done.", 60000);
+  try { await api("/api/update/install", {}); }
+  catch (e) { toast("Update failed: " + e.message, 8000); if (btn) { btn.disabled = false; btn.textContent = "Install and restart"; } }
+}
+window.onUpdate = latest => {
+  S.update = { available: true, latest };
+  toast(`Version ${latest} is available.`, 15000, { label: "Install and restart", run: installUpdate });
+  renderUpdate();
+};
 
 function renderMute() {
   const off = !!S.settings.muteNotifications;
@@ -1419,7 +1452,7 @@ document.addEventListener("keydown", e => {
 /* ---------- startup ---------- */
 async function refreshState() {
   const st = await api("/api/state");
-  Object.assign(S, { accounts: st.accounts, identities: st.identities, settings: st.settings, demo: st.demo, version: st.version });
+  Object.assign(S, { accounts: st.accounts, identities: st.identities, settings: st.settings, demo: st.demo, version: st.version, updates: !!st.updates });
   $("#demoFlag").hidden = !S.demo;
   renderMute();
   document.body.classList.toggle("dark-mail", !S.settings.lightMessages);

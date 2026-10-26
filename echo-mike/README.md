@@ -62,6 +62,8 @@ Run `ProjectEchoMike.exe`. It needs the Microsoft Edge WebView2 Runtime, which c
 
 Windows shows a SmartScreen warning the first time because the exe isn't code-signed. Click **More info**, then **Run anyway**.
 
+The latest build is always at `https://github.com/credence29-2/jocai/releases/download/echo-mike-windows/ProjectEchoMike.exe`. The app checks that link once a day and offers to update; **Settings > General > Check for updates** does it on demand. An update is downloaded next to the exe, checked against the published SHA-256 sums, swapped in, and the app restarts. Your settings and sign-ins aren't touched.
+
 To try it without signing in to anything, run `ProjectEchoMike.exe -demo`. It opens with two sample accounts and three aliases. Nothing is sent and nothing is saved.
 
 New-mail notifications come from a small icon in the notification area while the app is open. Turn them off with the bell at the bottom of the sidebar.

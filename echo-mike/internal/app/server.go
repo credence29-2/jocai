@@ -24,6 +24,7 @@ import (
 	"github.com/credence29-2/jocai/echo-mike/internal/mail"
 	"github.com/credence29-2/jocai/echo-mike/internal/oauth"
 	"github.com/credence29-2/jocai/echo-mike/internal/store"
+	"github.com/credence29-2/jocai/echo-mike/internal/update"
 	"github.com/credence29-2/jocai/echo-mike/web"
 )
 
@@ -57,6 +58,12 @@ type App struct {
 	// onNewMail tells the window to refresh; nil when there's no window.
 	OnNewMail func()
 	watch     watcher
+
+	// Updater checks for and installs new versions; nil where the app
+	// can't replace itself (Android, development).
+	Updater *update.Updater
+	// Restart relaunches the program after an update is applied.
+	Restart func()
 }
 
 func New(st *store.Store, demoMode bool, openURL func(string) error) *App {
@@ -155,6 +162,9 @@ func (a *App) routes() http.Handler {
 	api("POST /api/account/update", a.handleAccountUpdate)
 	api("POST /api/account/remove", a.handleAccountRemove)
 	api("GET /api/unread", a.handleUnread)
+	api("GET /api/update", a.handleUpdateStatus)
+	api("POST /api/update/check", a.handleUpdateCheck)
+	api("POST /api/update/install", a.handleUpdateInstall)
 	api("GET /open", a.handleOpen)
 	return a.guardHost(mux)
 }
@@ -240,6 +250,8 @@ type stateOut struct {
 	Identities []mail.Identity `json:"identities"`
 	Settings   store.Settings  `json:"settings"`
 	Folders    []mail.Folder   `json:"folders"`
+	// Updates says whether this build can update itself.
+	Updates bool `json:"updates"`
 }
 
 func (a *App) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
@@ -253,7 +265,7 @@ func (a *App) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
 	if d.Identities == nil {
 		d.Identities = []mail.Identity{}
 	}
-	return stateOut{Version: Version, Demo: a.demo, Accounts: d.Accounts, Identities: d.Identities, Settings: d.Settings, Folders: mail.Folders}, nil
+	return stateOut{Version: Version, Demo: a.demo, Accounts: d.Accounts, Identities: d.Identities, Settings: d.Settings, Folders: mail.Folders, Updates: a.Updater != nil}, nil
 }
 
 type listIn struct {
@@ -991,6 +1003,73 @@ func (a *App) handleUnread(w http.ResponseWriter, r *http.Request) (any, error) 
 	}
 	wg.Wait()
 	return out, nil
+}
+
+func (a *App) handleUpdateStatus(w http.ResponseWriter, r *http.Request) (any, error) {
+	if a.Updater == nil {
+		return map[string]any{"supported": false}, nil
+	}
+	return map[string]any{"supported": true, "info": a.Updater.Status()}, nil
+}
+
+func (a *App) handleUpdateCheck(w http.ResponseWriter, r *http.Request) (any, error) {
+	if a.Updater == nil {
+		return nil, fmt.Errorf("updates aren't available in this build")
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	info, err := a.Updater.Check(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't check for updates: %w", err)
+	}
+	return info, nil
+}
+
+// handleUpdateInstall downloads the new version, swaps it in and restarts.
+func (a *App) handleUpdateInstall(w http.ResponseWriter, r *http.Request) (any, error) {
+	if a.Updater == nil {
+		return nil, fmt.Errorf("updates aren't available in this build")
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
+	defer cancel()
+	if !a.Updater.Status().Ready {
+		if err := a.Updater.Download(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	if err := a.Updater.Apply(); err != nil {
+		return nil, err
+	}
+	if a.Restart != nil {
+		go func() {
+			time.Sleep(300 * time.Millisecond)
+			a.Restart()
+		}()
+	}
+	return map[string]bool{"ok": true}, nil
+}
+
+// WatchUpdates checks for a new version shortly after start and once a day
+// after that, and tells the window when one is found.
+func (a *App) WatchUpdates(ctx context.Context, found func(update.Info)) {
+	if a.Updater == nil {
+		return
+	}
+	delay := 20 * time.Second
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(delay):
+		}
+		delay = 24 * time.Hour
+		cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		info, err := a.Updater.Check(cctx)
+		cancel()
+		if err == nil && info.Available && found != nil {
+			found(info)
+		}
+	}
 }
 
 // handleOpen opens a link from a message in the system browser. Links in the

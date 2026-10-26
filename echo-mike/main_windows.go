@@ -7,8 +7,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"os"
+	"os/exec"
 	"time"
 	"unsafe"
 
@@ -17,6 +19,7 @@ import (
 
 	"github.com/credence29-2/jocai/echo-mike/internal/app"
 	"github.com/credence29-2/jocai/echo-mike/internal/store"
+	"github.com/credence29-2/jocai/echo-mike/internal/update"
 )
 
 const webview2Download = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
@@ -41,6 +44,17 @@ func main() {
 		os.Exit(1)
 	}
 	a := app.New(st, *demoMode, shellOpen)
+	if exe, err := os.Executable(); err == nil && !*demoMode {
+		update.Cleanup(exe)
+		a.Updater = update.New(app.Version, exe)
+		a.Restart = func() {
+			if beforeExit != nil {
+				beforeExit()
+			}
+			exec.Command(exe).Start()
+			os.Exit(0)
+		}
+	}
 	u, err := a.Listen()
 	if err != nil {
 		messageBox(app.Name, "Could not start: "+err.Error())
@@ -71,6 +85,7 @@ func main() {
 
 	t := newTray(uintptr(w.Window()))
 	defer t.remove()
+	beforeExit = t.remove
 	a.Notify = t.notify
 	a.OnNewMail = func() {
 		w.Dispatch(func() { w.Eval("window.onNewMail && window.onNewMail()") })
@@ -78,8 +93,20 @@ func main() {
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
 	go a.WatchMail(ctx, time.Minute)
+	go a.WatchUpdates(ctx, func(info update.Info) {
+		js := "window.onUpdate && window.onUpdate(" + jsonString(info.Latest) + ")"
+		w.Dispatch(func() { w.Eval(js) })
+	})
 
 	w.Run()
+}
+
+// beforeExit runs before a restart, so the tray icon doesn't linger.
+var beforeExit func()
+
+func jsonString(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }
 
 // shellOpen opens a link in the default browser or mail program.
