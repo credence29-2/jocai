@@ -360,3 +360,11 @@ func TestDrafts(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestKQL(t *testing.T) {
+	got := kql(`printer from:derek subject:"october invoice" has:attachment after:2026-10-01 before:2026-10-20`)
+	want := `printer AND from:derek AND subject:october invoice AND hasAttachments:true AND received>=2026-10-01 AND received<2026-10-20`
+	if got != want {
+		t.Fatalf("got %q", got)
+	}
+}

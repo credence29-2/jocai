@@ -53,6 +53,14 @@ main { flex: 1; min-width: 0; display: flex; background: var(--panel); margin: 1
 .search { flex: 1; display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; height: 36px; }
 .search:focus-within { border-color: var(--accent); }
 .search input { flex: 1; border: 0; background: none; outline: none; min-width: 0; }
+.search .icon-btn { width: 28px; height: 28px; margin-right: -6px; color: var(--sub); }
+.search .icon-btn.on { color: var(--accent-hi); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px 10px; border-bottom: 1px solid var(--line); }
+.filters label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--sub); }
+.filters .input, .filters select { height: 30px; font-size: 13px; padding: 0 8px; width: auto; }
+.filters .input[type=text] { width: 130px; }
+.filters input[type=checkbox] { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+.filters .link { font-size: 13px; }
 .list-head { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 8px; }
 .list-head h2 { margin: 0; font-size: 17px; }
 .list-head .grow { flex: 1; }
@@ -309,8 +317,19 @@ select.input { padding-right: 6px; }
     <div class="searchbar">
       <button class="icon-btn phone-only" id="menuBtn" title="Menu" aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dim"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="search" placeholder="Search all mail" autocomplete="off"></label>
+        <input id="search" placeholder="Search all mail" autocomplete="off">
+        <button class="icon-btn" id="filterBtn" title="Search filters" aria-label="Search filters"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></label>
       <button class="btn small ghost" id="refreshBtn" title="Refresh"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg></button>
+    </div>
+    <div class="filters" id="filters" hidden>
+      <label>From <input class="input" type="text" id="fFrom" placeholder="name or address"></label>
+      <label>To <input class="input" type="text" id="fTo" placeholder="name or address"></label>
+      <label>Subject <input class="input" type="text" id="fSubject"></label>
+      <label><input type="checkbox" id="fAtt"> Has attachment</label>
+      <label>Date <select class="input" id="fDate"><option value="">Any time</option><option value="1">Today</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last year</option><option value="custom">Custom</option></select></label>
+      <label id="fRange" hidden><input class="input" type="date" id="fAfter"> to <input class="input" type="date" id="fBefore"></label>
+      <label>Account <select class="input" id="fAcct"><option value="">All</option></select></label>
+      <button class="link" id="fClear">Clear</button>
     </div>
     <div id="acctErrors"></div>
     <div class="list-head" id="listHead"><h2 id="listTitle">Inbox</h2><span class="dim" id="listSub"></span></div>
@@ -644,6 +663,54 @@ $("#search").addEventListener("input", e => {
   searchTimer = setTimeout(() => { const q = e.target.value.trim(); if (q !== S.query) { S.query = q; loadList(); } }, 600);
 });
 $("#refreshBtn").onclick = () => { loadList(); pollUnread(); };
+
+/* ---------- search filters ---------- */
+// The filters build the same operators you can type: from:, to:, subject:,
+// has:attachment, after:, before:. The box shows the result so the syntax
+// is easy to pick up.
+$("#filterBtn").onclick = () => {
+  const f = $("#filters");
+  f.hidden = !f.hidden;
+  $("#filterBtn").classList.toggle("on", !f.hidden);
+  if (!f.hidden) { fillAcctFilter(); $("#fFrom").focus(); }
+};
+function fillAcctFilter() {
+  $("#fAcct").innerHTML = `<option value="">All</option>` + S.accounts.map(a => `<option value="${esc(a.id)}" ${S.account === a.id ? "selected" : ""}>${esc(a.name || a.email)}</option>`).join("");
+}
+const day = d => d.toISOString().slice(0, 10);
+function applyFilters() {
+  // Keep the free text the user typed; replace the operator parts.
+  const text = $("#search").value.split(/\s+/).filter(t => !/^(from|to|subject|has|after|before):/i.test(t)).join(" ").trim();
+  const parts = [];
+  if (text) parts.push(text);
+  const q = v => /\s/.test(v) ? `"${v}"` : v;
+  if ($("#fFrom").value.trim()) parts.push("from:" + q($("#fFrom").value.trim()));
+  if ($("#fTo").value.trim()) parts.push("to:" + q($("#fTo").value.trim()));
+  if ($("#fSubject").value.trim()) parts.push("subject:" + q($("#fSubject").value.trim()));
+  if ($("#fAtt").checked) parts.push("has:attachment");
+  const d = $("#fDate").value;
+  $("#fRange").hidden = d !== "custom";
+  if (d && d !== "custom") { const t = new Date(); t.setDate(t.getDate() - (+d - 1)); parts.push("after:" + day(t)); }
+  if (d === "custom") {
+    if ($("#fAfter").value) parts.push("after:" + $("#fAfter").value);
+    if ($("#fBefore").value) { const t = new Date($("#fBefore").value); t.setDate(t.getDate() + 1); parts.push("before:" + day(t)); }
+  }
+  $("#search").value = parts.join(" ");
+  S.account = $("#fAcct").value;
+  S.query = $("#search").value.trim();
+  renderSidebar();
+  loadList();
+}
+let filterTimer;
+$("#filters").addEventListener("input", e => {
+  clearTimeout(filterTimer);
+  filterTimer = setTimeout(applyFilters, e.target.type === "text" ? 500 : 0);
+});
+$("#fClear").onclick = () => {
+  ["fFrom", "fTo", "fSubject", "fAfter", "fBefore"].forEach(id => ($("#" + id).value = ""));
+  $("#fAtt").checked = false; $("#fDate").value = ""; $("#fAcct").value = ""; $("#fRange").hidden = true;
+  $("#search").value = ""; S.query = ""; S.account = ""; renderSidebar(); loadList();
+};
 
 /* ---------- reading pane ---------- */
 function renderEmptyReader() {

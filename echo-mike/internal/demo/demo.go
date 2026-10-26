@@ -152,13 +152,12 @@ func (b *Box) find(id string) (*msg, error) {
 func (b *Box) List(_ context.Context, f mail.Folder, query, cursor string, max int) (mail.Page, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	q := strings.ToLower(strings.TrimSpace(query))
+	q := mail.ParseQuery(query)
 	var out []mail.Summary
 	for _, m := range b.msgs {
 		in := m.folder == f || f == mail.Starred && m.m.Starred && m.folder != mail.Trash
-		if q != "" {
-			text := strings.ToLower(m.m.Subject + " " + m.m.From.Name + " " + m.m.From.Email + " " + m.m.HTML)
-			in = m.folder != mail.Trash && m.folder != mail.Spam && strings.Contains(text, q)
+		if !q.IsEmpty() {
+			in = m.folder != mail.Trash && m.folder != mail.Spam && q.Matches(&m.m)
 		}
 		if in {
 			out = append(out, m.m.Summary)

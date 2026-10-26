@@ -252,3 +252,11 @@ func TestDrafts(t *testing.T) {
 		t.Fatalf("deleting a missing draft should be fine: %v", err)
 	}
 }
+
+func TestGmailQuery(t *testing.T) {
+	got := gmailQuery(`printer from:derek subject:"october invoice" has:attachment after:2026-10-01 before:2026-10-20`)
+	want := `printer from:derek subject:"october invoice" has:attachment after:2026/10/01 before:2026/10/20`
+	if got != want {
+		t.Fatalf("got %q", got)
+	}
+}

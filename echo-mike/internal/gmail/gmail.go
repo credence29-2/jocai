@@ -140,7 +140,7 @@ func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, ma
 	v := url.Values{"maxResults": {strconv.Itoa(max)}}
 	label, q, spamTrash := folderQuery(f)
 	if query != "" {
-		label, q, spamTrash = "", query, false
+		label, q, spamTrash = "", gmailQuery(query), false
 	}
 	if label != "" {
 		v.Set("labelIds", label)
@@ -207,6 +207,37 @@ func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, ma
 		}
 	}
 	return cm.Page{Messages: kept, Next: list.NextPageToken}, nil
+}
+
+// gmailQuery renders a search in Gmail's syntax, which is the same as the
+// app's except that dates use slashes.
+func gmailQuery(query string) string {
+	q := cm.ParseQuery(query)
+	var parts []string
+	if q.Text != "" {
+		parts = append(parts, q.Text)
+	}
+	add := func(k, v string) {
+		if v != "" {
+			if strings.ContainsAny(v, " \t") {
+				v = `"` + v + `"`
+			}
+			parts = append(parts, k+":"+v)
+		}
+	}
+	add("from", q.From)
+	add("to", q.To)
+	add("subject", q.Subject)
+	if q.HasAttachment {
+		parts = append(parts, "has:attachment")
+	}
+	if !q.After.IsZero() {
+		parts = append(parts, "after:"+q.After.Format("2006/01/02"))
+	}
+	if !q.Before.IsZero() {
+		parts = append(parts, "before:"+q.Before.Format("2006/01/02"))
+	}
+	return strings.Join(parts, " ")
 }
 
 // draftIDs fills in each draft message's draft id, which is what the drafts

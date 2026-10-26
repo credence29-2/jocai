@@ -336,7 +336,7 @@ func (a *App) handleList(w http.ResponseWriter, r *http.Request) (any, error) {
 		}(id)
 	}
 	wg.Wait()
-	go a.saveContacts()
+	a.saveContacts()
 	if in.Group {
 		out.Messages = groupThreads(out.Messages)
 	}
@@ -411,7 +411,7 @@ func (a *App) handleThread(w http.ResponseWriter, r *http.Request) (any, error) 
 		m.AccountID = acct
 		a.learn(1, []mail.Address{m.From}, m.To, m.Cc)
 	}
-	go a.saveContacts()
+	a.saveContacts()
 	return msgs, nil
 }
 
@@ -675,7 +675,7 @@ func (a *App) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
 	}
 	a.dropDraft(ctx, in.DraftAccountID, in.DraftID)
 	a.learn(5, o.To, o.Cc, o.Bcc)
-	go a.saveContacts()
+	a.saveContacts()
 	return map[string]bool{"ok": true}, nil
 }
 

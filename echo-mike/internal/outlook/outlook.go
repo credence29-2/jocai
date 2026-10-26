@@ -173,7 +173,7 @@ func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, ma
 		// $search can't be combined with $orderby; Graph returns results
 		// by relevance and the app sorts them by date.
 		u = fmt.Sprintf("%s/me/messages?$top=%d&$select=%s&$search=%s", c.Base, max, listFields,
-			url.QueryEscape(`"`+strings.ReplaceAll(query, `"`, "")+`"`))
+			url.QueryEscape(`"`+kql(query)+`"`))
 	case f == cm.Starred:
 		u = fmt.Sprintf("%s/me/messages?$top=%d&$select=%s&$filter=%s", c.Base, max, listFields,
 			url.QueryEscape("flag/flagStatus eq 'flagged'"))
@@ -202,6 +202,35 @@ func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, ma
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Date.After(out[j].Date) })
 	return cm.Page{Messages: out, Next: r.NextLink}, nil
+}
+
+// kql renders a search in the keyword syntax Graph's $search takes.
+func kql(query string) string {
+	q := cm.ParseQuery(query)
+	clean := func(v string) string { return strings.ReplaceAll(v, `"`, "") }
+	var parts []string
+	if q.Text != "" {
+		parts = append(parts, clean(q.Text))
+	}
+	if q.From != "" {
+		parts = append(parts, "from:"+clean(q.From))
+	}
+	if q.To != "" {
+		parts = append(parts, "to:"+clean(q.To))
+	}
+	if q.Subject != "" {
+		parts = append(parts, "subject:"+clean(q.Subject))
+	}
+	if q.HasAttachment {
+		parts = append(parts, "hasAttachments:true")
+	}
+	if !q.After.IsZero() {
+		parts = append(parts, "received>="+q.After.Format("2006-01-02"))
+	}
+	if !q.Before.IsZero() {
+		parts = append(parts, "received<"+q.Before.Format("2006-01-02"))
+	}
+	return strings.Join(parts, " AND ")
 }
 
 func (c *Client) msgURL(id string) string {
