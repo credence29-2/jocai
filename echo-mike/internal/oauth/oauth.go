@@ -49,7 +49,7 @@ func Google(clientID, clientSecret string) *Provider {
 		TokenURL:     "https://oauth2.googleapis.com/token",
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Scopes:       []string{"https://www.googleapis.com/auth/gmail.modify"},
+		Scopes:       []string{"https://www.googleapis.com/auth/gmail.modify", "https://www.googleapis.com/auth/calendar"},
 		// offline + consent makes Google hand back a refresh token every
 		// time, even for an account that was connected before.
 		Extra: map[string]string{"access_type": "offline", "prompt": "consent"},

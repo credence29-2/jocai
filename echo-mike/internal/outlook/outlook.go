@@ -45,6 +45,11 @@ func New(src *oauth.Source, email string) *Client {
 }
 
 func (c *Client) do(ctx context.Context, method, rawURL string, body any, out any) error {
+	return c.doPrefer(ctx, method, rawURL, body, out)
+}
+
+// doPrefer is do with extra Prefer headers.
+func (c *Client) doPrefer(ctx context.Context, method, rawURL string, body any, out any, prefer ...string) error {
 	var req *http.Request
 	var err error
 	if body != nil {
@@ -66,6 +71,9 @@ func (c *Client) do(ctx context.Context, method, rawURL string, body any, out an
 	// after Archive still finds it.
 	req.Header.Add("Prefer", `IdType="ImmutableId"`)
 	req.Header.Add("Prefer", `outlook.body-content-type="html"`)
+	for _, p := range prefer {
+		req.Header.Add("Prefer", p)
+	}
 	return c.Src.Do(req, nil, out)
 }
 

@@ -96,7 +96,9 @@ No mail is stored. Project Echo Mike reads it live from Google and Microsoft, wh
 
 ## Running it
 
-Run `ProjectEchoMike.exe`. It needs the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and updated Windows 10. If it's missing, Project Echo Mike opens Microsoft's download page.
+Run `ProjectEchoMike.exe`. The first time, it offers to install itself: it copies the exe to `%LOCALAPPDATA%\Programs\Project Echo Mike`, adds Start menu and desktop shortcuts, and appears in **Settings > Apps > Installed apps** with an Uninstall button. Updates then always replace that one copy. Answer No to keep running it from wherever it is (or start it with `-portable`); the question isn't asked again, and deleting the `portable` file in the data folder brings it back. `ProjectEchoMike.exe -uninstall` removes the program and shortcuts and leaves your settings.
+
+It needs the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and updated Windows 10. If it's missing, Project Echo Mike opens Microsoft's download page.
 
 Windows shows a SmartScreen warning the first time because the exe isn't code-signed. Click **More info**, then **Run anyway**.
 
@@ -136,6 +138,7 @@ The window is a WebView2 page served by a small web server inside the exe. The s
 | `internal/mail` | Message building, reply rules, picking the From address |
 | `internal/oauth` | Browser sign-in and token refresh |
 | `internal/store` | Settings file and encrypted sign-ins |
+| `internal/install` | Installing into Apps & features, shortcuts, uninstall |
 | `internal/demo` | The sample accounts behind `-demo` |
 
 ## Building

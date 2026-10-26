@@ -248,8 +248,20 @@ func (u *Updater) Apply() error {
 	return nil
 }
 
-// Cleanup removes leftovers from a previous update.
+// Cleanup removes leftovers from a previous update. Right after an update
+// the old program is still exiting and Windows won't delete a running exe,
+// so it keeps trying in the background for a while.
 func Cleanup(exe string) {
-	os.Remove(exe + ".old")
 	os.Remove(exe + ".new")
+	if os.Remove(exe+".old") == nil {
+		return
+	}
+	go func() {
+		for i := 0; i < 60; i++ {
+			time.Sleep(time.Second)
+			if err := os.Remove(exe + ".old"); err == nil || os.IsNotExist(err) {
+				return
+			}
+		}
+	}()
 }

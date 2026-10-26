@@ -85,6 +85,10 @@ func New(src *oauth.Source) *Client {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body any, out any) error {
+	return c.doURL(ctx, method, c.Base+path, body, out)
+}
+
+func (c *Client) doURL(ctx context.Context, method, full string, body any, out any) error {
 	var rd *bytes.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -96,10 +100,10 @@ func (c *Client) do(ctx context.Context, method, path string, body any, out any)
 	var req *http.Request
 	var err error
 	if rd != nil {
-		req, err = http.NewRequestWithContext(ctx, method, c.Base+path, rd)
+		req, err = http.NewRequestWithContext(ctx, method, full, rd)
 		req.Header.Set("Content-Type", "application/json")
 	} else {
-		req, err = http.NewRequestWithContext(ctx, method, c.Base+path, nil)
+		req, err = http.NewRequestWithContext(ctx, method, full, nil)
 	}
 	if err != nil {
 		return err

@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"github.com/credence29-2/jocai/echo-mike/internal/app"
+	"github.com/credence29-2/jocai/echo-mike/internal/install"
 	"github.com/credence29-2/jocai/echo-mike/internal/store"
 	"github.com/credence29-2/jocai/echo-mike/internal/update"
 )
@@ -36,9 +37,24 @@ var (
 func main() {
 	demoMode := flag.Bool("demo", false, "use sample accounts instead of real ones")
 	mcpMode := flag.Bool("mcp", false, "serve the MCP tools over stdin/stdout for Claude Desktop, no window")
+	portable := flag.Bool("portable", false, "run from here without installing")
+	uninstall := flag.Bool("uninstall", false, "remove Project Echo Mike from this PC")
 	flag.Parse()
 
 	dataDir := store.Dir()
+	if *uninstall {
+		runUninstall(dataDir)
+		return
+	}
+	exe, _ := os.Executable()
+	if !*demoMode && !*mcpMode && !*portable && exe != "" && !install.Installed(exe) {
+		if installed := offerInstall(exe, dataDir); installed != "" {
+			exec.Command(installed).Start()
+			return
+		}
+	} else if exe != "" && install.Installed(exe) && !*mcpMode {
+		install.Register(exe, app.Version) // keeps Apps & features' version current after an update
+	}
 	st, err := app.OpenStore(dataDir, *demoMode)
 	if err != nil {
 		messageBox(app.Name, "Project Echo Mike couldn't load its settings:\n\n"+err.Error())
@@ -130,6 +146,43 @@ func shellOpen(target string) error {
 		return windows.Errno(r)
 	}
 	return nil
+}
+
+// offerInstall asks once whether to install. "No" is remembered in the
+// data folder so the question doesn't come back; -portable skips it too.
+func offerInstall(exe, dataDir string) string {
+	marker := dataDir + `\portable`
+	if _, err := os.Stat(marker); err == nil {
+		return ""
+	}
+	t, _ := windows.UTF16PtrFromString(app.Name)
+	m, _ := windows.UTF16PtrFromString("Install Project Echo Mike on this PC?\n\nIt copies itself to " + install.Dir() + ", adds a Start menu and desktop shortcut, and shows up in Apps & features. Updates then always replace that one copy.\n\nChoose No to keep running it from where it is now.")
+	r, _, _ := procMessageBoxW.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), 0x40|0x4) // MB_ICONINFORMATION | MB_YESNO
+	if r != 6 { // IDYES
+		os.MkdirAll(dataDir, 0o755)
+		os.WriteFile(marker, []byte("Delete this file to be offered the install again.\n"), 0o644)
+		return ""
+	}
+	dst, err := install.Install(exe, app.Version)
+	if err != nil {
+		messageBox(app.Name, "Couldn't install: "+err.Error()+"\n\nProject Echo Mike will run from here instead.")
+		if dst == "" {
+			return ""
+		}
+	}
+	return dst
+}
+
+func runUninstall(dataDir string) {
+	t, _ := windows.UTF16PtrFromString(app.Name)
+	m, _ := windows.UTF16PtrFromString("Remove Project Echo Mike from this PC?\n\nYes removes the program and its shortcuts and keeps your settings and sign-ins in " + dataDir + ".\nTo remove those too, delete that folder afterwards.")
+	r, _, _ := procMessageBoxW.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), 0x20|0x4) // MB_ICONQUESTION | MB_YESNO
+	if r != 6 {
+		return
+	}
+	if err := install.Uninstall(true, dataDir); err != nil {
+		messageBox(app.Name, "Couldn't remove everything: "+err.Error())
+	}
 }
 
 func messageBox(title, text string) {
