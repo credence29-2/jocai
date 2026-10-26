@@ -126,3 +126,43 @@ func TestCalendarScopeMissing(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestLabels(t *testing.T) {
+	var lastBody string
+	c := fake(t, func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		lastBody = string(b)
+		switch {
+		case r.URL.Path == "/gmail/v1/users/me/labels":
+			w.Write([]byte(`{"labels":[{"id":"INBOX","name":"INBOX","type":"system"},{"id":"Label_7","name":"Clients","type":"user","color":{"backgroundColor":"#16a765"}},{"id":"Label_2","name":"Billing","type":"user"}]}`))
+		case r.URL.Path == "/gmail/v1/users/me/messages" && r.URL.Query().Get("labelIds") == "Label_7":
+			w.Write([]byte(`{"messages":[{"id":"m1"}]}`))
+		case r.URL.Path == "/gmail/v1/users/me/messages/m1":
+			w.Write([]byte(`{"id":"m1","threadId":"t","labelIds":["INBOX","Label_7","CATEGORY_PERSONAL"],"internalDate":"1700000000000","payload":{"headers":[{"name":"Subject","value":"x"}]}}`))
+		case r.URL.Path == "/gmail/v1/users/me/messages/m1/modify":
+			w.Write([]byte(`{}`))
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL)
+		}
+	})
+	ctx := context.Background()
+	labels, err := c.Labels(ctx)
+	if err != nil || len(labels) != 2 || labels[0].Name != "Billing" || labels[1].Color != "#16a765" {
+		t.Fatalf("labels %+v %v", labels, err)
+	}
+	page, err := c.List(ctx, cm.LabelFolder("Label_7"), "", "", 30)
+	if err != nil || len(page.Messages) != 1 || strings.Join(page.Messages[0].Labels, ",") != "Label_7" {
+		t.Fatalf("list %+v %v", page, err)
+	}
+	if err := c.SetLabel(ctx, "m1", "Label_2", true); err != nil || lastBody != `{"addLabelIds":["Label_2"]}` {
+		t.Fatalf("add %v %s", err, lastBody)
+	}
+	c.SetLabel(ctx, "m1", "Label_7", false)
+	if lastBody != `{"removeLabelIds":["Label_7"]}` {
+		t.Fatalf("remove %s", lastBody)
+	}
+	page, _ = c.List(ctx, cm.LabelFolder("Label_7"), "", "", 30)
+	if strings.Join(page.Messages[0].Labels, ",") != "Label_2" {
+		t.Fatalf("cache not updated: %v", page.Messages[0].Labels)
+	}
+}

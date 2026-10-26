@@ -25,7 +25,7 @@ svg { flex: none; }
 .dim { color: var(--dim); }
 
 /* ---------- sidebar ---------- */
-.sidebar { width: 232px; flex: none; display: flex; flex-direction: column; padding: 16px 8px 12px; user-select: none; }
+.sidebar { width: 232px; flex: none; display: flex; flex-direction: column; padding: 16px 8px 12px; user-select: none; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 18px; }
 .brand b { display: block; font-size: 15px; }
 .brand span { display: block; font-size: 12px; color: var(--sub); }
@@ -142,6 +142,13 @@ body.resizing iframe { pointer-events: none; }
 .bulk b { margin-right: 6px; }
 .bulk .tb { height: 32px; padding: 0 9px; }
 .list-head .link { font-size: 13px; }
+.row .tags { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: 1px; }
+.tag { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 0 6px; border-radius: 4px; line-height: 16px; color: #fff; white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.nav .lbl-dot { width: 9px; height: 9px; border-radius: 2px; flex: none; margin-left: 4px; }
+.lbl-menu { position: absolute; top: calc(100% + 4px); right: 0; min-width: 220px; max-height: 320px; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.45); padding: 6px; z-index: 6; }
+.lbl-menu label { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.lbl-menu label:hover { background: var(--card2); }
+.lbl-menu .hint { padding: 4px 8px 6px; font-size: 12px; color: var(--dim); }
 .row .count { font-size: 11px; font-weight: 600; color: var(--sub); background: var(--card2); border-radius: 9px; padding: 1px 6px; margin-left: 6px; }
 .thread-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; }
 .thread-head h1 { margin: 0; flex: 1; }
@@ -406,6 +413,8 @@ body.cal .cal-pane { display: flex; }
   <nav class="nav" id="folders"></nav>
   <div class="side-label">Accounts</div>
   <nav class="nav" id="accounts"></nav>
+  <div class="side-label" id="labelsLabel" hidden>Labels</div>
+  <nav class="nav" id="labels"></nav>
   <div class="side-spacer"></div>
   <nav class="nav side-foot">
     <button id="muteBtn"></button>
@@ -521,6 +530,7 @@ const ICON = {
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
   pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 17h1.5a1.5 1.5 0 0 0 0-3H8zM13 17v-3h1.5a1.5 1.5 0 0 1 0 3zM18 14h-1v3"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/>',
@@ -537,6 +547,17 @@ const ICON = {
   all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
 };
 const icon = (n, size = 18, extra = "") => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${ICON[n]}</svg>`;
+// folderName covers the fixed folders and "label:<id>" views.
+function folderName(f) {
+  if (FOLDER_NAMES[f]) return FOLDER_NAMES[f];
+  const l = S.labels.find(x => "label:" + x.id === f);
+  return l ? l.name : "Label";
+}
+const labelById = (acct, id) => S.labels.find(l => l.accountId === acct && l.id === id);
+const tagHTML = (acct, ids, max = 2) => (ids || []).map(id => labelById(acct, id)).filter(Boolean).slice(0, max).map(l => `<span class="tag" style="background:${esc(l.color || "#5f6368")}">${esc(l.name)}</span>`).join("");
+async function loadLabels() {
+  try { const r = await api("/api/labels"); S.labels = r.labels || []; renderSidebar(); if (S.view !== "cal" && S.messages.length) renderList(); } catch {}
+}
 const FOLDER_NAMES = { inbox: "Inbox", starred: "Starred", sent: "Sent", drafts: "Drafts", archive: "Archive", spam: "Spam", trash: "Trash" };
 const COLORS = ["#d93025", "#0a64d6", "#188038", "#e37400", "#9334e6", "#00897b", "#c2185b", "#5f6368"];
 
@@ -549,6 +570,8 @@ const S = {
   aiSum: null,
   // view is mail or cal.
   view: "mail",
+  // labels are every account's Gmail labels (or Outlook folders).
+  labels: [],
   // checked holds the row keys ticked for a bulk action.
   checked: new Set(),
 };
@@ -612,8 +635,21 @@ function renderSidebar() {
     S.accounts.map(a => `<button data-acct="${esc(a.id)}" class="${S.account === a.id ? "active" : ""}" title="${esc(a.email)}">
       <span class="acct-dot" style="background:${esc(a.color)}"></span><span class="acct-name">${esc(a.name || a.email)}</span>
       ${a.needsReconnect ? '<span class="warn-badge" title="Sign-in expired">!</span>' : S.unread[a.id] ? `<span class="count">${S.unread[a.id]}</span>` : ""}</button>`).join("");
+  const shown = S.labels.filter(l => !S.account || l.accountId === S.account);
+  $("#labelsLabel").hidden = !shown.length;
+  $("#labels").innerHTML = shown.map(l => {
+    const a = acctById(l.accountId) || {}, active = S.folder === "label:" + l.id && S.account === l.accountId && !S.query && S.view !== "cal";
+    return `<button data-label="${esc(l.id)}" data-label-acct="${esc(l.accountId)}" class="${active ? "active" : ""}" title="${esc(l.name)} · ${esc(a.name || a.email || "")}">
+      <span class="lbl-dot" style="background:${esc(l.color || a.color || "#5f6368")}"></span><span class="acct-name">${esc(l.name)}</span>${S.account ? "" : `<span class="acct-dot" style="background:${esc(a.color)};margin-left:auto;width:7px;height:7px"></span>`}</button>`;
+  }).join("");
   document.title = inboxUnread ? `(${inboxUnread}) Project Echo Mike` : "Project Echo Mike";
 }
+$("#labels").onclick = e => {
+  const b = e.target.closest("[data-label]"); if (!b) return;
+  showMail();
+  S.folder = "label:" + b.dataset.label; S.account = b.dataset.labelAcct; S.query = ""; $("#search").value = ""; S.checked.clear();
+  setDrawer(false); closeReader(); loadList();
+};
 $("#folders").onclick = e => {
   if (e.target.closest("[data-view=cal]")) return showCalendar();
   const b = e.target.closest("[data-folder]"); if (!b) return;
@@ -674,7 +710,7 @@ function renderList() {
   } else {
     head.className = "list-head";
     const unread = S.messages.filter(m => m.unread).length;
-    head.innerHTML = `<h2 id="listTitle">${esc(S.query ? "Search results" : FOLDER_NAMES[S.folder])}</h2><span class="dim" id="listSub">${esc(acct ? acct.name || acct.email : S.accounts.length > 1 ? "All accounts" : "")}</span>
+    head.innerHTML = `<h2 id="listTitle">${esc(S.query ? "Search results" : folderName(S.folder))}</h2><span class="dim" id="listSub">${esc(acct ? acct.name || acct.email : S.accounts.length > 1 ? "All accounts" : "")}</span>
       <span class="grow"></span>${unread && !S.query ? `<button class="link" data-bulk="allread" title="Mark every message shown as read">Mark all read</button>` : ""}`;
   }
   const errs = Object.entries(S.errors);
@@ -690,7 +726,7 @@ function renderList() {
   }
   if (!S.messages.length) {
     list.innerHTML = S.loading ? `<div class="list-msg"><div class="spin" style="margin:0 auto"></div></div>` :
-      `<div class="list-msg">${S.query ? "Nothing matched your search." : "Nothing in " + FOLDER_NAMES[S.folder] + "."}</div>`;
+      `<div class="list-msg">${S.query ? "Nothing matched your search." : "Nothing in " + folderName(S.folder) + "."}</div>`;
     return;
   }
   const multi = S.accounts.length > 1;
@@ -707,7 +743,7 @@ function renderList() {
         <div class="top"><span class="from">${esc(who)}${m.count > 1 ? `<span class="count">${m.count}</span>` : ""}</span>
           <span class="icons">${m.hasAttachments ? icon("clip", 13) : ""}${m.starred ? icon("starred", 13, 'class="on" fill="currentColor"') : ""}</span>
           <span class="date">${esc(fmtDate(m.date))}</span></div>
-        <div class="subj">${esc(m.subject || "(no subject)")}</div>
+        <div class="subj">${esc(m.subject || "(no subject)")}${m.labels && m.labels.length ? `<span class="tags">${tagHTML(m.accountId, m.labels)}</span>` : ""}</div>
         <div class="snip">${esc(m.snippet)}</div>
       </div></div>`;
   }).join("") + (Object.keys(S.cursors || {}).length ? `<div class="list-more"><button class="btn small" id="moreBtn" ${S.loading ? "disabled" : ""}>${S.loading ? "Loading..." : "Load more"}</button></div>` : "");
@@ -819,7 +855,7 @@ $("#search").addEventListener("input", e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { const q = e.target.value.trim(); if (q !== S.query) { S.query = q; loadList(); } }, 600);
 });
-$("#refreshBtn").onclick = () => { loadList(); pollUnread(); };
+$("#refreshBtn").onclick = () => { loadList(); pollUnread(); loadLabels(); };
 
 /* ---------- search filters ---------- */
 // The filters build the same operators you can type: from:, to:, subject:,
@@ -935,6 +971,7 @@ function renderReader() {
       ${inSpam ? "" : `<button class="tb" data-act="spam" title="Report spam">${icon("spam")}</button>`}
       ${inTrash ? "" : `<button class="tb" data-act="trash" title="Delete (Del)">${icon("trash")}</button>`}
       <button class="tb" data-act="unread" title="Mark unread (U)">${icon("unread")}</button>
+      ${S.labels.some(l => l.accountId === m.accountId) ? `<span class="ai-wrap"><button class="tb" data-act="label" title="${(a.provider === "outlook") ? "Move to folder" : "Labels"}">${icon("tag")}</button></span>` : ""}
       ${S.settings.lightMessages ? "" : `<button class="tb ${S.lightMsg ? "on-light" : ""}" data-act="light" title="${S.lightMsg ? "Show this conversation dark" : "Show this conversation on white, for emails that look wrong in dark"}">${icon(S.lightMsg ? "moon" : "sun")}</button>`}
       <button class="tb ${m.starred ? "on" : ""}" data-act="star" title="${m.starred ? "Unstar" : "Star"} (S)">${icon("starred")}</button>
     </div>
@@ -1125,6 +1162,7 @@ async function act(kind) {
   if (kind === "reply" || kind === "replyAll" || kind === "forward") return replyTo(m, kind);
   if (kind === "light") { S.lightMsg = !S.lightMsg; return renderReader(); }
   if (kind === "summarize") return summarize(m);
+  if (kind === "label") return labelMenu(m);
   if (kind === "back") return closeReader();
   const summary = S.messages.find(x => rowKey(x) === S.sel.key);
   let change = kind;
@@ -1673,6 +1711,38 @@ $("#calPane").addEventListener("click", async e => {
   }
 });
 
+// labelMenu ticks labels on and off for the open conversation. Outlook has
+// folders instead, so there it's a move.
+function labelMenu(m) {
+  const btn = $('#readPane [data-act="label"]'); if (!btn) return;
+  let menu = btn.parentNode.querySelector(".lbl-menu");
+  if (menu) return menu.remove();
+  const a = acctById(m.accountId) || {}, isFolder = a.provider === "outlook";
+  const labels = S.labels.filter(l => l.accountId === m.accountId);
+  const have = new Set(S.thread.flatMap(x => x.labels || []));
+  menu = document.createElement("div"); menu.className = "lbl-menu";
+  menu.innerHTML = `<div class="hint">${isFolder ? "Move this conversation to" : "Labels on this conversation"}</div>` +
+    labels.map(l => `<label><input type="${isFolder ? "radio" : "checkbox"}" name="lbl" data-lbl="${esc(l.id)}" ${have.has(l.id) ? "checked" : ""} style="accent-color:${esc(l.color || a.color)}"><span class="lbl-dot" style="background:${esc(l.color || a.color || "#5f6368")}"></span>${esc(l.name)}</label>`).join("") +
+    (isFolder ? `<label><input type="radio" name="lbl" data-lbl="" ${have.size ? "" : "checked"}>Inbox</label>` : "");
+  btn.parentNode.append(menu);
+  menu.onchange = async e => {
+    const id = e.target.dataset.lbl, on = e.target.checked;
+    const req = { accountId: m.accountId, labelId: id || (labels[0] && labels[0].id), on: isFolder ? !!id : on, ...(S.sel && S.sel.threadId ? { threads: [S.sel.threadId] } : { ids: S.thread.map(x => x.id) }) };
+    try {
+      await api("/api/label", req);
+      for (const x of S.thread) { x.labels = (x.labels || []).filter(l => l !== id && (!isFolder || l === id)); if (on && id) x.labels.push(id); }
+      const row = S.messages.find(x => rowKey(x) === (S.sel && S.sel.key)); if (row) row.labels = [...(S.thread[S.thread.length - 1].labels || [])];
+      const l = labelById(m.accountId, id);
+      if (isFolder) { menu.remove(); removeFromList(m); toast(id ? "Moved to " + l.name : "Moved to Inbox"); return; }
+      renderList();
+      const inThisLabel = S.folder === "label:" + id;
+      if (inThisLabel && !on) { menu.remove(); removeFromList(m); toast("Removed " + l.name); }
+    } catch (err) { toast(err.message, 6000); e.target.checked = !on; }
+  };
+  const away = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener("click", away); } };
+  setTimeout(() => document.addEventListener("click", away), 0);
+}
+
 const STATUS_WORDS = { accepted: "Accepted", declined: "Declined", tentative: "Maybe", needsAction: "No answer yet" };
 function showEvent(ev) {
   const a = acctById(ev.accountId) || {};
@@ -2206,13 +2276,14 @@ async function refreshState() {
 async function pollUnread() {
   try { S.unread = await api("/api/unread"); renderSidebar(); } catch {}
 }
+let labelsTimer = setInterval(loadLabels, 5 * 60e3);
 (async () => {
   try { await refreshState(); } catch (e) {
     document.body.innerHTML = `<div class="empty"><h2>Project Echo Mike couldn't start</h2><p>${esc(e.message)}</p></div>`;
     return;
   }
   renderEmptyReader();
-  if (S.accounts.length) { loadList(); pollUnread(); } else renderList();
+  if (S.accounts.length) { loadList(); pollUnread(); loadLabels(); } else renderList();
   setInterval(() => {
     if (document.hidden) return;
     pollUnread();

@@ -169,6 +169,8 @@ func (a *App) routes() http.Handler {
 	api("GET /api/update", a.handleUpdateStatus)
 	api("POST /api/update/check", a.handleUpdateCheck)
 	api("POST /api/update/install", a.handleUpdateInstall)
+	api("GET /api/labels", a.handleLabels)
+	api("POST /api/label", a.handleLabel)
 	api("GET /api/cal/calendars", a.handleCalendars)
 	api("GET /api/cal/events", a.handleEvents)
 	api("POST /api/cal/event", a.handleEventSave)

@@ -35,7 +35,11 @@ type Client struct {
 
 	// hiddenFolders holds the IDs of Deleted Items and Junk Email, looked
 	// up once, so thread messages in them can be marked Hidden.
-	hiddenOnce    sync.Once
+	hiddenOnce sync.Once
+
+	mu            sync.Mutex
+	labels        []cm.Label
+	labelsAt      time.Time
 	hiddenFolders map[string]bool
 }
 
@@ -202,6 +206,9 @@ func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, ma
 			url.QueryEscape("flag/flagStatus eq 'flagged'"))
 	default:
 		wk, ok := wellKnown[f]
+		if id, isLabel := cm.LabelID(f); isLabel {
+			wk, ok = url.PathEscape(id), true
+		}
 		if !ok {
 			return cm.Page{}, fmt.Errorf("unknown folder %q", f)
 		}

@@ -54,6 +54,37 @@ type Summary struct {
 	Participants []string `json:"participants,omitempty"`
 	// DraftID is set on a draft: the id to save or delete it by.
 	DraftID string `json:"draftId,omitempty"`
+	// Labels holds the ids of the user's own labels on the message (Gmail).
+	Labels []string `json:"labels,omitempty"`
+}
+
+// Label is one of the user's own Gmail labels, or a custom Outlook folder.
+type Label struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color,omitempty"`
+}
+
+// LabelPrefix turns a label id into a Folder: List("label:Label_12", ...).
+const LabelPrefix = "label:"
+
+// LabelFolder is the folder name that lists one label.
+func LabelFolder(id string) Folder { return Folder(LabelPrefix + id) }
+
+// LabelID returns the label behind a folder name, if it is one.
+func LabelID(f Folder) (string, bool) {
+	if len(f) > len(LabelPrefix) && string(f[:len(LabelPrefix)]) == LabelPrefix {
+		return string(f[len(LabelPrefix):]), true
+	}
+	return "", false
+}
+
+// Labeler is a provider with labels or custom folders.
+type Labeler interface {
+	Labels(ctx context.Context) ([]Label, error)
+	// SetLabel adds or removes a label on a message. For Outlook, on moves
+	// the message into the folder and off moves it back to the inbox.
+	SetLabel(ctx context.Context, id, labelID string, on bool) error
 }
 
 // Attachment describes a file on a received message.

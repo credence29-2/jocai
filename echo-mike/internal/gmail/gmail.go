@@ -38,6 +38,10 @@ type Client struct {
 	// email is the account's address, learned on first use, to find its
 	// own line in invitations.
 	email string
+
+	mu       sync.Mutex
+	labels   []cm.Label
+	labelsAt time.Time
 }
 
 type cachedMeta struct {
@@ -149,6 +153,9 @@ func folderQuery(f cm.Folder) (label, q string, spamTrash bool) {
 func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, max int) (cm.Page, error) {
 	v := url.Values{"maxResults": {strconv.Itoa(max)}}
 	label, q, spamTrash := folderQuery(f)
+	if id, ok := cm.LabelID(f); ok {
+		label = id
+	}
 	if query != "" {
 		label, q, spamTrash = "", gmailQuery(query), false
 	}
@@ -399,6 +406,11 @@ func (m *message) summary() cm.Summary {
 	}
 	if len(from) > 0 {
 		s.From = from[0]
+	}
+	for _, l := range m.LabelIDs {
+		if strings.HasPrefix(l, "Label_") {
+			s.Labels = append(s.Labels, l)
+		}
 	}
 	return s
 }

@@ -9,6 +9,7 @@ One window for all your Gmail and Outlook accounts. Send from any of your aliase
 | Unified inbox | Mail from every account in one list, newest first. A color bar shows which account each message is in. Click an account in the sidebar to see just that one. |
 | Folders | Inbox, Starred, Sent, Archive, Spam and Trash for every account. Archive, delete and spam all have Undo. |
 | Search | Searches all mail in every account at once, using each provider's own search. |
+| Labels | Your Gmail labels show in the sidebar under Labels, with their colors. Click one to see that mail, and use the tag button on a conversation to add or remove labels. Outlook accounts list their own folders there instead; the tag button moves the conversation into one. |
 | Aliases | Every address you can send as, grouped by account. Gmail send-as addresses and their signatures are pulled in automatically. Outlook aliases are added by hand, or found automatically on work accounts. |
 | Signatures | Each alias has its own signature, display name and reply-to address, and you choose whether the signature goes on replies. Switching the From box swaps the signature in the message. |
 | Smart From | Replying to mail sent to sales@ goes out from sales@, with that signature, through the account it belongs to. New messages use the default you pick. |
