@@ -311,3 +311,52 @@ func TestSMTPHost(t *testing.T) {
 		t.Fatal("wrong SMTP host")
 	}
 }
+
+func TestDrafts(t *testing.T) {
+	var calls []string
+	c, _ := newClient(t, func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		calls = append(calls, r.Method+" "+r.URL.Path+" "+string(b))
+		switch {
+		case r.URL.Path == "/v1.0/me/messages/orig/createReply":
+			w.Write([]byte(`{"id":"draft1"}`))
+		case r.URL.Path == "/v1.0/me/messages/draft1" && r.Method == "PATCH":
+			if !strings.Contains(string(b), `"address":"alias@outlook.com"`) || !strings.Contains(string(b), `"subject":"Re: hi"`) {
+				t.Errorf("patch body: %s", b)
+			}
+			w.Write([]byte(`{}`))
+		case r.URL.Path == "/v1.0/me/messages/draft1/attachments":
+			if !strings.Contains(string(b), `"contentBytes":"aGk="`) {
+				t.Errorf("attachment: %s", b)
+			}
+			w.WriteHeader(201)
+			w.Write([]byte(`{}`))
+		case r.URL.Path == "/v1.0/me/messages" && r.Method == "POST":
+			w.Write([]byte(`{"id":"draft2"}`))
+		case r.URL.Path == "/v1.0/me/messages/draft2" && r.Method == "DELETE":
+			w.WriteHeader(204)
+		case r.URL.Path == "/v1.0/me/mailFolders/drafts/messages":
+			w.Write([]byte(`{"value":[{"id":"draft2","subject":"x","isDraft":true,"receivedDateTime":"2026-10-20T10:00:00Z"}]}`))
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL)
+			w.WriteHeader(404)
+		}
+	})
+	ctx := context.Background()
+	id, err := c.SaveDraft(ctx, "", &cm.Outgoing{From: cm.Address{Email: "alias@outlook.com"}, To: []cm.Address{{Email: "a@x.com"}},
+		Subject: "Re: hi", HTML: "<p>x</p>", OrigID: "orig", Kind: "reply", Files: []cm.OutFile{{Name: "a.txt", MIMEType: "text/plain", Data: []byte("hi")}}})
+	if err != nil || id != "draft1" {
+		t.Fatalf("reply draft: %s %v", id, err)
+	}
+	id, err = c.SaveDraft(ctx, "", &cm.Outgoing{From: cm.Address{Email: "me@outlook.com"}, Subject: "new"})
+	if err != nil || id != "draft2" {
+		t.Fatalf("new draft: %s %v", id, err)
+	}
+	page, err := c.List(ctx, cm.Drafts, "", "", 30)
+	if err != nil || len(page.Messages) != 1 || page.Messages[0].DraftID != "draft2" {
+		t.Fatalf("list: %+v %v", page, err)
+	}
+	if err := c.DeleteDraft(ctx, "draft2"); err != nil {
+		t.Fatal(err)
+	}
+}

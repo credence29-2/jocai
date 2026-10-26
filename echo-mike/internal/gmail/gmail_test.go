@@ -198,3 +198,57 @@ func TestListUsesCache(t *testing.T) {
 		t.Fatalf("cache not updated by Apply: %+v gets=%d", page.Messages, gets)
 	}
 }
+
+func TestDrafts(t *testing.T) {
+	var calls []string
+	c := fake(t, func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.Method+" "+r.URL.Path)
+		switch {
+		case r.URL.Path == "/upload/gmail/v1/users/me/drafts" && r.Method == "POST":
+			_, params, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+			mr := multipart.NewReader(r.Body, params["boundary"])
+			p, _ := mr.NextPart()
+			meta, _ := io.ReadAll(p)
+			p, _ = mr.NextPart()
+			raw, _ := io.ReadAll(p)
+			if !strings.Contains(string(meta), `"threadId":"t1"`) || !strings.Contains(string(raw), "Subject: Printer") {
+				t.Errorf("draft body: %s / %s", meta, raw)
+			}
+			w.Write([]byte(`{"id":"d1","message":{"id":"m9"}}`))
+		case r.URL.Path == "/upload/gmail/v1/users/me/drafts/d1" && r.Method == "PUT":
+			w.Write([]byte(`{"id":"d1","message":{"id":"m10"}}`))
+		case r.URL.Path == "/gmail/v1/users/me/drafts/d1" && r.Method == "DELETE":
+			w.WriteHeader(204)
+		case r.URL.Path == "/gmail/v1/users/me/drafts/gone":
+			w.WriteHeader(404)
+			w.Write([]byte(`{"error":{"message":"Not Found"}}`))
+		case r.URL.Path == "/gmail/v1/users/me/messages":
+			w.Write([]byte(`{"messages":[{"id":"m10"}]}`))
+		case r.URL.Path == "/gmail/v1/users/me/messages/m10":
+			w.Write([]byte(`{"id":"m10","threadId":"t1","labelIds":["DRAFT"],"internalDate":"1700000000000","payload":{"headers":[{"name":"Subject","value":"Printer"}]}}`))
+		case r.URL.Path == "/gmail/v1/users/me/drafts":
+			w.Write([]byte(`{"drafts":[{"id":"d1","message":{"id":"m10"}}]}`))
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL)
+		}
+	})
+	ctx := context.Background()
+	o := &cm.Outgoing{From: cm.Address{Email: "me@x.com"}, To: []cm.Address{{Email: "a@x.com"}}, Subject: "Printer", ThreadID: "t1"}
+	id, err := c.SaveDraft(ctx, "", o)
+	if err != nil || id != "d1" {
+		t.Fatalf("save: %s %v", id, err)
+	}
+	if id, _ = c.SaveDraft(ctx, "d1", o); id != "d1" {
+		t.Fatalf("update: %s", id)
+	}
+	page, err := c.List(ctx, cm.Drafts, "", "", 30)
+	if err != nil || len(page.Messages) != 1 || page.Messages[0].DraftID != "d1" {
+		t.Fatalf("list: %+v %v", page, err)
+	}
+	if err := c.DeleteDraft(ctx, "d1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeleteDraft(ctx, "gone"); err != nil {
+		t.Fatalf("deleting a missing draft should be fine: %v", err)
+	}
+}

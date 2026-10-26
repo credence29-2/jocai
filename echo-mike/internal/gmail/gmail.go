@@ -126,6 +126,8 @@ func folderQuery(f cm.Folder) (label, q string, spamTrash bool) {
 		return "SPAM", "", true
 	case cm.Trash:
 		return "TRASH", "", true
+	case cm.Drafts:
+		return "DRAFT", "", false
 	case cm.Archive:
 		// Gmail has no Archive label; archived mail is everything that
 		// isn't in the inbox and isn't only a sent copy or a draft.
@@ -199,7 +201,77 @@ func (c *Client) List(ctx context.Context, f cm.Folder, query, cursor string, ma
 		}
 		kept = append(kept, s)
 	}
+	if f == cm.Drafts && query == "" {
+		if err := c.draftIDs(ctx, kept); err != nil {
+			return cm.Page{}, err
+		}
+	}
 	return cm.Page{Messages: kept, Next: list.NextPageToken}, nil
+}
+
+// draftIDs fills in each draft message's draft id, which is what the drafts
+// API saves and deletes by.
+func (c *Client) draftIDs(ctx context.Context, msgs []cm.Summary) error {
+	var r struct {
+		Drafts []struct {
+			ID      string `json:"id"`
+			Message struct {
+				ID string `json:"id"`
+			} `json:"message"`
+		} `json:"drafts"`
+	}
+	if err := c.do(ctx, "GET", "/gmail/v1/users/me/drafts?maxResults=200", nil, &r); err != nil {
+		return err
+	}
+	byMsg := map[string]string{}
+	for _, d := range r.Drafts {
+		byMsg[d.Message.ID] = d.ID
+	}
+	for i := range msgs {
+		msgs[i].DraftID = byMsg[msgs[i].ID]
+	}
+	return nil
+}
+
+// SaveDraft creates or replaces a draft. Gmail gives the replaced draft a new
+// message id, so the list is re-read after saving.
+func (c *Client) SaveDraft(ctx context.Context, draftID string, o *cm.Outgoing) (string, error) {
+	raw, err := cm.Build(o, true, time.Now())
+	if err != nil {
+		return "", err
+	}
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	meta, _ := json.Marshal(map[string]any{"message": map[string]string{"threadId": o.ThreadID}})
+	w, _ := mw.CreatePart(textproto.MIMEHeader{"Content-Type": {"application/json; charset=UTF-8"}})
+	w.Write(meta)
+	w, _ = mw.CreatePart(textproto.MIMEHeader{"Content-Type": {"message/rfc822"}})
+	w.Write(raw)
+	mw.Close()
+	method, path := "POST", "/upload/gmail/v1/users/me/drafts?uploadType=multipart"
+	if draftID != "" {
+		method, path = "PUT", "/upload/gmail/v1/users/me/drafts/"+url.PathEscape(draftID)+"?uploadType=multipart"
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.Base+path, bytes.NewReader(body.Bytes()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "multipart/related; boundary="+mw.Boundary())
+	var out struct {
+		ID string `json:"id"`
+	}
+	if err := c.Src.Do(req, nil, &out); err != nil {
+		return "", err
+	}
+	return out.ID, nil
+}
+
+func (c *Client) DeleteDraft(ctx context.Context, draftID string) error {
+	err := c.do(ctx, "DELETE", "/gmail/v1/users/me/drafts/"+url.PathEscape(draftID), nil, nil)
+	if apiErr, ok := err.(*oauth.APIError); ok && apiErr.Status == 404 {
+		return nil
+	}
+	return err
 }
 
 type part struct {
@@ -308,7 +380,9 @@ func (c *Client) full(ctx context.Context, gm *message) (*cm.Message, error) {
 	m := &cm.Message{
 		Summary:    gm.summary(),
 		Cc:         ParseAddrs(p.header("Cc")),
+		Bcc:        ParseAddrs(p.header("Bcc")),
 		ReplyTo:    ParseAddrs(p.header("Reply-To")),
+		InReplyTo:  p.header("In-Reply-To"),
 		MessageID:  p.header("Message-ID"),
 		References: p.header("References"),
 	}

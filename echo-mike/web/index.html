@@ -330,6 +330,7 @@ const ICON = {
   inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
   starred: '<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>',
   sent: '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',
+  drafts: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h2"/>',
   archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
   spam: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
   trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
@@ -347,7 +348,7 @@ const ICON = {
   all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
 };
 const icon = (n, size = 18, extra = "") => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${ICON[n]}</svg>`;
-const FOLDER_NAMES = { inbox: "Inbox", starred: "Starred", sent: "Sent", archive: "Archive", spam: "Spam", trash: "Trash" };
+const FOLDER_NAMES = { inbox: "Inbox", starred: "Starred", sent: "Sent", drafts: "Drafts", archive: "Archive", spam: "Spam", trash: "Trash" };
 const COLORS = ["#d93025", "#0a64d6", "#188038", "#e37400", "#9334e6", "#00897b", "#c2185b", "#5f6368"];
 
 const S = {
@@ -475,7 +476,8 @@ function renderList() {
   const multi = S.accounts.length > 1;
   list.innerHTML = S.messages.map((m, i) => {
     const a = acctById(m.accountId) || {};
-    const who = S.folder === "sent" && !S.query ? "To: " + ((m.to || []).map(t => t.name || t.email).join(", ") || "(no recipients)") : (m.participants || [m.from.name || m.from.email]).join(", ");
+    const who = m.draftId ? "Draft" + ((m.to || []).length ? " to " + m.to.map(t => t.name || t.email).join(", ") : "")
+      : S.folder === "sent" && !S.query ? "To: " + ((m.to || []).map(t => t.name || t.email).join(", ") || "(no recipients)") : (m.participants || [m.from.name || m.from.email]).join(", ");
     const sel = S.sel && S.sel.key === rowKey(m);
     return `<div class="row ${m.unread ? "unread" : ""} ${sel ? "sel" : ""}" data-i="${i}">
       ${multi ? `<span class="bar" style="background:${esc(a.color)}" title="${esc(a.email)}"></span>` : ""}
@@ -491,8 +493,27 @@ function renderList() {
 $("#list").onclick = e => {
   if (e.target.id === "moreBtn") return loadList(true);
   const row = e.target.closest(".row");
-  if (row) openMessage(S.messages[+row.dataset.i]);
+  if (!row) return;
+  const m = S.messages[+row.dataset.i];
+  if (m.draftId) openDraft(m); else openMessage(m);
 };
+
+// openDraft reopens a saved draft in the compose window.
+async function openDraft(m) {
+  try {
+    const full = await api(dl("/api/message", { a: m.accountId, id: m.id }));
+    const from = S.identities.find(i => i.accountId === m.accountId && SameEmail(i.email, full.from.email)) ||
+      S.identities.find(i => i.accountId === m.accountId && i.default) || S.identities.find(i => i.accountId === m.accountId);
+    compose({
+      identityId: from && from.id, to: full.to, cc: full.cc, bcc: full.bcc, subject: full.subject, html: full.html,
+      inReplyTo: full.inReplyTo, references: full.references, threadId: full.threadId, replyAccountId: m.accountId,
+      kind: full.inReplyTo ? "reply" : "",
+      attachments: (full.attachments || []).filter(a => !a.inline), forwardFrom: { accountId: m.accountId, msgId: m.id },
+      draft: { id: m.draftId, accountId: m.accountId },
+    });
+  } catch (e) { toast(e.message, 6000); }
+}
+const SameEmail = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
 document.addEventListener("click", e => {
   const go = e.target.closest("[data-go]");
   if (go) openSettings(go.dataset.go);
@@ -793,15 +814,17 @@ function compose(d = {}) {
   S.identities.forEach(i => (byAcct[i.accountId] = byAcct[i.accountId] || []).push(i));
   const fromOpts = S.accounts.filter(a => byAcct[a.id]).map(a => `<optgroup label="${esc(a.name || a.email)}">${byAcct[a.id].map(i =>
     `<option value="${esc(i.id)}" ${i.id === ident.id ? "selected" : ""}>${esc(i.name ? `${i.name} <${i.email}>` : i.email)}</option>`).join("")}</optgroup>`).join("");
-  const title = d.kind === "forward" ? "Forward" : isReply ? "Reply" : "New message";
-  const hasCc = (d.cc || []).length > 0;
+  const title = d.draft ? "Draft" : d.kind === "forward" ? "Forward" : isReply ? "Reply" : "New message";
+  const hasCc = (d.cc || []).length > 0, hasBcc = (d.bcc || []).length > 0;
+  // draft is the saved copy on the server, if any.
+  let draft = d.draft || null;
   $("#modal").innerHTML = `<div class="overlay"><div class="dialog compose">
     <div class="dlg-head"><h3>${title}</h3><button class="x" data-close title="Close">${icon("x")}</button></div>
     <div class="cfield"><label>From</label><select id="cFrom">${fromOpts}</select></div>
     <div class="cfield"><label>To</label><input id="cTo" value="${esc(addrList(d.to))}" autocomplete="off" spellcheck="false">
       <span class="extra"><button class="link" id="cShowCc" ${hasCc ? "hidden" : ""}>Cc</button><button class="link" id="cShowBcc">Bcc</button></span></div>
     <div class="cfield" id="cCcRow" ${hasCc ? "" : "hidden"}><label>Cc</label><input id="cCc" value="${esc(addrList(d.cc))}" autocomplete="off" spellcheck="false"></div>
-    <div class="cfield" id="cBccRow" hidden><label>Bcc</label><input id="cBcc" autocomplete="off" spellcheck="false"></div>
+    <div class="cfield" id="cBccRow" ${hasBcc ? "" : "hidden"}><label>Bcc</label><input id="cBcc" value="${esc(addrList(d.bcc))}" autocomplete="off" spellcheck="false"></div>
     <div class="cfield"><label>Subject</label><input id="cSubject" value="${esc(d.subject || "")}"></div>
     ${fmtBar()}
     <div class="editor-wrap"><div class="editor" id="cBody" contenteditable="true"></div></div>
@@ -810,12 +833,13 @@ function compose(d = {}) {
       <button class="btn primary" id="cSend" title="Send (Ctrl+Enter)">${icon("sent", 16)}Send</button>
       <label class="btn ghost" title="Attach files">${icon("clip", 16)}Attach<input type="file" id="cAttach" multiple hidden></label>
       <span class="err" id="cErr"></span><span class="grow"></span>
+      <span class="dim" id="cSaved"></span>
       <span class="dim" id="cVia"></span>
-      <button class="btn ghost" data-close>Discard</button>
+      <button class="btn ghost" id="cDiscard">${d.draft ? "Delete draft" : "Discard"}</button>
     </div></div></div>`;
   const root = $("#modal");
   const body = $("#cBody");
-  body.innerHTML = `<div><br></div><div><br></div><div class="cm-signature">${sigHTML(ident, isReply)}</div>${d.quoteHtml ? "<br>" + d.quoteHtml : ""}`;
+  body.innerHTML = d.html !== undefined ? d.html : `<div><br></div><div><br></div><div class="cm-signature">${sigHTML(ident, isReply)}</div>${d.quoteHtml ? "<br>" + d.quoteHtml : ""}`;
   wireFmt(root, body);
   // A click in the blank space under a short message would land after the
   // signature. Put the caret on the first line instead, where you write.
@@ -858,13 +882,73 @@ function compose(d = {}) {
   root.querySelector(".dialog").addEventListener("dragover", e => e.preventDefault());
   root.querySelector(".dialog").addEventListener("drop", e => { if (e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } });
 
-  let dirty = false;
-  root.addEventListener("input", () => (dirty = true));
+  // payload is what both Send and Save draft post.
+  const payload = async () => {
+    const clone = body.cloneNode(true);
+    clone.querySelectorAll(".cm-signature").forEach(s => { if (!s.textContent.trim() && !s.querySelector("img")) s.remove(); });
+    const out = [];
+    for (const f of files) out.push({ name: f.name, mimeType: f.type || "application/octet-stream", data: await b64(f) });
+    return {
+      identityId: ident.id, to: $("#cTo").value, cc: $("#cCc").value, bcc: $("#cBcc").value,
+      subject: $("#cSubject").value, html: clone.innerHTML, files: out,
+      forward: fwd.map(f => ({ accountId: f.accountId, msgId: f.msgId, id: f.id, name: f.name, mimeType: f.mimeType, size: f.size })),
+      inReplyTo: d.inReplyTo || "", references: d.references || "", threadId: d.threadId || "", replyAccountId: d.replyAccountId || "",
+      origId: (d.forwardFrom && !d.draft) ? d.forwardFrom.msgId : "", kind: d.kind || "",
+      draftId: draft ? draft.id : "", draftAccountId: draft ? draft.accountId : "",
+    };
+  };
+
+  // Drafts save themselves a few seconds after you stop typing, and the
+  // Save button saves right away.
+  let dirty = false, saving = null, timer = null, closed = false;
+  const saveDraft = async () => {
+    if (saving) return saving;
+    saving = (async () => {
+      try {
+        const r = await api("/api/draft/save", await payload());
+        draft = { id: r.draftId, accountId: r.accountId };
+        dirty = false;
+        if (!closed) $("#cSaved").textContent = "Saved " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        if (!closed) $("#cDiscard").textContent = "Delete draft";
+        if (S.folder === "drafts") loadList.quiet();
+      } catch (e) {
+        if (!closed) $("#cSaved").textContent = "Couldn't save draft: " + e.message;
+      } finally { saving = null; }
+    })();
+    return saving;
+  };
+  const touched = () => {
+    dirty = true;
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (dirty && !closed) saveDraft(); }, 4000);
+  };
+  root.addEventListener("input", touched);
+  $("#cFrom").addEventListener("change", touched);
+  $("#cFiles").addEventListener("click", touched);
+  const finish = () => { closed = true; clearTimeout(timer); root.innerHTML = ""; };
   const close = async () => {
-    if (dirty && !(await ask("Discard this message?", { ok: "Discard", danger: true, cancel: "Keep writing" }))) return;
-    root.innerHTML = "";
+    if (!dirty) return finish();
+    const box = document.createElement("div");
+    box.innerHTML = `<div class="overlay"><div class="dialog small">
+      <div class="dlg-body" style="padding:20px 18px 6px;line-height:1.5">Keep this message as a draft?</div>
+      <div class="dlg-foot" style="border-top:0;flex-wrap:wrap"><button class="btn ghost danger" id="ccDiscard">Discard</button><span class="grow"></span>
+        <button class="btn ghost" data-x>Keep writing</button><button class="btn primary" id="ccSave">Save draft</button></div></div></div>`;
+    root.append(box);
+    box.querySelector("[data-x]").onclick = () => box.remove();
+    box.querySelector("#ccSave").onclick = async () => { box.remove(); await saveDraft(); finish(); toast("Draft saved"); };
+    box.querySelector("#ccDiscard").onclick = async () => {
+      box.remove(); finish();
+      if (draft) { api("/api/draft/delete", { accountId: draft.accountId, draftId: draft.id }).then(() => { if (S.folder === "drafts") loadList(); }).catch(() => {}); }
+    };
+    box.querySelector("#ccSave").focus();
   };
   root.querySelectorAll("[data-close]").forEach(b => (b.onclick = close));
+  // The footer button throws the message away: the draft on the server too.
+  $("#cDiscard").onclick = async () => {
+    if ((dirty || draft) && !(await ask(draft ? "Delete this draft?" : "Discard this message?", { ok: draft ? "Delete" : "Discard", danger: true, cancel: "Keep writing" }))) return;
+    finish();
+    if (draft) api("/api/draft/delete", { accountId: draft.accountId, draftId: draft.id }).then(() => { if (S.folder === "drafts") loadList(); }).catch(() => {});
+  };
 
   const send = async () => {
     const btn = $("#cSend");
@@ -874,20 +958,13 @@ function compose(d = {}) {
     const total = files.reduce((n, f) => n + f.size, 0) + fwd.reduce((n, f) => n + f.size, 0);
     if (total > 25 * 1048576) { $("#cErr").textContent = "Attachments are over 25 MB. Most mail servers won't accept that."; return; }
     btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Sending';
+    clearTimeout(timer);
+    if (saving) await saving;
     try {
-      const clone = body.cloneNode(true);
-      clone.querySelectorAll(".cm-signature").forEach(s => { if (!s.textContent.trim() && !s.querySelector("img")) s.remove(); });
-      const out = [];
-      for (const f of files) out.push({ name: f.name, mimeType: f.type || "application/octet-stream", data: await b64(f) });
-      await api("/api/send", {
-        identityId: ident.id, to: $("#cTo").value, cc: $("#cCc").value, bcc: $("#cBcc").value,
-        subject: $("#cSubject").value, html: clone.innerHTML, files: out,
-        forward: fwd.map(f => ({ accountId: f.accountId, msgId: f.msgId, id: f.id, name: f.name, mimeType: f.mimeType, size: f.size })),
-        inReplyTo: d.inReplyTo || "", references: d.references || "", threadId: d.threadId || "", replyAccountId: d.replyAccountId || "",
-      });
-      root.innerHTML = "";
+      await api("/api/send", await payload());
+      finish();
       toast("Sent from " + ident.email);
-      if (S.folder === "sent") loadList();
+      if (S.folder === "sent" || S.folder === "drafts") loadList();
     } catch (e) {
       $("#cErr").textContent = e.message;
       btn.disabled = false; btn.innerHTML = icon("sent", 16) + "Send";

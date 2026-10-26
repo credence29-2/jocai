@@ -143,6 +143,8 @@ func (a *App) routes() http.Handler {
 	api("GET /api/attachment", a.handleAttachment)
 	api("POST /api/draft", a.handleDraft)
 	api("POST /api/send", a.handleSend)
+	api("POST /api/draft/save", a.handleDraftSave)
+	api("POST /api/draft/delete", a.handleDraftDelete)
 	api("POST /api/identity", a.handleIdentity)
 	api("POST /api/identity/delete", a.handleIdentityDelete)
 	api("POST /api/aliases/import", a.handleImport)
@@ -513,13 +515,19 @@ type sendIn struct {
 	// ReplyAccountID is the account the original arrived in. A Gmail thread
 	// ID only means something in that account.
 	ReplyAccountID string `json:"replyAccountId"`
+	// OrigID is the original message's id in that account, and Kind is
+	// reply, replyAll or forward.
+	OrigID string `json:"origId"`
+	Kind   string `json:"kind"`
+	// DraftID and DraftAccountID name the saved draft this message came
+	// from, if any. Sending deletes it; saving replaces it.
+	DraftID        string `json:"draftId"`
+	DraftAccountID string `json:"draftAccountId"`
 }
 
-func (a *App) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
-	var in sendIn
-	if err := decode(r, &in); err != nil {
-		return nil, err
-	}
+// outgoing turns a compose request into a message, resolving the From
+// identity and copying forwarded attachments.
+func (a *App) outgoing(ctx context.Context, in *sendIn) (*mail.Outgoing, *mail.Identity, error) {
 	var id *mail.Identity
 	for _, x := range a.st.Get().Identities {
 		if x.ID == in.IdentityID {
@@ -528,15 +536,16 @@ func (a *App) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
 		}
 	}
 	if id == nil {
-		return nil, fmt.Errorf("pick a From address")
+		return nil, nil, fmt.Errorf("pick a From address")
 	}
 	o := &mail.Outgoing{
 		From: mail.Address{Name: displayName(id), Email: id.Email}, ReplyTo: id.ReplyTo,
 		Subject: in.Subject, HTML: in.HTML, Files: in.Files,
-		InReplyTo: in.InReplyTo, References: in.References,
+		InReplyTo: in.InReplyTo, References: in.References, Kind: in.Kind,
 	}
 	if in.ReplyAccountID == id.AccountID {
 		o.ThreadID = in.ThreadID
+		o.OrigID = in.OrigID
 	}
 	var err error
 	for _, f := range []struct {
@@ -545,19 +554,89 @@ func (a *App) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
 		lbl string
 	}{{&o.To, in.To, "To"}, {&o.Cc, in.Cc, "Cc"}, {&o.Bcc, in.Bcc, "Bcc"}} {
 		if *f.dst, err = mail.ParseAddresses(f.src); err != nil {
-			return nil, fmt.Errorf("%s: %w", f.lbl, err)
+			return nil, nil, fmt.Errorf("%s: %w", f.lbl, err)
 		}
 	}
 	for _, fw := range in.Forward {
 		src, _, err := a.provider(fw.AccountID)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		data, err := src.Attachment(r.Context(), fw.MsgID, fw.ID)
+		data, err := src.Attachment(ctx, fw.MsgID, fw.ID)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't copy %s from the original: %w", fw.Name, err)
+			return nil, nil, fmt.Errorf("couldn't copy %s from the original: %w", fw.Name, err)
 		}
 		o.Files = append(o.Files, mail.OutFile{Name: fw.Name, MIMEType: fw.MIMEType, Data: data})
+	}
+	return o, id, nil
+}
+
+// dropDraft deletes a draft after it was sent or replaced. Failing to is
+// not worth failing the send over.
+func (a *App) dropDraft(ctx context.Context, accountID, draftID string) {
+	if draftID == "" {
+		return
+	}
+	if p, _, err := a.provider(accountID); err == nil {
+		p.DeleteDraft(ctx, draftID)
+	}
+}
+
+// handleDraftSave stores the compose window as a draft and returns its id.
+func (a *App) handleDraftSave(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in sendIn
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	o, id, err := a.outgoing(r.Context(), &in)
+	if err != nil {
+		return nil, err
+	}
+	p, _, err := a.provider(id.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	draftID := in.DraftID
+	if draftID != "" && in.DraftAccountID != id.AccountID {
+		// The From address moved to another account: the draft moves too.
+		a.dropDraft(r.Context(), in.DraftAccountID, draftID)
+		draftID = ""
+	}
+	newID, err := p.SaveDraft(r.Context(), draftID, o)
+	if err != nil {
+		a.noteErr(id.AccountID, err)
+		return nil, err
+	}
+	return map[string]string{"draftId": newID, "accountId": id.AccountID}, nil
+}
+
+func (a *App) handleDraftDelete(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in struct {
+		AccountID string `json:"accountId"`
+		DraftID   string `json:"draftId"`
+	}
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	p, _, err := a.provider(in.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.DeleteDraft(r.Context(), in.DraftID); err != nil {
+		a.noteErr(in.AccountID, err)
+		return nil, err
+	}
+	return map[string]bool{"ok": true}, nil
+}
+
+func (a *App) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
+	var in sendIn
+	if err := decode(r, &in); err != nil {
+		return nil, err
+	}
+	o, id, err := a.outgoing(r.Context(), &in)
+	if err != nil {
+		return nil, err
 	}
 	p, _, err := a.provider(id.AccountID)
 	if err != nil {
@@ -569,6 +648,7 @@ func (a *App) handleSend(w http.ResponseWriter, r *http.Request) (any, error) {
 		a.noteErr(id.AccountID, err)
 		return nil, err
 	}
+	a.dropDraft(ctx, in.DraftAccountID, in.DraftID)
 	return map[string]bool{"ok": true}, nil
 }
 

@@ -268,3 +268,55 @@ func TestThreadsGroupAndApply(t *testing.T) {
 		t.Fatal("thread not in archive")
 	}
 }
+
+func TestDraftsSaveListResendDelete(t *testing.T) {
+	hs := newHarness(t)
+	var st stateOut
+	hs.call("GET", "/api/state", nil, &st)
+	var support mail.Identity
+	for _, i := range st.Identities {
+		if i.Email == "support@credence.example" {
+			support = i
+		}
+	}
+	var saved map[string]string
+	if code := hs.call("POST", "/api/draft/save", sendIn{IdentityID: support.ID, To: "maria@tacoshack.example", Subject: "Printer", HTML: "<p>half written</p>",
+		Files: []mail.OutFile{{Name: "a.txt", MIMEType: "text/plain", Data: []byte("x")}}}, &saved); code != 200 || saved["draftId"] == "" {
+		t.Fatalf("save: %d %v", code, saved)
+	}
+	// Saving again replaces, not duplicates.
+	var again map[string]string
+	hs.call("POST", "/api/draft/save", sendIn{IdentityID: support.ID, To: "maria@tacoshack.example", Subject: "Printer, updated", HTML: "<p>more</p>",
+		DraftID: saved["draftId"], DraftAccountID: saved["accountId"]}, &again)
+	var list listOut
+	hs.call("POST", "/api/list", listIn{Folder: mail.Drafts, AccountID: "demo-g"}, &list)
+	if len(list.Messages) != 1 || list.Messages[0].DraftID != again["draftId"] || list.Messages[0].Subject != "Printer, updated" {
+		t.Fatalf("drafts = %+v", list.Messages)
+	}
+	// Reopening gives the body, recipients and the saved file.
+	var m mail.Message
+	hs.call("GET", "/api/message?a=demo-g&id="+list.Messages[0].ID, nil, &m)
+	if m.HTML != "<p>more</p>" || len(m.To) != 1 || m.From.Email != "support@credence.example" {
+		t.Fatalf("reopened = %+v", m)
+	}
+	// Sending from the draft removes it.
+	var res map[string]any
+	if code := hs.call("POST", "/api/send", sendIn{IdentityID: support.ID, To: "maria@tacoshack.example", Subject: "Printer, updated", HTML: "<p>more</p>",
+		DraftID: again["draftId"], DraftAccountID: again["accountId"]}, &res); code != 200 {
+		t.Fatalf("send: %v", res)
+	}
+	hs.call("POST", "/api/list", listIn{Folder: mail.Drafts, AccountID: "demo-g"}, &list)
+	if len(list.Messages) != 0 {
+		t.Fatalf("draft left after send: %+v", list.Messages)
+	}
+	// Delete removes a draft outright, and deleting twice is fine.
+	hs.call("POST", "/api/draft/save", sendIn{IdentityID: support.ID, To: "a@x.com", Subject: "bye"}, &saved)
+	hs.call("POST", "/api/draft/delete", map[string]string{"accountId": "demo-g", "draftId": saved["draftId"]}, &res)
+	if code := hs.call("POST", "/api/draft/delete", map[string]string{"accountId": "demo-g", "draftId": saved["draftId"]}, &res); code != 200 {
+		t.Fatalf("second delete: %v", res)
+	}
+	hs.call("POST", "/api/list", listIn{Folder: mail.Drafts, AccountID: "demo-g"}, &list)
+	if len(list.Messages) != 0 {
+		t.Fatal("draft not deleted")
+	}
+}

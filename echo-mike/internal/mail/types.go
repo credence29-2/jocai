@@ -18,12 +18,13 @@ const (
 	Archive Folder = "archive"
 	Spam    Folder = "spam"
 	Trash   Folder = "trash"
+	Drafts  Folder = "drafts"
 	// All is used for searches, which look everywhere except spam and trash.
 	All Folder = "all"
 )
 
 // Folders lists the folders shown in the sidebar, in order.
-var Folders = []Folder{Inbox, Starred, Sent, Archive, Spam, Trash}
+var Folders = []Folder{Inbox, Starred, Sent, Drafts, Archive, Spam, Trash}
 
 // Address is one mailbox, like "Jacob <jacob@example.com>".
 type Address struct {
@@ -51,6 +52,8 @@ type Summary struct {
 	// thread: how many messages it has and who wrote them.
 	Count        int      `json:"count,omitempty"`
 	Participants []string `json:"participants,omitempty"`
+	// DraftID is set on a draft: the id to save or delete it by.
+	DraftID string `json:"draftId,omitempty"`
 }
 
 // Attachment describes a file on a received message.
@@ -67,12 +70,14 @@ type Attachment struct {
 type Message struct {
 	Summary
 	Cc      []Address `json:"cc,omitempty"`
+	Bcc     []Address `json:"bcc,omitempty"`
 	ReplyTo []Address `json:"replyTo,omitempty"`
 	// DeliveredTo holds any extra addresses the provider says this copy was
 	// delivered to (Gmail's Delivered-To, X-Original-To). It helps pick the
 	// alias a message was sent to when it came in through Bcc or a forward.
 	DeliveredTo []Address    `json:"deliveredTo,omitempty"`
 	MessageID   string       `json:"messageId,omitempty"`
+	InReplyTo   string       `json:"inReplyTo,omitempty"`
 	References  string       `json:"references,omitempty"`
 	HTML        string       `json:"html,omitempty"`
 	Text        string       `json:"text,omitempty"`
@@ -101,6 +106,11 @@ type Outgoing struct {
 	InReplyTo  string
 	References string
 	ThreadID   string
+	// OrigID is the provider's id of the message being replied to or
+	// forwarded, and Kind is reply, replyAll or forward. Outlook drafts use
+	// them to stay in the conversation.
+	OrigID string
+	Kind   string
 }
 
 // Alias is a send-as address a provider reports for an account.
@@ -145,6 +155,10 @@ type Provider interface {
 	// Attachment returns the bytes of an attachment on a message.
 	Attachment(ctx context.Context, msgID, attID string) ([]byte, error)
 	Send(ctx context.Context, m *Outgoing) error
+	// SaveDraft stores m as a draft, replacing draftID when it's set, and
+	// returns the draft's id.
+	SaveDraft(ctx context.Context, draftID string, m *Outgoing) (string, error)
+	DeleteDraft(ctx context.Context, draftID string) error
 	// Aliases returns the send-as addresses the provider knows about. It
 	// always includes the primary address.
 	Aliases(ctx context.Context) ([]Alias, error)

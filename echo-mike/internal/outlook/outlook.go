@@ -87,10 +87,10 @@ func (c *Client) Me(ctx context.Context) (email, name string, err error) {
 }
 
 var wellKnown = map[cm.Folder]string{
-	cm.Inbox: "inbox", cm.Sent: "sentitems", cm.Archive: "archive", cm.Spam: "junkemail", cm.Trash: "deleteditems",
+	cm.Inbox: "inbox", cm.Sent: "sentitems", cm.Drafts: "drafts", cm.Archive: "archive", cm.Spam: "junkemail", cm.Trash: "deleteditems",
 }
 
-const listFields = "id,conversationId,from,toRecipients,subject,bodyPreview,receivedDateTime,sentDateTime,isRead,flag,hasAttachments"
+const listFields = "id,conversationId,from,toRecipients,subject,bodyPreview,receivedDateTime,sentDateTime,isRead,flag,hasAttachments,isDraft"
 
 type gAddr struct {
 	EmailAddress struct {
@@ -117,7 +117,9 @@ type gMessage struct {
 	From             *gAddr    `json:"from"`
 	To               []gAddr   `json:"toRecipients"`
 	Cc               []gAddr   `json:"ccRecipients"`
+	Bcc              []gAddr   `json:"bccRecipients"`
 	ReplyTo          []gAddr   `json:"replyTo"`
+	IsDraft          bool      `json:"isDraft"`
 	Subject          string    `json:"subject"`
 	BodyPreview      string    `json:"bodyPreview"`
 	ReceivedDateTime time.Time `json:"receivedDateTime"`
@@ -150,6 +152,9 @@ func (m *gMessage) summary() cm.Summary {
 	}
 	if m.From != nil {
 		s.From = m.From.addr()
+	}
+	if m.IsDraft {
+		s.DraftID = m.ID
 	}
 	return s
 }
@@ -203,7 +208,7 @@ func (c *Client) msgURL(id string) string {
 	return c.Base + "/me/messages/" + url.PathEscape(id)
 }
 
-const fullFields = listFields + ",ccRecipients,replyTo,body,internetMessageId,internetMessageHeaders,parentFolderId"
+const fullFields = listFields + ",ccRecipients,bccRecipients,replyTo,body,internetMessageId,internetMessageHeaders,parentFolderId,isDraft"
 
 func (c *Client) Get(ctx context.Context, id string) (*cm.Message, error) {
 	var g gMessage
@@ -256,7 +261,7 @@ func (c *Client) hidden(ctx context.Context, folderID string) bool {
 func (c *Client) full(ctx context.Context, g *gMessage) (*cm.Message, error) {
 	id := g.ID
 	m := &cm.Message{
-		Summary: g.summary(), Cc: addrs(g.Cc), ReplyTo: addrs(g.ReplyTo), MessageID: g.InternetMessageID,
+		Summary: g.summary(), Cc: addrs(g.Cc), Bcc: addrs(g.Bcc), ReplyTo: addrs(g.ReplyTo), MessageID: g.InternetMessageID,
 	}
 	if g.ParentFolderID != "" {
 		m.Hidden = c.hidden(ctx, g.ParentFolderID)
@@ -270,6 +275,8 @@ func (c *Client) full(ctx context.Context, g *gMessage) (*cm.Message, error) {
 		switch strings.ToLower(h.Name) {
 		case "references":
 			m.References = h.Value
+		case "in-reply-to":
+			m.InReplyTo = h.Value
 		case "delivered-to", "x-original-to":
 			m.DeliveredTo = append(m.DeliveredTo, cm.Address{Email: strings.Trim(h.Value, "<> ")})
 		}
@@ -355,6 +362,73 @@ func (c *Client) Send(ctx context.Context, o *cm.Outgoing) error {
 	}
 	req.Header.Set("Content-Type", "text/plain")
 	return c.Src.Do(req, nil, nil)
+}
+
+func gaddrs(l []cm.Address) []map[string]any {
+	out := make([]map[string]any, 0, len(l))
+	for _, a := range l {
+		out = append(out, map[string]any{"emailAddress": map[string]string{"name": a.Name, "address": a.Email}})
+	}
+	return out
+}
+
+// SaveDraft creates or updates a draft in the Drafts folder. A reply or
+// forward is started from the original so Outlook keeps it in the
+// conversation. Attachments are added for new drafts only, and only ones
+// under 3 MB; larger files stay in the compose window.
+func (c *Client) SaveDraft(ctx context.Context, draftID string, o *cm.Outgoing) (string, error) {
+	fields := map[string]any{
+		"subject":       o.Subject,
+		"body":          map[string]string{"contentType": "html", "content": o.HTML},
+		"toRecipients":  gaddrs(o.To),
+		"ccRecipients":  gaddrs(o.Cc),
+		"bccRecipients": gaddrs(o.Bcc),
+		"from":          map[string]any{"emailAddress": map[string]string{"name": o.From.Name, "address": o.From.Email}},
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if draftID == "" {
+		switch {
+		case o.OrigID != "" && (o.Kind == "reply" || o.Kind == "replyAll" || o.Kind == "forward"):
+			verb := map[string]string{"reply": "createReply", "replyAll": "createReplyAll", "forward": "createForward"}[o.Kind]
+			if err := c.do(ctx, "POST", c.msgURL(o.OrigID)+"/"+verb, map[string]any{}, &created); err != nil {
+				return "", err
+			}
+			if err := c.do(ctx, "PATCH", c.msgURL(created.ID), fields, nil); err != nil {
+				return "", err
+			}
+		default:
+			if err := c.do(ctx, "POST", c.Base+"/me/messages", fields, &created); err != nil {
+				return "", err
+			}
+		}
+		draftID = created.ID
+		for _, f := range o.Files {
+			if len(f.Data) > 3<<20 {
+				continue
+			}
+			att := map[string]any{"@odata.type": "#microsoft.graph.fileAttachment", "name": f.Name, "contentType": f.MIMEType,
+				"contentBytes": base64.StdEncoding.EncodeToString(f.Data)}
+			if err := c.do(ctx, "POST", c.msgURL(draftID)+"/attachments", att, nil); err != nil {
+				return "", err
+			}
+		}
+		return draftID, nil
+	}
+	if err := c.do(ctx, "PATCH", c.msgURL(draftID), fields, nil); err != nil {
+		return "", err
+	}
+	return draftID, nil
+}
+
+func (c *Client) DeleteDraft(ctx context.Context, draftID string) error {
+	err := c.do(ctx, "DELETE", c.msgURL(draftID), nil, nil)
+	var apiErr *oauth.APIError
+	if errors.As(err, &apiErr) && apiErr.Status == 404 {
+		return nil
+	}
+	return err
 }
 
 // Aliases returns the main address plus, on work accounts, the other

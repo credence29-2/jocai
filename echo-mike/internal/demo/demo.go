@@ -255,6 +255,54 @@ func (b *Box) Send(_ context.Context, o *mail.Outgoing) error {
 	return nil
 }
 
+// SaveDraft keeps the draft as a message in the Drafts folder.
+func (b *Box) SaveDraft(_ context.Context, draftID string, o *mail.Outgoing) (string, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var m *msg
+	if draftID != "" {
+		for _, x := range b.msgs {
+			if x.m.ID == draftID && x.folder == mail.Drafts {
+				m = x
+			}
+		}
+	}
+	if m == nil {
+		b.next++
+		m = &msg{folder: mail.Drafts}
+		m.m.ID = strconv.Itoa(b.next)
+		b.msgs = append(b.msgs, m)
+	}
+	id := m.m.ID
+	m.m = mail.Message{
+		Summary: mail.Summary{ID: id, ThreadID: o.ThreadID, DraftID: id, From: o.From, To: o.To, Subject: o.Subject,
+			Snippet: snippet(o.HTML), Date: time.Now(), HasAttachments: len(o.Files) > 0},
+		Cc: o.Cc, Bcc: o.Bcc, HTML: o.HTML, InReplyTo: o.InReplyTo, References: o.References,
+	}
+	if m.m.ThreadID == "" {
+		m.m.ThreadID = id
+	}
+	m.files = map[string][]byte{}
+	for i, f := range o.Files {
+		aid := "f" + strconv.Itoa(i+1)
+		m.files[aid] = f.Data
+		m.m.Attachments = append(m.m.Attachments, mail.Attachment{ID: aid, Name: f.Name, MIMEType: f.MIMEType, Size: int64(len(f.Data))})
+	}
+	return id, nil
+}
+
+func (b *Box) DeleteDraft(_ context.Context, draftID string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for i, x := range b.msgs {
+		if x.m.ID == draftID && x.folder == mail.Drafts {
+			b.msgs = append(b.msgs[:i], b.msgs[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
 func (b *Box) Aliases(context.Context) ([]mail.Alias, error) {
 	return append([]mail.Alias(nil), b.aliases...), nil
 }
