@@ -47,12 +47,15 @@ func (b *Box) Calendars(context.Context) ([]mail.Calendar, error) {
 	if !strings.Contains(b.Email, "gmail") {
 		name = "Calendar"
 	}
-	return []mail.Calendar{{ID: "primary", Name: name, Primary: true}}, nil
+	return []mail.Calendar{{ID: "primary", Name: name, Primary: true, Shown: true}}, nil
 }
 
-func (b *Box) Events(_ context.Context, from, to time.Time) ([]mail.Event, error) {
+func (b *Box) Events(_ context.Context, from, to time.Time, only []string) ([]mail.Event, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if only != nil && len(only) == 0 {
+		return nil, nil
+	}
 	var out []mail.Event
 	for _, e := range b.events {
 		end := e.End

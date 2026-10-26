@@ -30,7 +30,7 @@ func (c *Client) Calendars(ctx context.Context) ([]cm.Calendar, error) {
 	}
 	var cals []cm.Calendar
 	for _, g := range out.Value {
-		cals = append(cals, cm.Calendar{ID: g.ID, Name: g.Name, Color: g.HexColor, Primary: g.IsDefault, ReadOnly: !g.CanEdit})
+		cals = append(cals, cm.Calendar{ID: g.ID, Name: g.Name, Color: g.HexColor, Primary: g.IsDefault, ReadOnly: !g.CanEdit, Shown: true})
 	}
 	return cals, nil
 }
@@ -126,10 +126,21 @@ func localZone() string {
 	return name
 }
 
-func (c *Client) Events(ctx context.Context, from, to time.Time) ([]cm.Event, error) {
+func (c *Client) Events(ctx context.Context, from, to time.Time, only []string) ([]cm.Event, error) {
 	cals, err := c.Calendars(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if only != nil {
+		var keep []cm.Calendar
+		for _, cal := range cals {
+			for _, id := range only {
+				if id == cal.ID {
+					keep = append(keep, cal)
+				}
+			}
+		}
+		cals = keep
 	}
 	var mu sync.Mutex
 	var wg sync.WaitGroup

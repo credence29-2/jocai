@@ -13,6 +13,10 @@ type Calendar struct {
 	Color    string `json:"color,omitempty"`
 	Primary  bool   `json:"primary,omitempty"`
 	ReadOnly bool   `json:"readOnly,omitempty"`
+	// Shown is whether the provider's own calendar app shows it (Google's
+	// "selected" tick). Shared calendars you've hidden there stay hidden
+	// here until you tick them.
+	Shown bool `json:"shown"`
 }
 
 // Attendee is someone invited to an event, with their answer.
@@ -65,9 +69,9 @@ type EventInput struct {
 // and Outlook clients implement it.
 type CalendarProvider interface {
 	Calendars(ctx context.Context) ([]Calendar, error)
-	// Events lists every occurrence that overlaps [from, to) across the
-	// account's own calendars.
-	Events(ctx context.Context, from, to time.Time) ([]Event, error)
+	// Events lists every occurrence that overlaps [from, to) in the given
+	// calendars, or in every shown calendar when calendars is nil.
+	Events(ctx context.Context, from, to time.Time, calendars []string) ([]Event, error)
 	CreateEvent(ctx context.Context, in EventInput) (*Event, error)
 	UpdateEvent(ctx context.Context, calID, id string, in EventInput) (*Event, error)
 	DeleteEvent(ctx context.Context, calID, id string, notify bool) error

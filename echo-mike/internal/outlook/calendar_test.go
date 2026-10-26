@@ -51,7 +51,7 @@ func TestCalendar(t *testing.T) {
 	if err != nil || len(cals) != 2 || !cals[0].Primary || cals[1].ReadOnly != true {
 		t.Fatalf("calendars %+v %v", cals, err)
 	}
-	evs, err := c.Events(ctx, time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC))
+	evs, err := c.Events(ctx, time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), nil)
 	if err != nil || len(evs) != 3 || !strings.Contains(lastPrefer, "outlook.timezone") {
 		t.Fatalf("events: %d %v prefer=%s", len(evs), err, lastPrefer)
 	}

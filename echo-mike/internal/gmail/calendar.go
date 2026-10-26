@@ -65,7 +65,7 @@ func (c *Client) Calendars(ctx context.Context) ([]cm.Calendar, error) {
 		if name == "" {
 			name = g.Summary
 		}
-		cals = append(cals, cm.Calendar{ID: g.ID, Name: name, Color: g.BackgroundColor, Primary: g.Primary, ReadOnly: g.AccessRole != "owner" && g.AccessRole != "writer"})
+		cals = append(cals, cm.Calendar{ID: g.ID, Name: name, Color: g.BackgroundColor, Primary: g.Primary, ReadOnly: g.AccessRole != "owner" && g.AccessRole != "writer", Shown: g.Selected || g.Primary})
 	}
 	return cals, nil
 }
@@ -87,6 +87,7 @@ type gAttendee struct {
 type gEvent struct {
 	ID          string      `json:"id"`
 	Status      string      `json:"status"`
+	EventType   string      `json:"eventType"`
 	Summary     string      `json:"summary"`
 	Location    string      `json:"location"`
 	Description string      `json:"description"`
@@ -129,11 +130,12 @@ func gcalTime(t gTime) (time.Time, bool) {
 	return v.Local(), false
 }
 
-func (c *Client) Events(ctx context.Context, from, to time.Time) ([]cm.Event, error) {
+func (c *Client) Events(ctx context.Context, from, to time.Time, only []string) ([]cm.Event, error) {
 	cals, err := c.Calendars(ctx)
 	if err != nil {
 		return nil, err
 	}
+	cals = pickCalendars(cals, only)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	var all []cm.Event
@@ -156,7 +158,9 @@ func (c *Client) Events(ctx context.Context, from, to time.Time) ([]cm.Event, er
 				return
 			}
 			for _, g := range out.Items {
-				if g.Status == "cancelled" {
+				// Working-location and focus-time entries are Google's own
+				// noise, not appointments.
+				if g.Status == "cancelled" || g.EventType == "workingLocation" || g.EventType == "focusTime" {
 					continue
 				}
 				e := c.event(g, cal.ID)
@@ -258,4 +262,23 @@ func (c *Client) RespondEvent(ctx context.Context, calID, id, status string) err
 		att = append(att, map[string]any{"email": c.email, "responseStatus": st})
 	}
 	return c.calDo(ctx, "PATCH", path+"?sendUpdates=all", map[string]any{"attendees": att}, nil)
+}
+
+// pickCalendars keeps the calendars asked for, or the shown ones.
+func pickCalendars(cals []cm.Calendar, only []string) []cm.Calendar {
+	var out []cm.Calendar
+	for _, c := range cals {
+		if only == nil {
+			if c.Shown {
+				out = append(out, c)
+			}
+			continue
+		}
+		for _, id := range only {
+			if id == c.ID {
+				out = append(out, c)
+			}
+		}
+	}
+	return out
 }

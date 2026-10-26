@@ -24,8 +24,8 @@ func TestCalendar(t *testing.T) {
 		case r.URL.Path == "/gmail/v1/users/me/profile":
 			w.Write([]byte(`{"emailAddress":"jacob@gmail.com"}`))
 		case r.URL.Path == "/calendar/v3/users/me/calendarList":
-			w.Write([]byte(`{"items":[{"id":"jacob@gmail.com","summary":"jacob@gmail.com","primary":true,"accessRole":"owner","backgroundColor":"#9fe1e7"},
-				{"id":"holidays","summary":"Holidays","accessRole":"reader"},{"id":"hidden","summary":"x","hidden":true,"accessRole":"owner"}]}`))
+			w.Write([]byte(`{"items":[{"id":"jacob@gmail.com","summary":"jacob@gmail.com","primary":true,"accessRole":"owner","backgroundColor":"#9fe1e7","selected":true},
+				{"id":"holidays","summary":"Holidays","accessRole":"reader","selected":true},{"id":"hidden","summary":"x","hidden":true,"accessRole":"owner"}]}`))
 		case r.URL.Path == "/calendar/v3/calendars/jacob@gmail.com/events" && r.Method == "GET":
 			if r.URL.Query().Get("singleEvents") != "true" || r.URL.Query().Get("timeMin") == "" {
 				t.Errorf("query %s", r.URL.RawQuery)
@@ -60,7 +60,7 @@ func TestCalendar(t *testing.T) {
 	if err != nil || len(cals) != 2 || !cals[0].Primary || cals[0].ReadOnly || !cals[1].ReadOnly || cals[0].Color != "#9fe1e7" {
 		t.Fatalf("calendars: %+v %v", cals, err)
 	}
-	evs, err := c.Events(ctx, time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC))
+	evs, err := c.Events(ctx, time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), nil)
 	if err != nil || len(evs) != 4 {
 		t.Fatalf("events: %d %v", len(evs), err)
 	}

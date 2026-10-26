@@ -70,9 +70,29 @@ func (a *App) handleEvents(w http.ResponseWriter, r *http.Request) (any, error) 
 	if to.Sub(from) > 100*24*time.Hour {
 		return nil, fmt.Errorf("that's more than 100 days at once")
 	}
+	// cals, when given, is "accountId|calendarId" pairs, comma separated:
+	// the calendars the user ticked. Accounts not mentioned show their
+	// provider's default set.
+	var only map[string][]string
+	if raw := r.URL.Query().Get("cals"); raw != "" {
+		only = map[string][]string{}
+		for _, pair := range strings.Split(raw, ",") {
+			acct, cal, ok := strings.Cut(pair, "|")
+			if ok {
+				only[acct] = append(only[acct], cal)
+			}
+		}
+	}
 	out := eventsOut{Events: []mail.Event{}, Errors: map[string]string{}}
 	a.eachCalendar(r.Context(), func(acct store.Account, cp mail.CalendarProvider) error {
-		evs, err := cp.Events(r.Context(), from, to)
+		var ids []string
+		if only != nil {
+			ids = only[acct.ID]
+			if ids == nil {
+				ids = []string{}
+			}
+		}
+		evs, err := cp.Events(r.Context(), from, to, ids)
 		if err != nil {
 			return err
 		}

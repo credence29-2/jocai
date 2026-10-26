@@ -1615,7 +1615,17 @@ $("#composeBtn").onclick = () => { setDrawer(false); compose(); };
 /* ---------- calendar ---------- */
 // S.cal holds the view (week, month or agenda), the anchor date, the events
 // fetched for the shown range, and which accounts are ticked.
-S.cal = { view: innerWidth <= 760 ? "agenda" : "week", date: new Date(), events: [], cals: [], errors: {}, loading: false, off: new Set(), key: "" };
+S.cal = { view: innerWidth <= 760 ? "agenda" : "week", date: new Date(), events: [], cals: [], errors: {}, loading: false, off: new Set(), key: "", calsLoaded: false };
+// Which calendars show is remembered on this PC. Unmentioned calendars
+// follow the provider's own tick (hidden shared calendars stay hidden).
+const calChoice = (() => { try { return JSON.parse(localStorage.getItem("calChoice") || "{}"); } catch { return {}; } })();
+const calKey = c => c.accountId + "|" + c.id;
+const calOn = c => calKey(c) in calChoice ? calChoice[calKey(c)] : !!c.shown;
+function setCalOn(c, on) { calChoice[calKey(c)] = on; try { localStorage.setItem("calChoice", JSON.stringify(calChoice)); } catch {} }
+async function loadCalendars() {
+  try { const r = await api("/api/cal/calendars"); S.cal.cals = r.calendars || []; Object.assign(S.cal.errors, r.errors || {}); } catch {}
+  S.cal.calsLoaded = true;
+}
 const dayStart = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -1642,19 +1652,22 @@ function showMail() {
 }
 async function loadCal(force) {
   const [from, to] = calRange();
-  const key = ymd(from) + ".." + ymd(to);
+  let key = ymd(from) + ".." + ymd(to);
   const c = S.cal;
-  if (c.key !== key || force) {
+  if (!c.calsLoaded || force) await loadCalendars();
+  const chosen = c.cals.filter(calOn).map(calKey).join(",");
+  if (c.key !== key + "#" + chosen || force) {
+    key += "#" + chosen;
     c.loading = true; renderCal();
     try {
-      const r = await api("/api/cal/events?" + new URLSearchParams({ from: ymd(from), to: ymd(to) }));
+      const r = await api("/api/cal/events?" + new URLSearchParams({ from: ymd(from), to: ymd(to), cals: chosen }));
       c.events = r.events.map(e => ({ ...e, s: new Date(e.start), e: new Date(e.end) })); c.errors = r.errors || {}; c.key = key;
     } catch (e) { c.errors = { "": e.message }; c.events = []; }
     c.loading = false;
   }
   renderCal();
 }
-function evColor(e) { const a = acctById(e.accountId); return (a && a.color) || "#5f6368"; }
+function evColor(e) { const c = S.cal.cals.find(x => x.accountId === e.accountId && x.id === e.calendarId); const a = acctById(e.accountId); return (c && c.color) || (a && a.color) || "#5f6368"; }
 function evClass(e) { return e.myStatus === "tentative" ? "tentative" : e.myStatus === "declined" ? "declined" : e.myStatus === "needsAction" ? "needs" : ""; }
 function visibleEvents() { return S.cal.events.filter(e => !S.cal.off.has(e.accountId)); }
 // onDay: events touching a given day (all-day spans count on each day).
@@ -1670,8 +1683,9 @@ function renderCal() {
   else if (c.view === "month") title = `${MONTHS[c.date.getMonth()]} ${c.date.getFullYear()}`;
   else title = `Next 30 days from ${MONTHS[from.getMonth()].slice(0, 3)} ${from.getDate()}`;
   const legend = S.accounts.map(a => {
-    const err = c.errors[a.id];
+    const err = c.errors[a.id], mine = c.cals.filter(x => x.accountId === a.id), onCount = mine.filter(calOn).length;
     return `<label title="${esc(a.email)}"><input type="checkbox" data-cal-acct="${esc(a.id)}" ${c.off.has(a.id) ? "" : "checked"} style="accent-color:${esc(a.color)}">${esc(a.name || a.email)}</label>` +
+      (mine.length > 1 ? `<button class="link" data-cal-pick="${esc(a.id)}" title="Choose which of this account's calendars show">${onCount} of ${mine.length} calendars</button>` : "") +
       (err === "needs-reconnect" ? `<span class="warn">needs calendar access: <button class="link" data-cal-reconnect="${esc(a.id)}">Reconnect</button></span>`
         : err === "needs-api" ? `<span class="warn">the Calendar API is off in Google Cloud: <button class="link" data-open="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com">turn it on</button>, wait a minute, then refresh</span>`
         : err ? `<span class="warn" title="${esc(err)}">couldn't load: ${esc(err.length > 120 ? err.slice(0, 120) + "..." : err)}</span>` : "");
@@ -1726,6 +1740,8 @@ function lanes(evs) {
   };
   for (const ev of evs) { if (group.length && ev.s >= groupEnd) flush(); group.push(ev); groupEnd = Math.max(groupEnd, ev.e); }
   if (group.length) flush();
+  // More than four side by side turns into slivers; past that they overlap.
+  for (const o of out) if (o.lanes > 4) { o.lane = o.lane % 4; o.lanes = 4; }
   return out;
 }
 function chip(ev) {
@@ -1769,6 +1785,7 @@ $("#calPane").addEventListener("click", async e => {
   const v = t.closest("[data-cal-view]");
   if (v) { S.cal.view = v.dataset.calView; return loadCal(); }
   if (t.dataset.calAcct) { const s = S.cal.off; t.checked ? s.delete(t.dataset.calAcct) : s.add(t.dataset.calAcct); return renderCal(); }
+  if (t.dataset.calPick) return pickCalendars(t.dataset.calPick);
   if (t.dataset.calReconnect) { const a = acctById(t.dataset.calReconnect); openSettings("accounts"); return connect(a.provider, a.id); }
   const ev = t.closest("[data-ev]");
   if (ev) { e.stopPropagation(); const [acct, id] = ev.dataset.ev.split(/:(.+)/); const x = S.cal.events.find(y => y.accountId === acct && y.id === id); return x && showEvent(x); }
@@ -1814,6 +1831,30 @@ function labelMenu(m) {
   };
   const away = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener("click", away); } };
   setTimeout(() => document.addEventListener("click", away), 0);
+}
+
+// pickCalendars lists one account's calendars with a tick for each.
+function pickCalendars(acctId) {
+  const a = acctById(acctId) || {}, mine = S.cal.cals.filter(x => x.accountId === acctId);
+  const box = document.createElement("div");
+  box.innerHTML = `<div class="overlay"><div class="dialog small">
+    <div class="dlg-head"><h3>Calendars in ${esc(a.name || a.email)}</h3><button class="x" data-x>${icon("x")}</button></div>
+    <div class="dlg-body">
+      <p class="muted" style="margin:0 0 10px;line-height:1.5">Shared calendars and ones you've hidden in ${a.provider === "gmail" ? "Google Calendar" : "Outlook"} start unticked. Your own is at the top.</p>
+      <div style="display:flex;gap:10px;margin-bottom:10px"><button class="link" data-all="1">Tick all</button><button class="link" data-all="0">Untick all</button><button class="link" data-all="own">Only my own</button></div>
+      ${mine.map(c => `<label class="check" style="margin-bottom:6px"><input type="checkbox" data-cal="${esc(c.id)}" ${calOn(c) ? "checked" : ""} style="accent-color:${esc(c.color || a.color)}"><span class="lbl-dot" style="background:${esc(c.color || a.color || "#5f6368")}"></span>${esc(c.name)}${c.primary ? ' <span class="chip">mine</span>' : c.readOnly ? ' <span class="chip">shared, read only</span>' : ""}</label>`).join("")}
+    </div>
+    <div class="dlg-foot"><span class="grow"></span><button class="btn primary" id="calPickDone">Done</button></div></div></div>`;
+  $("#modal").append(box);
+  box.querySelectorAll("[data-x]").forEach(b => (b.onclick = () => box.remove()));
+  box.onclick = e => {
+    const all = e.target.dataset.all;
+    if (all !== undefined) box.querySelectorAll("[data-cal]").forEach(cb => { const c = mine.find(x => x.id === cb.dataset.cal); cb.checked = all === "1" || (all === "own" && !!c.primary); });
+  };
+  box.querySelector("#calPickDone").onclick = () => {
+    box.querySelectorAll("[data-cal]").forEach(cb => setCalOn(mine.find(x => x.id === cb.dataset.cal), cb.checked));
+    box.remove(); loadCal();
+  };
 }
 
 const STATUS_WORDS = { accepted: "Accepted", declined: "Declined", tentative: "Maybe", needsAction: "No answer yet" };
