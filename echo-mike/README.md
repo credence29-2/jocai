@@ -14,7 +14,7 @@ One window for all your Gmail and Outlook accounts. Send from any of your aliase
 | Smart From | Replying to mail sent to sales@ goes out from sales@, with that signature, through the account it belongs to. New messages use the default you pick. |
 | Privacy | Remote images are blocked until you click Show images, so tracking pixels can't report when you opened something. Scripts in email never run. Links open in your normal browser. |
 | Attachments | Attach by button or drag and drop. Forwards carry the original's attachments. Click an attachment to save it. |
-| AI, optional | **Summarize** on a conversation, and an **AI** button in compose that writes a message from a short note or rewrites what you typed (shorter, more professional, friendlier, fix grammar). Runs on your own PC with Ollama, or through Anthropic's API with your key. Off until you set it up, and nothing is sent to a model until you click. |
+| AI, optional | **Summarize** on a conversation, and an **AI** button in compose that writes a message from a short note or rewrites what you typed (shorter, more professional, friendlier, fix grammar). Runs on your own PC with Ollama, or through Anthropic's or OpenAI's API with your key, chosen per account. Off until you set it up, and nothing is sent to a model until you click. |
 
 Keyboard: C new, R reply, A reply all, F forward, E archive, Del delete, S star, U unread, J/K next and previous, / search, Ctrl+Enter send.
 
@@ -53,6 +53,10 @@ Settings > AI has two ways to run it. Both show the result before anything goes 
 Other models work too: `qwen2.5:14b` writes better and needs about 10 GB of video memory. On the Android app, point the Ollama address at your PC's IP; Ollama only listens on the PC itself unless you set `OLLAMA_HOST=0.0.0.0` in its environment.
 
 **Anthropic's Claude with your key:** create a key at [console.anthropic.com](https://console.anthropic.com/settings/keys), add billing, paste the key under Settings > AI and click **Test**. The text of the email you're working on goes to Anthropic when you click an AI button. The key is kept in `config.json` next to your other settings.
+
+**OpenAI with your key:** the same, with a key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys) (default model `gpt-5-mini`). An OpenAI-compatible gateway works too; set `openaiUrl` in `config.json`.
+
+**Per account:** the engine under Settings > AI is the default. Each account can pick its own under Accounts > Edit > AI for this account, or turn AI off for that mailbox, so a work key only ever sees work mail and personal mail stays on the local model.
 
 ## Claude Desktop
 

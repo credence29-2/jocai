@@ -11,9 +11,17 @@ import (
 	"github.com/credence29-2/jocai/echo-mike/internal/mail"
 )
 
-// aiClient builds a client from the saved settings.
-func (a *App) aiClient() *ai.Client {
-	return ai.New(a.st.Get().Settings.Config)
+// aiClient builds a client from the saved settings, with the account's
+// own engine choice applied when it has one.
+func (a *App) aiClient(accountID string) *ai.Client {
+	d := a.st.Get()
+	cfg := d.Settings.Config
+	for _, ac := range d.Accounts {
+		if ac.ID == accountID {
+			cfg = cfg.ForAccount(ac.AIEngine)
+		}
+	}
+	return ai.New(cfg)
 }
 
 // handleAITest tries the engine described in the request, so Settings can
@@ -26,6 +34,9 @@ func (a *App) handleAITest(w http.ResponseWriter, r *http.Request) (any, error) 
 	if in.AnthropicKey == "saved" {
 		in.AnthropicKey = a.st.Get().Settings.AnthropicKey
 	}
+	if in.OpenAIKey == "saved" {
+		in.OpenAIKey = a.st.Get().Settings.OpenAIKey
+	}
 	line, err := ai.New(in).Test(r.Context())
 	if err != nil {
 		return nil, err
@@ -36,8 +47,9 @@ func (a *App) handleAITest(w http.ResponseWriter, r *http.Request) (any, error) 
 type aiRunIn struct {
 	// Task is summarize, draft or rewrite.
 	Task string `json:"task"`
-	// AccountID and ID name the message for summarize and draft. Summarize
-	// takes the whole conversation when ThreadID is set.
+	// AccountID picks the engine (accounts can have their own). With ID it
+	// names the message for summarize and draft; summarize takes the whole
+	// conversation when ThreadID is set.
 	AccountID string `json:"accountId"`
 	ID        string `json:"id"`
 	ThreadID  string `json:"threadId"`
@@ -68,7 +80,7 @@ func (a *App) handleAIRun(w http.ResponseWriter, r *http.Request) (any, error) {
 		if strings.TrimSpace(in.Note) == "" {
 			return nil, fmt.Errorf("say what the reply should cover first")
 		}
-		if in.AccountID == "" {
+		if in.ID == "" && in.ThreadID == "" {
 			system, prompt = ai.DraftNew(in.Note, in.Name)
 			break
 		}
@@ -88,7 +100,7 @@ func (a *App) handleAIRun(w http.ResponseWriter, r *http.Request) (any, error) {
 	default:
 		return nil, fmt.Errorf("unknown task %q", in.Task)
 	}
-	c := a.aiClient()
+	c := a.aiClient(in.AccountID)
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")

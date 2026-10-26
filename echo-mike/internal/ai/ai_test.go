@@ -151,3 +151,57 @@ func TestPrompts(t *testing.T) {
 		t.Fatal(c)
 	}
 }
+
+func TestOpenAI(t *testing.T) {
+	var gotAuth, gotModel string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/chat/completions" {
+			w.WriteHeader(404)
+			return
+		}
+		gotAuth = r.Header.Get("Authorization")
+		var in struct {
+			Model    string `json:"model"`
+			Stream   bool   `json:"stream"`
+			Messages []struct{ Role string }
+		}
+		json.NewDecoder(r.Body).Decode(&in)
+		gotModel = in.Model
+		if gotAuth == "Bearer bad" {
+			w.WriteHeader(401)
+			w.Write([]byte(`{"error":{"message":"Incorrect API key provided"}}`))
+			return
+		}
+		if !in.Stream || len(in.Messages) != 2 || in.Messages[0].Role != "system" {
+			t.Errorf("bad request: %+v", in)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		for _, piece := range []string{"Hi ", "Derek,"} {
+			w.Write([]byte(`data: {"choices":[{"delta":{"content":"` + piece + `"}}]}` + "\n\n"))
+		}
+		w.Write([]byte("data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
+	}))
+	defer srv.Close()
+	c := New(Config{Engine: EngineOpenAI, OpenAIKey: " sk-work ", OpenAIURL: srv.URL + "/"})
+	var got []string
+	all, err := c.Stream(context.Background(), "s", "p", func(s string) { got = append(got, s) })
+	if err != nil || all != "Hi Derek," || len(got) != 2 || gotAuth != "Bearer sk-work" || gotModel != DefaultOpenAIModel {
+		t.Fatalf("stream: %q %v auth=%q model=%q %v", all, got, gotAuth, gotModel, err)
+	}
+	if line, err := c.Test(context.Background()); err != nil || !strings.HasPrefix(line, "gpt-5-mini answered") {
+		t.Fatalf("test: %q %v", line, err)
+	}
+	c = New(Config{Engine: EngineOpenAI, OpenAIKey: "bad", OpenAIURL: srv.URL})
+	if _, err := c.Stream(context.Background(), "s", "p", nil); err == nil || !strings.Contains(err.Error(), "rejected the API key") {
+		t.Fatalf("401: %v", err)
+	}
+	if _, err := New(Config{Engine: EngineOpenAI}).Test(context.Background()); err == nil || !strings.Contains(err.Error(), "OpenAI API key") {
+		t.Fatalf("no key: %v", err)
+	}
+
+	// Per-account choices.
+	base := Config{Engine: EngineOllama}
+	if base.ForAccount("").Engine != EngineOllama || base.ForAccount("off").Engine != EngineOff || base.ForAccount(EngineOpenAI).Engine != EngineOpenAI {
+		t.Fatal("ForAccount")
+	}
+}

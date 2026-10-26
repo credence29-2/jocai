@@ -23,10 +23,13 @@ const (
 	EngineOff       = ""
 	EngineOllama    = "ollama"
 	EngineAnthropic = "anthropic"
+	EngineOpenAI    = "openai"
 
 	DefaultOllamaURL      = "http://127.0.0.1:11434"
 	DefaultOllamaModel    = "llama3.1:8b"
 	DefaultAnthropicModel = "claude-opus-5-5"
+	DefaultOpenAIURL      = "https://api.openai.com/v1"
+	DefaultOpenAIModel    = "gpt-5-mini"
 )
 
 // Config is the AI part of Settings.
@@ -36,8 +39,32 @@ type Config struct {
 	OllamaModel    string `json:"ollamaModel"`
 	AnthropicKey   string `json:"anthropicKey"`
 	AnthropicModel string `json:"anthropicModel"`
-	// AnthropicURL overrides the API host, for tests.
-	AnthropicURL string `json:"-"`
+	OpenAIKey      string `json:"openaiKey"`
+	OpenAIModel    string `json:"openaiModel"`
+	// AnthropicURL and OpenAIURL override the API hosts, for tests and for
+	// OpenAI-compatible gateways.
+	AnthropicURL string `json:"anthropicUrl,omitempty"`
+	OpenAIURL    string `json:"openaiUrl,omitempty"`
+}
+
+// Engines are the choices, in menu order, with their labels.
+var Engines = []struct{ ID, Label string }{
+	{EngineOllama, "Ollama on this PC"},
+	{EngineAnthropic, "Anthropic"},
+	{EngineOpenAI, "OpenAI"},
+}
+
+// ForAccount applies an account's own choice: "" keeps the default, "off"
+// turns AI off for it, and an engine name switches to that engine.
+func (c Config) ForAccount(choice string) Config {
+	switch choice {
+	case "":
+	case "off":
+		c.Engine = EngineOff
+	default:
+		c.Engine = choice
+	}
+	return c
 }
 
 // Defaults fills in blanks so a half-filled config still works.
@@ -51,6 +78,13 @@ func (c Config) Defaults() Config {
 	if c.AnthropicModel == "" {
 		c.AnthropicModel = DefaultAnthropicModel
 	}
+	if c.OpenAIModel == "" {
+		c.OpenAIModel = DefaultOpenAIModel
+	}
+	if c.OpenAIURL == "" {
+		c.OpenAIURL = DefaultOpenAIURL
+	}
+	c.OpenAIURL = strings.TrimRight(strings.TrimSpace(c.OpenAIURL), "/")
 	c.OllamaURL = strings.TrimRight(strings.TrimSpace(c.OllamaURL), "/")
 	return c
 }
@@ -66,6 +100,8 @@ func (c Config) Model() string {
 		return c.OllamaModel
 	case EngineAnthropic:
 		return c.AnthropicModel
+	case EngineOpenAI:
+		return c.OpenAIModel
 	}
 	return ""
 }
@@ -96,6 +132,8 @@ func (c *Client) Stream(ctx context.Context, system, prompt string, out func(str
 		return c.ollama(ctx, system, prompt, out)
 	case EngineAnthropic:
 		return c.anthropic(ctx, system, prompt, out)
+	case EngineOpenAI:
+		return c.openai(ctx, system, prompt, out)
 	}
 	return "", ErrOff
 }
@@ -113,6 +151,10 @@ func (c *Client) Test(ctx context.Context) (string, error) {
 	case EngineAnthropic:
 		if strings.TrimSpace(c.cfg.AnthropicKey) == "" {
 			return "", errors.New("paste your Anthropic API key first")
+		}
+	case EngineOpenAI:
+		if strings.TrimSpace(c.cfg.OpenAIKey) == "" {
+			return "", errors.New("paste your OpenAI API key first")
 		}
 	default:
 		return "", ErrOff
@@ -258,6 +300,89 @@ func (c *Client) anthropic(ctx context.Context, system, prompt string, out func(
 			}
 			return all.String(), fmt.Errorf("Anthropic: %s", apiErr.Error())
 		}
+		return all.String(), err
+	}
+	return all.String(), nil
+}
+
+// OpenAI, through the chat completions endpoint streamed as server-sent
+// events. Plain HTTP keeps the exe small.
+
+func (c *Client) openai(ctx context.Context, system, prompt string, out func(string)) (string, error) {
+	body, _ := json.Marshal(map[string]any{
+		"model":  c.cfg.OpenAIModel,
+		"stream": true,
+		"messages": []map[string]string{
+			{"role": "system", "content": system},
+			{"role": "user", "content": prompt},
+		},
+	})
+	req, err := http.NewRequestWithContext(ctx, "POST", c.cfg.OpenAIURL+"/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(c.cfg.OpenAIKey))
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("can't reach OpenAI: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		var e struct {
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		json.Unmarshal(b, &e)
+		switch resp.StatusCode {
+		case 401:
+			return "", errors.New("OpenAI rejected the API key. Check it under Settings > AI")
+		case 404:
+			return "", fmt.Errorf("OpenAI doesn't know the model %q", c.cfg.OpenAIModel)
+		case 429:
+			return "", errors.New("OpenAI rate limit or quota hit. Check billing on the OpenAI account, or wait a moment")
+		}
+		if e.Error.Message == "" {
+			e.Error.Message = strings.TrimSpace(string(b))
+		}
+		return "", fmt.Errorf("OpenAI: %s", e.Error.Message)
+	}
+	var all strings.Builder
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	for sc.Scan() {
+		line := sc.Text()
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if data == "[DONE]" {
+			break
+		}
+		var chunk struct {
+			Choices []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			} `json:"choices"`
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+			continue
+		}
+		if chunk.Error.Message != "" {
+			return all.String(), fmt.Errorf("OpenAI: %s", chunk.Error.Message)
+		}
+		if len(chunk.Choices) > 0 && chunk.Choices[0].Delta.Content != "" {
+			all.WriteString(chunk.Choices[0].Delta.Content)
+			out(chunk.Choices[0].Delta.Content)
+		}
+	}
+	if err := sc.Err(); err != nil {
 		return all.String(), err
 	}
 	return all.String(), nil

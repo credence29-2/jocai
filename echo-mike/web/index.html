@@ -390,8 +390,11 @@ const dl = (path, params) => path + "?" + new URLSearchParams({ ...params, t: TO
 // AI. aiRun streams a model answer as JSON lines; onText gets the text so
 // far each time more arrives. Nothing goes to the model until a button
 // calls this.
-const aiOn = () => !!S.settings.aiEngine;
-const aiWhere = () => S.settings.aiEngine === "ollama" ? "on this PC" : "by Anthropic";
+// aiEngine is the engine an account uses: its own choice, else the default.
+const AI_NAMES = { ollama: "on this PC", anthropic: "by Anthropic", openai: "by OpenAI" };
+const aiEngine = acctId => { const a = acctById(acctId); const c = a && a.aiEngine; return c === "off" ? "" : (c || S.settings.aiEngine || ""); };
+const aiOn = acctId => !!aiEngine(acctId);
+const aiWhere = acctId => AI_NAMES[aiEngine(acctId)] || "";
 async function aiRun(body, onText) {
   if (window.__previewAi) return window.__previewAi(body, onText);
   const r = await fetch("/api/ai/run", { method: "POST", headers: { "X-Echo-Token": TOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -828,7 +831,7 @@ function renderReader() {
       <button class="tb desk-only" data-act="reply" title="Reply (R)">${icon("reply")}Reply</button>
       <button class="tb desk-only" data-act="replyAll" title="Reply all (A)">${icon("replyAll")}Reply all</button>
       <button class="tb desk-only" data-act="forward" title="Forward (F)">${icon("forward")}Forward</button>
-      ${aiOn() ? `<button class="tb" data-act="summarize" title="Summarize this conversation with AI, ${aiWhere()}">${icon("sparkle")}<span class="desk-only">Summarize</span></button>` : ""}
+      ${aiOn(m.accountId) ? `<button class="tb" data-act="summarize" title="Summarize this conversation with AI, ${aiWhere(m.accountId)}">${icon("sparkle")}<span class="desk-only">Summarize</span></button>` : ""}
       <span class="grow"></span>
       ${inTrash || inSpam ? `<button class="tb" data-act="inbox" title="Move to Inbox">${icon("inbox")}Not ${inSpam ? "spam" : "deleted"}</button>` :
         `<button class="tb" data-act="archive" title="Archive (E)">${icon("archive")}Archive</button>`}
@@ -856,7 +859,7 @@ const sumKey = m => m.accountId + "/" + (m.threadId || m.id);
 function aiSumBox(m) {
   const s = S.aiSum;
   if (!s || s.key !== sumKey(m)) return "";
-  return `<div class="ai-box" id="aiSum"><div class="ai-head">${icon("sparkle", 14)}Summary<span class="dim" style="text-transform:none;font-weight:400;letter-spacing:0">${s.running ? "" : "written " + aiWhere()}</span><span class="grow"></span>${s.running ? '<span class="spin"></span>' : '<button class="link" data-ai-close type="button">Hide</button>'}</div><div class="ai-text">${esc(s.text || (s.running ? "Reading the conversation..." : ""))}</div></div>`;
+  return `<div class="ai-box" id="aiSum"><div class="ai-head">${icon("sparkle", 14)}Summary<span class="dim" style="text-transform:none;font-weight:400;letter-spacing:0">${s.running ? "" : "written " + aiWhere(m.accountId)}</span><span class="grow"></span>${s.running ? '<span class="spin"></span>' : '<button class="link" data-ai-close type="button">Hide</button>'}</div><div class="ai-text">${esc(s.text || (s.running ? "Reading the conversation..." : ""))}</div></div>`;
 }
 async function summarize(m) {
   const key = sumKey(m);
@@ -1164,7 +1167,7 @@ function compose(d = {}) {
     <div class="dlg-foot">
       <button class="btn primary" id="cSend" title="Send (Ctrl+Enter)">${icon("sent", 16)}Send</button>
       <label class="btn ghost" title="Attach files">${icon("clip", 16)}Attach<input type="file" id="cAttach" multiple hidden></label>
-      ${aiOn() ? `<span class="ai-wrap"><button class="btn ghost" id="cAI" type="button" title="Write or rewrite with AI, ${aiWhere()}">${icon("sparkle", 16)}AI</button></span>` : ""}
+      ${S.settings.aiEngine || S.accounts.some(a => a.aiEngine && a.aiEngine !== "off") ? `<span class="ai-wrap" id="cAIWrap" ${aiOn(ident.accountId) ? "" : "hidden"}><button class="btn ghost" id="cAI" type="button" title="Write or rewrite with AI">${icon("sparkle", 16)}AI</button></span>` : ""}
       <span class="err" id="cErr"></span><span class="grow"></span>
       <span class="dim" id="cSaved"></span>
       <span class="dim" id="cVia"></span>
@@ -1196,6 +1199,7 @@ function compose(d = {}) {
     if (!sig) { sig = document.createElement("div"); sig.className = "cm-signature"; body.insertBefore(sig, body.querySelector(".cm-quote")?.previousSibling || null); }
     sig.innerHTML = sigHTML(ident, isReply);
     via();
+    if ($("#cAIWrap")) $("#cAIWrap").hidden = !aiOn(ident.accountId);
   };
   ["cTo", "cCc", "cBcc"].forEach(id => suggestOn($("#" + id)));
   $("#cShowCc").onclick = () => { $("#cCcRow").hidden = false; $("#cShowCc").hidden = true; $("#cCc").focus(); };
@@ -1280,11 +1284,11 @@ function compose(d = {}) {
       if (mode === "note") {
         const note = await ask(canReply ? "What should the reply say? A few words is enough." : "What should the message say? A few words is enough.", { ok: "Write it", input: "" });
         if (!note) return;
-        req = { task: "draft", note, name: (ident.name || "").split(" ")[0], ...(canReply ? { accountId: d.forwardFrom.accountId, id: d.forwardFrom.msgId, threadId: d.threadId || "" } : {}) };
+        req = { task: "draft", note, name: (ident.name || "").split(" ")[0], accountId: ident.accountId, ...(canReply ? { accountId: d.forwardFrom.accountId, id: d.forwardFrom.msgId, threadId: d.threadId || "" } : {}) };
       } else {
         const text = plain(userHTML());
         if (!text) return toast("Write something first, then pick a rewrite.");
-        req = { task: "rewrite", mode, text };
+        req = { task: "rewrite", mode, text, accountId: ident.accountId };
       }
       out.hidden = false;
       out.innerHTML = `<div class="ai-head">${icon("sparkle", 14)}${esc(labels[mode] || (canReply ? "Reply from your note" : "Message from your note"))}<span class="grow"></span><span class="spin"></span></div>
@@ -1308,6 +1312,7 @@ function compose(d = {}) {
       menu.className = "ai-menu";
       menu.innerHTML = `<button type="button" data-ai="note">${canReply ? "Write a reply from a note" : "Write it from a note"}</button><hr>` + AI_MODES.map(([k, l]) => `<button type="button" data-ai="${k}">${l}</button>`).join("");
       $("#cAI").parentNode.append(menu);
+      $("#cAI").title = "Write or rewrite with AI, " + aiWhere(ident.accountId);
       menu.onclick = ev => { const b = ev.target.closest("[data-ai]"); if (!b) return; menu.remove(); aiGo(b.dataset.ai); };
       setTimeout(() => document.addEventListener("click", () => menu.remove(), { once: true }), 0);
     };
@@ -1424,7 +1429,7 @@ function renderAccounts() {
     ${S.accounts.map(a => `<div class="card"><div class="card-row">
       <span class="acct-dot" style="background:${esc(a.color)};width:14px;height:14px"></span>
       <div class="grow"><h4>${esc(a.name || a.email)} ${a.needsReconnect ? '<span class="badge warn">Sign-in expired</span>' : ""}</h4>
-        <div class="muted">${esc(a.email)} · ${a.provider === "gmail" ? "Gmail" : "Outlook"}</div></div>
+        <div class="muted">${esc(a.email)} · ${a.provider === "gmail" ? "Gmail" : "Outlook"}${a.aiEngine ? ` · AI ${a.aiEngine === "off" ? "off" : AI_NAMES[a.aiEngine] || a.aiEngine}` : ""}</div></div>
       ${a.needsReconnect ? `<button class="btn small primary" data-reconnect="${esc(a.id)}">Reconnect</button>` : ""}
       <button class="btn small" data-edit-acct="${esc(a.id)}">Edit</button>
       <button class="btn small ghost danger" data-remove="${esc(a.id)}">Remove</button></div></div>`).join("") ||
@@ -1459,6 +1464,9 @@ function editAccount(a) {
     <div class="dlg-body">
       <label class="field"><span>Name shown in the sidebar</span><input class="input" id="aName" value="${esc(a.name)}"></label>
       <div class="field"><span>Color</span><div class="color-pick">${COLORS.map(c => `<button style="background:${c}" data-c="${c}" class="${c === color ? "on" : ""}"></button>`).join("")}</div></div>
+      <label class="field"><span>AI for this account</span><select class="input" id="aAI">${[["", "Use the default from Settings > AI"], ["off", "Off"], ["ollama", "Ollama on this PC"], ["anthropic", "Anthropic"], ["openai", "OpenAI"]].map(([v, l]) =>
+        `<option value="${v}" ${(a.aiEngine || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <p class="muted" style="margin:-6px 0 0;line-height:1.5">Summaries and drafts for this account's mail go through this engine only. Keys are entered under Settings > AI.</p>
     </div>
     <div class="dlg-foot"><span class="grow"></span><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="aSave">Save</button></div></div></div>`;
   $("#modal").append(box);
@@ -1469,8 +1477,8 @@ function editAccount(a) {
     box.querySelectorAll(".color-pick button").forEach(b => b.classList.toggle("on", b.dataset.c === color));
   };
   box.querySelector("#aSave").onclick = async () => {
-    try { await api("/api/account/update", { id: a.id, name: box.querySelector("#aName").value, color }); } catch (e) { return toast(e.message); }
-    box.remove(); await refreshState(); renderAccounts(); renderList();
+    try { await api("/api/account/update", { id: a.id, name: box.querySelector("#aName").value, color, aiEngine: box.querySelector("#aAI").value }); } catch (e) { return toast(e.message); }
+    box.remove(); await refreshState(); renderAccounts(); renderList(); if (S.msg) renderReader();
   };
 }
 
@@ -1654,19 +1662,28 @@ function renderAI() {
       </ol>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><label class="field"><span>API key</span><input class="input" id="aiKey" type="password" value="${esc(st.anthropicKey || "")}" spellcheck="false" placeholder="sk-ant-..."></label><label class="field"><span>Model</span><input class="input" id="aiAModel" value="${esc(st.anthropicModel || "claude-opus-5-5")}" spellcheck="false"></label></div>
     </div>
+    <div class="card">${radio("openai", "OpenAI (ChatGPT), with your own API key")}
+      <p class="muted" style="margin:0 0 10px 26px;line-height:1.5">Handy if work gives you an OpenAI key. Pay per use, no graphics card needed. The text of the email you're working on is sent to OpenAI when you click a button.</p>
+      <ol class="steps">
+        <li>Get a key from <button class="link" data-open="https://platform.openai.com/api-keys">platform.openai.com/api-keys</button>, or from whoever manages the work account.</li>
+        <li>Paste it below and click <b>Test</b>.</li>
+      </ol>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><label class="field"><span>API key</span><input class="input" id="aiOKey" type="password" value="${esc(st.openaiKey || "")}" spellcheck="false" placeholder="sk-..."></label><label class="field"><span>Model</span><input class="input" id="aiOModel" value="${esc(st.openaiModel || "gpt-5-mini")}" spellcheck="false"></label></div>
+    </div>
+    <p class="muted" style="line-height:1.55;max-width:760px">The choice above is the default. Each account can use a different engine, or none: <b>Accounts</b>, then <b>Edit</b> on the account. That way a work key only ever sees work mail.</p>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="aiSave">Save</button><button class="btn" id="aiTest">Test</button><span class="muted" id="aiMsg" style="line-height:1.4"></span></div>
     ${ANDROID ? "" : `<h4 style="margin:24px 0 6px">Claude Desktop</h4>
     <p class="muted" style="line-height:1.55;margin-top:0;max-width:760px">If you have the Claude desktop app, it can read your mail and leave drafts through Project Echo Mike (it never sends). Add this to Claude Desktop under <b>Settings, Developer, Edit Config</b> and restart Claude. Don't move the exe afterwards, or update the path here.</p>
     <pre class="code" style="white-space:pre-wrap;padding:10px 12px;user-select:all;line-height:1.5;font-size:12.5px">${esc(JSON.stringify({ mcpServers: { "project-echo-mike": { command: S.exe || "C:\\path\\to\\ProjectEchoMike.exe", args: ["-mcp"] } } }, null, 2))}</pre>`}`;
   $("#setBody").onclick = e => { if (e.target.dataset.open) api(dl("/open", { u: e.target.dataset.open })).catch(() => {}); };
-  const gather = () => ({ ...S.settings, aiEngine: $("input[name=aiEng]:checked").value, ollamaUrl: $("#aiUrl").value.trim(), ollamaModel: $("#aiModel").value.trim(), anthropicKey: $("#aiKey").value.trim(), anthropicModel: $("#aiAModel").value.trim() });
+  const gather = () => ({ ...S.settings, aiEngine: $("input[name=aiEng]:checked").value, ollamaUrl: $("#aiUrl").value.trim(), ollamaModel: $("#aiModel").value.trim(), anthropicKey: $("#aiKey").value.trim(), anthropicModel: $("#aiAModel").value.trim(), openaiKey: $("#aiOKey").value.trim(), openaiModel: $("#aiOModel").value.trim() });
   $("#aiSave").onclick = async () => {
-    try { await api("/api/settings", gather()); await refreshState(); $("#aiMsg").textContent = aiOn() ? "Saved. Open a conversation and click Summarize to try it." : "Saved. The AI buttons are hidden."; if (S.msg) renderReader(); }
+    try { await api("/api/settings", gather()); await refreshState(); $("#aiMsg").textContent = S.settings.aiEngine ? "Saved. Open a conversation and click Summarize to try it." : "Saved. AI is off unless an account picks its own engine."; if (S.msg) renderReader(); }
     catch (e) { $("#aiMsg").textContent = e.message; }
   };
   $("#aiTest").onclick = async () => {
     const cfg = gather();
-    if (!cfg.aiEngine) { $("#aiMsg").textContent = "Pick Ollama or Anthropic first."; return; }
+    if (!cfg.aiEngine) { $("#aiMsg").textContent = "Pick an engine first."; return; }
     $("#aiTest").disabled = true; $("#aiMsg").textContent = "Testing...";
     try { const r = await api("/api/ai/test", cfg); $("#aiMsg").textContent = "Works. " + r.message; }
     catch (e) { $("#aiMsg").textContent = e.message; }

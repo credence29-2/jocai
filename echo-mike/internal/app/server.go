@@ -270,6 +270,9 @@ func (a *App) handleState(w http.ResponseWriter, r *http.Request) (any, error) {
 	if d.Settings.AnthropicKey != "" {
 		d.Settings.AnthropicKey = "saved"
 	}
+	if d.Settings.OpenAIKey != "" {
+		d.Settings.OpenAIKey = "saved"
+	}
 	if d.Accounts == nil {
 		d.Accounts = []store.Account{}
 	}
@@ -916,7 +919,11 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) (any, error
 		if in.AnthropicKey == "saved" {
 			in.AnthropicKey = d.Settings.AnthropicKey
 		}
+		if in.OpenAIKey == "saved" {
+			in.OpenAIKey = d.Settings.OpenAIKey
+		}
 		in.AnthropicKey = strings.TrimSpace(in.AnthropicKey)
+		in.OpenAIKey = strings.TrimSpace(in.OpenAIKey)
 		in.GoogleClientID = strings.TrimSpace(in.GoogleClientID)
 		in.GoogleClientSecret = strings.TrimSpace(in.GoogleClientSecret)
 		in.MicrosoftClientID = strings.TrimSpace(in.MicrosoftClientID)
@@ -963,6 +970,7 @@ func (a *App) handleAccountUpdate(w http.ResponseWriter, r *http.Request) (any, 
 			if d.Accounts[i].ID == in.ID {
 				d.Accounts[i].Name = strings.TrimSpace(in.Name)
 				d.Accounts[i].Color = in.Color
+				d.Accounts[i].AIEngine = in.AIEngine
 				return nil
 			}
 		}

@@ -25,6 +25,9 @@ type Account struct {
 	Color    string `json:"color"`
 	// NeedsReconnect is set when the provider rejected the saved sign-in.
 	NeedsReconnect bool `json:"needsReconnect,omitempty"`
+	// AIEngine overrides Settings for this account: "" uses the default,
+	// "off" turns AI off here, or an engine name (see ai.Config.ForAccount).
+	AIEngine string `json:"aiEngine,omitempty"`
 }
 
 // Settings are app-wide preferences.
