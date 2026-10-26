@@ -273,7 +273,7 @@ html[data-theme=light] .card { background: #fff; box-shadow: 0 1px 2px rgba(15,2
 html[data-theme=light] .brand .mark { box-shadow: 0 8px 22px rgba(14,165,140,.25); }
 html[data-theme=light] .modal-back { background: rgba(15,23,42,.35); }
 html[data-theme=light] .nav button.active { background: linear-gradient(90deg, rgba(46,230,197,.28), rgba(76,201,255,.10)); }
-html[data-tech] .page-head p, html[data-tech] .hero p, html[data-tech] .hint, html[data-tech] .beginner { display: none; }
+html[data-tech] .page-head p, html[data-tech] .hint, html[data-tech] .beginner { display: none; }
 html[data-tech] .page-head { padding-bottom: 10px; }
 html[data-tech] .lrow { padding: 8px 14px; }
 html[data-tech] .drow { padding: 6px 14px; }
@@ -948,7 +948,7 @@ function renderHealth() {
     const junk = h.summary.bytes;
     hero = `<div class="card hero">${gauge(junk > 0 ? Math.min(1, junk / (2 * 1024 ** 3)) : 0, "junk", fmtBytes(junk), junk > 500 * 1024 ** 2 ? "#f6b94a" : "accent")}
       <div class="grow"><h2>${junk > 0 ? fmtBytes(junk) + " of junk can be removed" : "Your PC looks clean"}</h2>
-      <p>${junk > 0 ? "These are the Recommended items: temp files, Recycle Bin, caches and error reports. Cookies and history are left alone." : "Nothing in the Recommended items needs cleaning right now."}</p>
+      <p class="hint">${junk > 0 ? "These are the Recommended items: temp files, Recycle Bin, caches and error reports. Cookies and history are left alone." : "Nothing in the Recommended items needs cleaning right now."}</p>
       <div class="row" style="margin-top:16px">${junk > 0 ? '<button class="btn primary big" id="hFix">Fix it</button>' : ""}
       <button class="btn big" id="hAgain">Check again</button><button class="link" id="hCustom">Customize in Custom Clean</button></div></div></div>`;
   } else if (h.state === "fixed") {
@@ -959,7 +959,7 @@ function renderHealth() {
   } else {
     hero = `<div class="card hero">${gauge(used, "disk used", Math.round(used * 100) + "%", used > .9 ? "#ff6b6b" : "accent")}
       <div class="grow"><h2>Run a health check</h2>
-      <p>Kempt checks for junk using the Recommended items, counts your startup apps and looks at free space. Nothing is removed until you choose to fix it.</p>
+      <p class="hint">Kempt checks for junk using the Recommended items, counts your startup apps and looks at free space. Nothing is removed until you choose to fix it.</p>
       <div class="row" style="margin-top:16px"><button class="btn primary big" id="hRun">Run Health Check</button></div></div></div>`;
   }
   const st = S.startup;
