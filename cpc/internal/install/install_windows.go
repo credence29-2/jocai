@@ -125,11 +125,15 @@ func Uninstall(scheduleName, dataDir string, purge bool) error {
 	if scheduleName != "" {
 		_ = sysutil.ScheduleDelete(scheduleName)
 	}
-	cmd := `timeout /t 3 /nobreak >nul & rmdir /s /q "` + Dir() + `"`
+	// The folder may hold the running exe, so retry for a while.
+	script := "@echo off\r\nset n=0\r\n:again\r\n" +
+		"ping -n 2 127.0.0.1 >nul\r\n" +
+		"rmdir /s /q \"" + Dir() + "\" 2>nul\r\n" +
+		"if exist \"" + Exe() + "\" (set /a n+=1 & if %n% lss 20 goto again)\r\n"
 	if purge && dataDir != "" {
-		cmd += ` & rmdir /s /q "` + dataDir + `"`
+		script += "rmdir /s /q \"" + dataDir + "\" 2>nul\r\n"
 	}
-	return sysutil.RunDetached("cmd.exe", "/c", cmd)
+	return sysutil.RunScriptDetached("kempt-uninstall", script)
 }
 
 // RemoveLater deletes a portable exe once it has exited, retrying for a

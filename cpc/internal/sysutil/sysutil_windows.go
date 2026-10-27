@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -550,9 +552,15 @@ func ScheduleRetarget(name, exe, args string) error {
 	return nil
 }
 
-// RunDetached starts a command line with no window and does not wait.
-func RunDetached(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000 | 0x00000008} // CREATE_NO_WINDOW | DETACHED_PROCESS
+// RunScriptDetached writes a batch script to the temp folder and runs it
+// hidden without waiting. The script deletes itself when done. Go's
+// argument quoting mangles cmd.exe /c lines, so a file is the reliable way.
+func RunScriptDetached(name, script string) error {
+	file := filepath.Join(os.TempDir(), name+".cmd")
+	if err := os.WriteFile(file, []byte(script+"\r\ndel \"%~f0\"\r\n"), 0o644); err != nil {
+		return err
+	}
+	cmd := exec.Command("cmd.exe")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000, CmdLine: `cmd.exe /c "` + file + `"`}
 	return cmd.Start()
 }
