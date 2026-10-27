@@ -505,3 +505,54 @@ func SaveFileDialog(owner uintptr, title, defaultName, desc, pattern, defExt str
 func OpenFileDialog(owner uintptr, title, desc, pattern string) string {
 	return fileDialog(false, owner, title, "", desc, pattern, "")
 }
+
+// MessageBoxYesNoCancel asks a question. It returns 1 for Yes, 2 for No and
+// 0 when cancelled or closed.
+func MessageBoxYesNoCancel(title, text string) int {
+	t, _ := windows.UTF16PtrFromString(title)
+	m, _ := windows.UTF16PtrFromString(text)
+	const mbYesNoCancel, mbIconQuestion, mbSetForeground = 0x3, 0x20, 0x10000
+	r, _, _ := procMessageBoxW.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), mbYesNoCancel|mbIconQuestion|mbSetForeground)
+	switch r {
+	case 6: // IDYES
+		return 1
+	case 7: // IDNO
+		return 2
+	}
+	return 0
+}
+
+func psQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
+
+// CreateShortcut writes a .lnk file.
+func CreateShortcut(lnk, target, args, workDir, description string) error {
+	script := "$s = (New-Object -ComObject WScript.Shell).CreateShortcut(" + psQuote(lnk) + "); " +
+		"$s.TargetPath = " + psQuote(target) + "; $s.Arguments = " + psQuote(args) + "; " +
+		"$s.WorkingDirectory = " + psQuote(workDir) + "; $s.IconLocation = " + psQuote(target+",0") + "; " +
+		"$s.Description = " + psQuote(description) + "; $s.Save()"
+	out, err := RunHidden("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
+	if err != nil {
+		return errors.New(strings.TrimSpace(out + " " + err.Error()))
+	}
+	return nil
+}
+
+// ScheduleRetarget points an existing task at a different exe. A missing
+// task is not an error.
+func ScheduleRetarget(name, exe, args string) error {
+	if ok, _ := ScheduleStatus(name); !ok {
+		return nil
+	}
+	out, err := schtasks("/change", "/tn", name, "/tr", `"`+exe+`" `+args)
+	if err != nil {
+		return errors.New(out)
+	}
+	return nil
+}
+
+// RunDetached starts a command line with no window and does not wait.
+func RunDetached(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000 | 0x00000008} // CREATE_NO_WINDOW | DETACHED_PROCESS
+	return cmd.Start()
+}

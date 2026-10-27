@@ -1601,6 +1601,7 @@ function renderHelp() {
     ["Bloatware", "Lists preinstalled Store apps like Candy Crush, Xbox extras and promo apps, and removes the ones you tick. Windows' own apps are never offered."],
     ["Tech Report", "Builds a one-page summary of the PC for a ticket: make and model, Windows version and patch, drive and battery condition, startup, services, programs and warnings. Also available as Kempt.exe /report from a script."],
     ["Driver Updater", "Checks Windows Update for newer drivers and installs the ones you pick, with a restore point first. It also lists every installed driver, lets you ignore an update, and Fix a problem shows devices with errors. Some makers post newer drivers only on their own sites, and Kempt links to those pages."],
+    ["Installation", "Run from the Desktop or Downloads, Kempt offers to install itself into your apps folder (no administrator needed) with a Start menu entry, a desktop shortcut and an Add/Remove Programs entry. Updates replace that copy. Running a newer exe offers to update the installed one. Kempt.exe /install and /uninstall do it silently."],
     ["Settings", "Dark or light theme, tech mode (hides the explanations), a notification area icon with Clean now, a daily check for new versions with one-click install, and export or import of every setting. Kempt.exe /export and /import do the same from a script."],
     ["Automatic cleaning", "Settings can schedule a weekly clean with the items you ticked in Custom Clean. It skips apps that are open. You can also run Kempt.exe /auto from a script or RMM tool."],
     ["What Kempt never touches", "Documents, photos, bookmarks, Windows' own scheduled tasks and services, COM and ActiveX registry entries, and anything newer than 24 hours in temp folders. Cookies, history and passwords are only cleaned if you tick them."],
@@ -1797,6 +1798,13 @@ async function checkUpdatesQuietly() {
 async function renderSettings() {
   try { S.schedule = await api.Schedule(); } catch (e) { S.schedule = { enabled: false }; }
   const sc = S.schedule, admin = S.info.elevated, pf = S.prefs || { theme: "dark", checkUpdates: true };
+  let ii = null; try { ii = await api.InstallInfo(); } catch (e) { ii = null; }
+  const installCard = !ii ? "" : `<div class="card"><div class="row"><div class="grow"><h3>Installation</h3>
+      ${ii.thisCopy ? `<p class="hint">Installed in <b>${esc(ii.dir)}</b>. Updates replace the copy there, and the Start menu shortcut always opens the current version.</p>`
+        : ii.installed ? `<p class="hint">You're running a copy from <b>${esc(ii.portable)}</b>, but Kempt ${esc(ii.version || "")} is installed in ${esc(ii.dir)}. Install from here to replace it with this version (${esc(S.info.version)}).</p>`
+        : `<p class="hint">You're running Kempt from <b>${esc(ii.portable)}</b>. Install it into your apps folder to get a Start menu entry and desktop shortcut, and a single place for updates to land.</p>`}</div>
+      ${ii.thisCopy ? `<button class="btn small" id="instFolder">Open folder</button><button class="btn small" id="instDesktop">Add desktop shortcut</button><button class="btn small ghost" id="instRemove">Uninstall</button>`
+        : `<button class="btn primary small" id="instNow">${ii.installed ? "Install this version" : "Install Kempt"}</button>`}</div></div>`;
   $("#settingsBody").innerHTML = `
     <div class="card"><div class="row"><div class="grow"><h3>Automatic cleaning</h3>
       <p>Runs a clean once a week in the background using the items ticked in Custom Clean. Apps that are open at the time are skipped. Each run writes a log.</p></div>
@@ -1810,6 +1818,7 @@ async function renderSettings() {
       <p>Custom Clean, Health Check and automatic cleaning skip these folders and everything inside them.</p></div>
       <button class="btn small" id="exclAdd">Add folder</button></div>
       <div class="list" style="margin-top:12px" id="exclList"></div></div>
+    ${installCard}
     <div class="card"><div class="row"><div class="grow"><h3>Look and feel</h3><p class="hint">Tech mode hides the explanations and tightens the lists. The tray icon keeps Kempt running when the window is closed, with Clean now one right-click away.</p></div></div>
       <div class="row" style="margin-top:14px;flex-wrap:wrap;gap:22px">
         <div class="row" style="gap:10px"><span class="muted">Theme</span><div class="radio" role="group" aria-label="Theme"><button id="themeDark" class="${pf.theme === "dark" ? "active" : ""}">Dark theme</button><button id="themeLight" class="${pf.theme === "light" ? "active" : ""}">Light theme</button></div></div>
@@ -1837,6 +1846,18 @@ async function renderSettings() {
   try { drawExcl(await api.Exclusions()); } catch (e) { drawExcl([]); }
   $("#exclAdd").onclick = async () => { try { drawExcl(await api.AddExclusion()); } catch (e) { toast(errText(e), true); } };
   $("#openLogs").onclick = () => api.OpenLogs().catch(e => toast("No logs yet. Run a clean first.", true));
+  const on = (id, fn) => { const b = $("#" + id); if (b) b.onclick = fn; };
+  on("instFolder", () => api.OpenInstallFolder().catch(e => toast(errText(e), true)));
+  on("instDesktop", async () => { try { await api.AddDesktopShortcut(); toast("Desktop shortcut added."); } catch (e) { toast(errText(e), true); } });
+  on("instNow", async () => {
+    if (!await confirmBox(ii.installed ? "Install Kempt " + S.info.version + "?" : "Install Kempt?", "Kempt goes into " + esc(ii.dir) + " with a Start menu entry and a desktop shortcut, then opens from there." + (ii.portable && /\\(Desktop|Downloads)\\/i.test(ii.portable) ? " The copy you ran is removed, since the shortcut takes its place." : "") + " Your settings and logs stay where they are.", "Install")) return;
+    try { await api.InstallNow(); toast("Installed. Opening the installed copy..."); } catch (e) { toast(errText(e), true); }
+  });
+  on("instRemove", async () => {
+    if (!await confirmBox("Uninstall Kempt?", 'Removes the program folder, the shortcuts, the Add/Remove Programs entry and the weekly clean task.<div class="row" style="margin-top:12px;gap:10px"><input type="checkbox" class="cb" id="purgeData"> <span>Also delete settings, logs and registry backups</span></div>', "Uninstall", true)) return;
+    const purge = !!($("#purgeData") && $("#purgeData").checked);
+    try { await api.UninstallNow(purge); } catch (e) { toast(errText(e), true); }
+  });
   $("#themeDark").onclick = () => setPref("theme", "dark");
   $("#themeLight").onclick = () => setPref("theme", "light");
   $("#prefTech").onchange = e => setPref("techMode", e.target.checked);

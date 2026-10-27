@@ -1,5 +1,5 @@
 # Builds Kempt.exe. Usage: .\build.ps1 [-Version 1.0.0]
-param([string]$Version = "1.5.0")
+param([string]$Version = "1.5.1")
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 

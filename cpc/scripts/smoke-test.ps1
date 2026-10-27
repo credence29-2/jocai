@@ -93,7 +93,7 @@ function Expect($root, $regex, $label, $seconds = 60) {
 }
 
 $p = Seed
-$gui = Start-Process $exe -PassThru
+$gui = Start-Process $exe -ArgumentList "/portable" -PassThru
 $win = Wait-For { $c = New-Object System.Windows.Automation.PropertyCondition($AE::NameProperty, "Kempt"); $AE::RootElement.FindFirst($TS::Children, $c) } 40
 if (-not $win) { Shot "no-window"; Fail "window never appeared"; if ($gui.HasExited) { Fail "process exited with $($gui.ExitCode)" }; exit 1 }
 Pass "window opened"
@@ -313,6 +313,22 @@ $cli = Start-Process $exe -ArgumentList "/import", "`"$exp`"" -PassThru -Wait
 if ($cli.ExitCode -eq 0) { Pass "/import loaded the settings file" } else { Fail "/import failed with $($cli.ExitCode)" }
 $cli = Start-Process $exe -ArgumentList "/import", "`"$env:RUNNER_TEMP\nope.json`"" -PassThru -Wait
 if ($cli.ExitCode -ne 0) { Pass "/import rejects a missing file" } else { Fail "/import accepted a missing file" }
+
+# Installation: /install puts a copy in the programs folder with shortcuts and
+# an Add/Remove Programs entry; /uninstall takes it all away again.
+$instDir = "$env:LOCALAPPDATA\Programs\Kempt"
+$cli = Start-Process $exe -ArgumentList "/install" -PassThru -Wait
+if ($cli.ExitCode -eq 0 -and (Test-Path "$instDir\Kempt.exe")) { Pass "/install copied Kempt to $instDir" } else { Fail "/install failed with $($cli.ExitCode)" }
+if (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Kempt.lnk") { Pass "Start menu shortcut created" } else { Fail "Start menu shortcut missing" }
+$reg = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Kempt" -ErrorAction SilentlyContinue
+if ($reg -and $reg.DisplayName -eq "Kempt" -and $reg.DisplayVersion) { Pass "Add/Remove Programs entry written ($($reg.DisplayVersion))" } else { Fail "uninstall registry entry missing" }
+$inst = Start-Process "$instDir\Kempt.exe" -ArgumentList "/report", "`"$env:RUNNER_TEMP\installed-report.txt`"" -PassThru -Wait
+if ($inst.ExitCode -eq 0) { Pass "installed copy runs" } else { Fail "installed copy exited with $($inst.ExitCode)" }
+$cli = Start-Process $exe -ArgumentList "/uninstall" -PassThru -Wait
+Start-Sleep 6
+if (-not (Test-Path $instDir)) { Pass "/uninstall removed the program folder" } else { Fail "/uninstall left $instDir" }
+if (-not (Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Kempt")) { Pass "/uninstall removed the registry entry" } else { Fail "uninstall registry entry still there" }
+if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Kempt.lnk")) { Pass "/uninstall removed the shortcut" } else { Fail "Start menu shortcut still there" }
 Click $win "Turn automatic cleaning on or off" | Out-Null
 $task = Wait-For { schtasks /query /tn "Kempt weekly clean" 2>$null } 15
 if ($task) { Pass "weekly scheduled task created" } else { Fail "scheduled task not created. Screen: $(Texts $win)" }

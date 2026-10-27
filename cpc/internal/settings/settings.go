@@ -30,6 +30,9 @@ type Settings struct {
 	NoUpdateCheck bool `json:"noUpdateCheck,omitempty"`
 	// LastUpdateCheck is when the version check last ran (RFC 3339).
 	LastUpdateCheck string `json:"lastUpdateCheck,omitempty"`
+	// NoInstallPrompt stops the "install Kempt?" question when run from a
+	// folder like the Desktop.
+	NoInstallPrompt bool `json:"noInstallPrompt,omitempty"`
 }
 
 // Export is the portable form written by Export settings. It carries the

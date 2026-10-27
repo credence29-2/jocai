@@ -44,6 +44,10 @@ Nothing is deleted until you confirm. Every clean writes a log of each deleted f
 
 Run `Kempt.exe`. It asks for administrator rights (UAC) if your account is an admin. Standard users can still run it, and admin-only items are locked.
 
+The first time it runs from the Desktop or Downloads, Kempt offers to install itself into `%LOCALAPPDATA%\Programs\Kempt` (no administrator needed) with a Start menu entry, a desktop shortcut and an Add/Remove Programs entry. The exe you ran is removed and the shortcut takes its place. From then on the in-app updater replaces that installed copy, and running a newer `Kempt.exe` from anywhere offers to update it. Say No to keep running it as a portable exe; `Kempt.exe /portable` skips the question. **Settings > Installation** has Install, Open folder, Add desktop shortcut and Uninstall.
+
+For scripts: `Kempt.exe /install` (add `/nodesktop` to skip the desktop shortcut) and `Kempt.exe /uninstall` (add `/purge` to delete settings, logs and backups too).
+
 Kempt needs the Microsoft Edge WebView2 Runtime. It's built into Windows 11 and updated Windows 10. If it's missing, Kempt opens Microsoft's download page.
 
 Windows shows a SmartScreen warning the first time because the exe isn't code-signed. Click **More info** then **Run anyway**.

@@ -7,11 +7,13 @@ package main
 import (
 	_ "embed"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
 	webview2 "github.com/jchv/go-webview2"
 
+	"github.com/credence29-2/jocai/cpc/internal/install"
 	"github.com/credence29-2/jocai/cpc/internal/settings"
 	"github.com/credence29-2/jocai/cpc/internal/sysutil"
 	"github.com/credence29-2/jocai/cpc/internal/update"
@@ -33,6 +35,14 @@ func main() {
 				dest = os.Args[i+2]
 			}
 			os.Exit(runReport(dest))
+		case "/install", "-install", "--install":
+			os.Exit(runInstall())
+		case "/uninstall", "-uninstall", "--uninstall":
+			os.Exit(runUninstall(hasFlag("/purge")))
+		case "/cleanup", "-cleanup", "--cleanup":
+			if i+2 < len(os.Args) {
+				install.RemoveLater(os.Args[i+2])
+			}
 		case "/export", "-export", "--export", "/import", "-import", "--import":
 			file := ""
 			if i+2 < len(os.Args) {
@@ -46,6 +56,9 @@ func main() {
 	}
 
 	dataDir := settings.Dir()
+	if offerInstall(dataDir) {
+		return
+	}
 	w := webview2.NewWithOptions(webview2.WebViewOptions{
 		AutoFocus: true,
 		DataPath:  dataDir + `\WebView2`,
@@ -125,6 +138,98 @@ func runSettingsFile(export bool, file string) int {
 		return 0
 	}
 	if _, err := a.importFrom(file); err != nil {
+		return 1
+	}
+	return 0
+}
+
+func hasFlag(flag string) bool {
+	for _, a := range os.Args[1:] {
+		if strings.EqualFold(a, flag) {
+			return true
+		}
+	}
+	return false
+}
+
+// offerInstall runs when Kempt starts from somewhere other than its
+// programs folder. It offers to install (or update the installed copy) and
+// returns true when the installed copy was started instead of this one.
+func offerInstall(dataDir string) bool {
+	exe, err := os.Executable()
+	if err != nil || hasFlag("/portable") {
+		return false
+	}
+	cur := install.Current(exe)
+	if cur.ThisCopy {
+		if cur.Version != version {
+			_ = install.Register(version)
+		}
+		install.RemoveOld()
+		return false
+	}
+	cfg := settings.Load(dataDir)
+	var title, text string
+	switch {
+	case !cur.Installed:
+		if cfg.NoInstallPrompt {
+			return false
+		}
+		title = "Install " + appName + "?"
+		text = appName + " can install itself into your apps folder, with a Start menu entry and a desktop shortcut, so updates always land in the same place."
+		if install.Removable(exe) {
+			text += " The copy in " + filepath.Base(filepath.Dir(exe)) + " is replaced by the shortcut."
+		}
+		text += "\n\nYes installs. No runs it from here and won't ask again. Cancel closes."
+	case update.Newer(version, cur.Version):
+		title = "Update " + appName + "?"
+		text = "This is " + appName + " " + version + " and the installed copy is " + cur.Version + ".\n\nYes replaces the installed copy with this version and opens it. No runs this copy from here. Cancel closes."
+	default:
+		title = appName + " is already installed"
+		text = appName + " " + cur.Version + " is installed in " + cur.Dir + ".\n\nYes opens the installed copy. No runs this copy from here. Cancel closes."
+	}
+	switch sysutil.MessageBoxYesNoCancel(title, text) {
+	case 0:
+		os.Exit(0)
+	case 2:
+		if !cur.Installed {
+			cfg.NoInstallPrompt = true
+			_ = settings.Save(dataDir, cfg)
+		}
+		return false
+	}
+	if !cur.Installed || update.Newer(version, cur.Version) {
+		if err := install.Install(exe, version, true, scheduleName); err != nil {
+			sysutil.MessageBox(appName, "Could not install: "+err.Error()+"\n\n"+appName+" will run from here instead.", true)
+			return false
+		}
+	}
+	args := []string{}
+	if install.Removable(exe) {
+		args = append(args, "/cleanup", exe)
+	}
+	if err := update.Relaunch(install.Exe(), args...); err != nil {
+		sysutil.MessageBox(appName, "Installed, but could not open the installed copy: "+err.Error(), true)
+		return false
+	}
+	return true
+}
+
+// runInstall handles Kempt.exe /install: a silent install for scripts.
+func runInstall() int {
+	exe, err := os.Executable()
+	if err != nil {
+		return 1
+	}
+	if err := install.Install(exe, version, !hasFlag("/nodesktop"), scheduleName); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// runUninstall handles Kempt.exe /uninstall [/purge].
+func runUninstall(purge bool) int {
+	if err := install.Uninstall(scheduleName, settings.Dir(), purge); err != nil {
 		return 1
 	}
 	return 0

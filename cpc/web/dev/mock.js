@@ -115,6 +115,9 @@
     cpcUpdateDue: async () => true,
     cpcUpdateCheck: async () => later({ current: "1.4.2", latest: "1.5.0", available: true, notes: "- Disk Analyzer\n- Repair Tools\n- Tech Report", page: "https://github.com/credence29-2/jocai/releases", size: 9.8e6, checked: "Oct 26, 9:00 AM" }),
     cpcUpdateInstall: async () => { let d = 0; const t = () => { d += 2.4e6; if (d < 9.8e6) { emit("updateProgress", { done: d, total: 9.8e6 }); setTimeout(t, 120); } else emit("updateDone", { ok: true, text: "Kempt 1.5.0 is installed. Restarting..." }); }; setTimeout(t, 50); },
+    cpcInstallInfo: async () => window.__inst || { installed: false, dir: "C:\\Users\\Jacob\\AppData\\Local\\Programs\\Kempt", exe: "C:\\Users\\Jacob\\AppData\\Local\\Programs\\Kempt\\Kempt.exe", version: "", thisCopy: false, portable: "C:\\Users\\Jacob\\Desktop\\Kempt.exe" },
+    cpcInstallNow: async () => { window.__inst = { installed: true, dir: "C:\\Users\\Jacob\\AppData\\Local\\Programs\\Kempt", exe: "C:\\Users\\Jacob\\AppData\\Local\\Programs\\Kempt\\Kempt.exe", version: "1.5.1", thisCopy: true, portable: "" }; },
+    cpcAddDesktopShortcut: async () => null, cpcOpenInstallFolder: async () => null, cpcUninstallNow: async () => null,
     cpcBloatList: async () => later({ elevated: !!window.__mockAdmin, groups: ["Promotions and games", "Microsoft extras", "Xbox", "PC maker apps", "Other Store apps"], apps: [
       { name: "king.com.CandyCrushSaga", label: "King games (Candy Crush and others)", publisher: "king.com", version: "1.2", size: 180e6, group: "Promotions and games", known: true, checked: true },
       { name: "Microsoft.BingNews", label: "Microsoft News", publisher: "Microsoft Corporation", version: "4.5", size: 40e6, group: "Promotions and games", known: true, checked: true },

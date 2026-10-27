@@ -48,3 +48,8 @@ func FixedDrives() []Drive { return nil }
 
 func SaveFileDialog(uintptr, string, string, string, string, string) string { return "" }
 func OpenFileDialog(uintptr, string, string, string) string                 { return "" }
+
+func MessageBoxYesNoCancel(string, string) int  { return 0 }
+func CreateShortcut(_, _, _, _, _ string) error { return errNotWindows }
+func ScheduleRetarget(_, _, _ string) error     { return errNotWindows }
+func RunDetached(string, ...string) error       { return errNotWindows }
