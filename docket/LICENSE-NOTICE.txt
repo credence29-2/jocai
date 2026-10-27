@@ -1,0 +1,26 @@
+Docket - third-party components
+===============================
+
+Docket is built by 804 Industries for internal business use.
+
+PyMuPDF / MuPDF  (https://github.com/pymupdf/PyMuPDF)
+  Licensed under the GNU Affero General Public License v3.0 (AGPL-3.0),
+  Copyright Artifex Software, Inc.
+  AGPL-3.0 applies to this application as a whole. Using it internally is fine.
+  If the application (or a modified version) is ever distributed outside the
+  organisation, or offered to others over a network, its complete source code
+  must be made available to those users under the AGPL-3.0. A commercial
+  licence from Artifex removes this obligation.
+
+Qt for Python (PySide6) and Qt 6  (https://www.qt.io/qt-for-python)
+  Licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0).
+  Qt libraries are shipped as separate, replaceable DLLs.
+
+Pillow  (https://python-pillow.org)
+  MIT-CMU licence.
+
+Python  (https://www.python.org)
+  Python Software Foundation License.
+
+PyInstaller bootloader  (https://pyinstaller.org)
+  GPL-2.0 with a special exception that permits use in bundled applications.
