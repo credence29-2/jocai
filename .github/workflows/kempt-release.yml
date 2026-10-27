@@ -6,6 +6,11 @@ on:
   push:
     tags:
       - "kempt-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 1.5.0 (tags kempt-v<version> at this commit)"
+        required: true
 
 permissions:
   contents: write
@@ -16,6 +21,8 @@ jobs:
     defaults:
       run:
         working-directory: cpc
+    env:
+      INPUT_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -24,13 +31,13 @@ jobs:
           cache-dependency-path: cpc/go.sum
       - name: Build
         run: |
-          VERSION="${GITHUB_REF_NAME#kempt-v}"
+          VERSION="${INPUT_VERSION:-${GITHUB_REF_NAME#kempt-v}}"
           ./build.sh "$VERSION"
           cd dist && sha256sum Kempt.exe Kempt-arm64.exe > SHA256SUMS.txt && cat SHA256SUMS.txt
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#kempt-v}"
-          gh release create "$GITHUB_REF_NAME" dist/Kempt.exe dist/Kempt-arm64.exe dist/SHA256SUMS.txt \
-            --repo "$GITHUB_REPOSITORY" --title "Kempt $VERSION" --generate-notes
+          VERSION="${INPUT_VERSION:-${GITHUB_REF_NAME#kempt-v}}"
+          gh release create "kempt-v$VERSION" dist/Kempt.exe dist/Kempt-arm64.exe dist/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Kempt $VERSION" --generate-notes
